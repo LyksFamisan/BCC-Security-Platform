@@ -118,6 +118,88 @@ body {
   opacity: 1;
 }
 
+@media (max-width: 720px) {
+  .personnel-login-shell {
+    display: block !important;
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+  }
+
+  .personnel-login-brand {
+    width: 100% !important;
+    min-height: 40dvh;
+    padding: 42px 24px 28px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(34,197,94,0.15);
+  }
+
+  .personnel-login-brand > div:last-child {
+    display: none !important;
+  }
+
+  .personnel-login-form {
+    padding: 32px 24px 44px !important;
+  }
+
+  .personnel-app-shell {
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+
+  .personnel-duty-card,
+  .personnel-dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .personnel-duty-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+  }
+
+  .personnel-duty-card {
+    align-items: stretch !important;
+    padding: 20px !important;
+  }
+
+  .personnel-clock {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .personnel-clock > div:first-child {
+    font-size: clamp(28px, 9vw, 38px) !important;
+  }
+
+  .personnel-duty-card > div:last-child {
+    align-items: stretch !important;
+  }
+
+  .personnel-duty-card button {
+    width: 100%;
+  }
+
+  .personnel-duty-card > div:last-child > div:last-child {
+    flex-wrap: wrap;
+  }
+
+  .personnel-duty-card > div:last-child > div:last-child > div {
+    flex: 1 1 42%;
+  }
+}
+
+@media (min-width: 721px) {
+  .personnel-duty-card {
+    overflow: hidden;
+  }
+
+  .personnel-duty-controls {
+    min-width: 0;
+  }
+}
+
 .theme-sidebar-dark {
   background: linear-gradient(180deg, #0b1c2d 0%, #102c43 100%) !important;
   border-right-color: rgba(148, 163, 184, 0.16) !important;
@@ -137,6 +219,14 @@ body {
 .theme-sidebar-dark [style*="rgba(255,255,255,0.48)"] {
   background: rgba(15, 35, 54, 0.88) !important;
   border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.theme-sidebar-dark nav button:not([style*="linear-gradient"]) {
+  color: #ffffff !important;
+}
+
+.theme-sidebar-dark nav button:not([style*="linear-gradient"]) span {
+  color: #ffffff !important;
 }
 
 /* Increase compact dashboard labels and metadata for easier scanning. */

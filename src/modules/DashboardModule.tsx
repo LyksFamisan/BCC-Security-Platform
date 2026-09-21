@@ -30,12 +30,13 @@ const escalations = [
 const slaTarget = 99.5
 const slaActual = 99.4
 
-export default function DashboardModule() {
-  const { addActivity } = usePortalData()
+export default function DashboardModule({ canEdit = false }: { canEdit?: boolean }) {
+  const { addActivity, activities, duty, incidentReports, equipmentFaults, lastUpdated, isLive } = usePortalData()
   const [, setTick] = useState(0)
   const [reportView, setReportView] = useState<'operations' | 'management'>('operations')
   const [enabledKpis, setEnabledKpis] = useState(['roster', 'sla', 'detachments', 'critical'])
   const [acknowledged, setAcknowledged] = useState<string[]>([])
+  const [executiveReportRunAt, setExecutiveReportRunAt] = useState<string | null>(null)
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 60000)
     return () => clearInterval(t)
@@ -54,6 +55,30 @@ export default function DashboardModule() {
 
   return (
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
+
+      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}>
+        <div className="flex items-center justify-between gap-3" style={{ marginBottom: 10 }}>
+          <div>
+            <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>Connected Operations Data</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Shared personnel, attendance, incident, and equipment updates</div>
+          </div>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE SYNC' : 'OFFLINE'}</span>
+        </div>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {[
+            { label: 'PERSONNEL DUTY', value: duty.checkedIn ? 'ON DUTY' : 'OFF DUTY', color: duty.checkedIn ? '#16a34a' : '#d97706' },
+            { label: 'INCIDENT REPORTS', value: String(incidentReports), color: '#dc2626' },
+            { label: 'EQUIPMENT FAULTS', value: String(equipmentFaults), color: '#d97706' },
+            { label: 'LAST UPDATE', value: lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : 'Waiting', color: '#1976b9' },
+          ].map(item => (
+            <div key={item.label}>
+              <div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: L.muted, letterSpacing: '0.05em' }}>{item.label}</div>
+              <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: item.color, marginTop: 5 }}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+        {activities.length > 0 && <div style={{ borderTop: `1px solid ${L.divider}`, marginTop: 12, paddingTop: 9, fontFamily: 'Inter', fontSize: 12, color: L.body }}>{activities[0].source}: {activities[0].message}</div>}
+      </div>
 
       {/* KPI Row */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
@@ -76,7 +101,7 @@ export default function DashboardModule() {
           <div className="flex items-center gap-2">
             <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Dashboard View</span>
             {(['operations', 'management'] as const).map(view => (
-              <button key={view} type="button" onClick={() => setReportView(view)} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{view === 'operations' ? 'Operations' : 'Executive Report'}</button>
+              <button key={view} type="button" onClick={() => { setReportView(view); addActivity('Operations Dashboard', 'VIEW', `Opened ${view === 'operations' ? 'Operations' : 'Executive'} dashboard view`) }} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{view === 'operations' ? 'Operations' : 'Executive Report'}</button>
             ))}
           </div>
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
@@ -100,7 +125,7 @@ export default function DashboardModule() {
               </svg>
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 14, color: L.heading }}>Active Client Detachments</span>
             </div>
-            <button onClick={() => setReportView('management')} style={{ fontFamily: 'Inter', fontSize: 12, color: '#F06522', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" onClick={() => { setReportView('management'); addActivity('Operations Dashboard', 'REPORT_VIEW', 'Opened All Detachments report') }} style={{ fontFamily: 'Inter', fontSize: 12, color: '#F06522', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
               All Detachments
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
@@ -144,7 +169,7 @@ export default function DashboardModule() {
               </svg>
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 14, color: L.heading }}>Critical Escalations Log</span>
             </div>
-            <button onClick={() => setReportView('management')} style={{ fontFamily: 'Inter', fontSize: 12, color: '#F06522', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" onClick={() => { setReportView('management'); addActivity('Operations Dashboard', 'DISPATCH_VIEW', 'Opened Manage Dispatches') }} style={{ fontFamily: 'Inter', fontSize: 12, color: '#F06522', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
               Manage Dispatches
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
@@ -192,7 +217,13 @@ export default function DashboardModule() {
             <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: L.heading, flexShrink: 0 }}>{slaActual.toFixed(2)}%</span>
           </div>
           <button
-            onClick={() => setReportView('management')}
+            type="button"
+            onClick={() => {
+              setReportView('management')
+              const runAt = new Date().toISOString()
+              setExecutiveReportRunAt(runAt)
+              addActivity('Operations Dashboard', 'EXECUTIVE_REPORT', 'Executive report generated')
+            }}
             style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: '#F06522', background: 'transparent', border: '1px solid #F06522', borderRadius: 7, padding: '9px 18px', cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(240,101,34,0.06)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -200,6 +231,7 @@ export default function DashboardModule() {
             Run Executive Report
           </button>
         </div>
+        {executiveReportRunAt && <div style={{ marginTop: 8, fontFamily: 'Inter', fontSize: 11, color: '#16a34a', textAlign: 'right' }}>Report generated · {new Date(executiveReportRunAt).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>}
       </div>
 
       {reportView === 'management' && (
@@ -238,7 +270,7 @@ export default function DashboardModule() {
                 <div key={alert.title} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: `1px solid ${L.divider}`, opacity: isAcknowledged ? 0.55 : 1 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: alert.levelColor, boxShadow: `0 0 6px ${alert.levelColor}`, flexShrink: 0 }} />
                   <div style={{ flex: 1 }}><div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: L.heading }}>{alert.title}</div><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>{alert.site}</div></div>
-                  <button type="button" disabled={isAcknowledged} onClick={() => { setAcknowledged(current => [...current, alert.title]); addActivity('Executive Dashboard', 'ESCALATION', `Escalation acknowledged: ${alert.title}`) }} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: isAcknowledged ? L.subtle : alert.levelColor, background: 'transparent', border: `1px solid ${isAcknowledged ? L.cardBorder : alert.levelColor}`, borderRadius: 6, padding: '5px 8px', cursor: isAcknowledged ? 'default' : 'pointer' }}>{isAcknowledged ? 'Acknowledged' : 'Acknowledge'}</button>
+                  <button type="button" disabled={isAcknowledged || !canEdit} onClick={() => { setAcknowledged(current => [...current, alert.title]); addActivity('Executive Dashboard', 'ESCALATION', `Escalation acknowledged: ${alert.title}`) }} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: isAcknowledged || !canEdit ? L.subtle : alert.levelColor, background: 'transparent', border: `1px solid ${isAcknowledged || !canEdit ? L.cardBorder : alert.levelColor}`, borderRadius: 6, padding: '5px 8px', cursor: isAcknowledged || !canEdit ? 'not-allowed' : 'pointer' }}>{isAcknowledged ? 'Acknowledged' : canEdit ? 'Acknowledge' : 'Admin action'}</button>
                 </div>
               )
             })}

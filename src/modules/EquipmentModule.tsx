@@ -79,8 +79,8 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'reports', label: 'Utilization Reports' },
 ]
 
-export default function EquipmentModule() {
-  const { addActivity, recordEquipmentFault } = usePortalData()
+export default function EquipmentModule({ canEdit = false, canReport = false }: { canEdit?: boolean; canReport?: boolean }) {
+  const { addActivity, recordEquipmentFault, equipmentFaults, activities, isLive } = usePortalData()
   const [tab, setTab] = useState<Tab>('inventory')
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<string[]>([])
   const [faultFormOpen, setFaultFormOpen] = useState(false)
@@ -93,6 +93,11 @@ export default function EquipmentModule() {
       <div>
         <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, letterSpacing: '0.08em', marginBottom: 4 }}>EQUIPMENT ACCOUNTABILITY</div>
         <h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 24, color: L.heading, margin: 0 }}>Assets & Equipment Management</h1>
+      </div>
+
+      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '12px 16px', boxShadow: L.shadow }}>
+        <div className="flex items-center justify-between"><div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Personnel Equipment Updates</div><div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>Shared assignments and defect reports · {isLive ? 'Live sync' : 'Offline'}</div></div><span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#d97706' }}>{equipmentFaults} ISSUES</span></div>
+        {activities.find(activity => activity.type === 'EQUIPMENT_FAULT') && <div style={{ borderTop: `1px solid ${L.divider}`, marginTop: 8, paddingTop: 7, fontFamily: 'Inter', fontSize: 11, color: L.body }}>{activities.find(activity => activity.type === 'EQUIPMENT_FAULT')?.message}</div>}
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -115,7 +120,7 @@ export default function EquipmentModule() {
           {tabs.map(t => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => { setTab(t.id); addActivity('Detachment Staff', 'VIEW', `Opened equipment view: ${t.label}`) }}
               style={{
                 fontFamily: 'Inter', fontWeight: 500, fontSize: 13,
                 color: tab === t.id ? '#F06522' : L.muted,
@@ -295,12 +300,13 @@ export default function EquipmentModule() {
                       <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: L.heading }}>{alert.title}</div>
                       <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>{alert.detail}</div>
                     </div>
-                    <button type="button" disabled={acknowledged} onClick={() => setAcknowledgedAlerts(current => [...current, alert.id])} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: acknowledged ? L.subtle : alert.color, background: 'transparent', border: `1px solid ${acknowledged ? L.cardBorder : alert.color}`, borderRadius: 6, padding: '5px 9px', cursor: acknowledged ? 'default' : 'pointer' }}>{acknowledged ? 'Acknowledged' : 'Acknowledge'}</button>
+                    <button type="button" disabled={acknowledged || !canEdit} onClick={() => setAcknowledgedAlerts(current => [...current, alert.id])} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: acknowledged || !canEdit ? L.subtle : alert.color, background: 'transparent', border: `1px solid ${acknowledged || !canEdit ? L.cardBorder : alert.color}`, borderRadius: 6, padding: '5px 9px', cursor: acknowledged || !canEdit ? 'not-allowed' : 'pointer' }}>{acknowledged ? 'Acknowledged' : canEdit ? 'Acknowledge' : 'Admin action'}</button>
                   </div>
                 )
               })}
               <div className="px-5 py-4">
-                {faultSubmitted ? (
+                {!canReport && <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, background: 'rgba(25,118,185,0.06)', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 12px', textAlign: 'center' }}>Fault and defect updates are managed by Administrator Portal.</div>}
+                {canReport && (faultSubmitted ? (
                   <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 7, padding: '10px 14px', textAlign: 'center' }}>Fault report submitted to Equipment Control.</div>
                 ) : faultFormOpen ? (
                   <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); setFaultSubmitted(true); setFaultFormOpen(false); recordEquipmentFault(); addActivity('Equipment Control', 'FAULT_REPORT', `Fault reported for ${faultAsset}: ${faultDescription}`) }}>
@@ -318,7 +324,7 @@ export default function EquipmentModule() {
                   </form>
                 ) : (
                   <button type="button" onClick={() => setFaultFormOpen(true)} style={{ width: '100%', fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#fff', background: '#1976b9', border: 'none', borderRadius: 7, padding: '10px 14px', cursor: 'pointer' }}>Report Fault / Defect</button>
-                )}
+                ))}
               </div>
             </div>
           </div>

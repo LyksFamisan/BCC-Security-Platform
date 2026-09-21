@@ -8,16 +8,35 @@ export type PortalActivity = {
   createdAt: string
 }
 
+export type IncidentRecord = {
+  id: string
+  filedBy: string
+  type: string
+  location: string
+  severity: string
+  description: string
+  evidence?: string
+  status: 'Submitted' | 'Under Review' | 'Closed'
+  createdAt: string
+}
+
 export type DutyRecord = {
   checkedIn: boolean
   checkInTime: string
   checkOutTime: string
+  checkInPhoto?: string
+  checkOutPhoto?: string
+  checkInLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
+  checkOutLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
+  checkInPhotoAt?: string
+  checkOutPhotoAt?: string
 }
 
 export type SharedPortalData = {
   activities: PortalActivity[]
   duty: DutyRecord
   incidentReports: number
+  incidentHistory: IncidentRecord[]
   equipmentFaults: number
 }
 
@@ -25,30 +44,56 @@ type PortalDataContextValue = {
   activities: PortalActivity[]
   duty: DutyRecord
   incidentReports: number
+  incidentHistory: IncidentRecord[]
   equipmentFaults: number
   lastUpdated: string | null
   isLive: boolean
   addActivity: (source: string, type: string, message: string) => void
   setDuty: (duty: DutyRecord) => void
   recordIncident: () => void
+  addIncidentRecord: (record: Omit<IncidentRecord, 'id' | 'createdAt' | 'status'>) => void
   recordEquipmentFault: () => void
   clearActivities: () => void
 }
 
 const STORAGE_KEY = 'cat-security-portal-data'
 const CHANNEL_NAME = 'cat-security-portal-live'
+const PHOTO_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const PortalDataContext = createContext<PortalDataContextValue | null>(null)
 
 const defaultDuty: DutyRecord = { checkedIn: false, checkInTime: '', checkOutTime: '' }
 
+function pruneDutyPhotos(duty: DutyRecord): DutyRecord {
+  const nextDuty = { ...duty }
+  const now = Date.now()
+  if (nextDuty.checkInPhoto && (!nextDuty.checkInPhotoAt || now - new Date(nextDuty.checkInPhotoAt).getTime() >= PHOTO_RETENTION_MS)) {
+    delete nextDuty.checkInPhoto
+    delete nextDuty.checkInPhotoAt
+    delete nextDuty.checkInLocation
+  }
+  if (nextDuty.checkOutPhoto && (!nextDuty.checkOutPhotoAt || now - new Date(nextDuty.checkOutPhotoAt).getTime() >= PHOTO_RETENTION_MS)) {
+    delete nextDuty.checkOutPhoto
+    delete nextDuty.checkOutPhotoAt
+    delete nextDuty.checkOutLocation
+  }
+  return nextDuty
+}
+
 function readStoredData(): SharedPortalData & { updatedAt: string | null } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return { activities: [], duty: defaultDuty, incidentReports: 0, equipmentFaults: 0, updatedAt: null }
+    if (!saved) return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
     const parsed = JSON.parse(saved)
-    return { activities: parsed.activities ?? [], duty: parsed.duty ?? defaultDuty, incidentReports: parsed.incidentReports ?? 0, equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
+    const storedDuty = parsed.duty ?? defaultDuty
+    const now = new Date().toISOString()
+    const dutyWithTimestamps = {
+      ...storedDuty,
+      checkInPhotoAt: storedDuty.checkInPhoto && !storedDuty.checkInPhotoAt ? now : storedDuty.checkInPhotoAt,
+      checkOutPhotoAt: storedDuty.checkOutPhoto && !storedDuty.checkOutPhotoAt ? now : storedDuty.checkOutPhotoAt,
+    }
+    return { activities: parsed.activities ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
   } catch {
-    return { activities: [], duty: defaultDuty, incidentReports: 0, equipmentFaults: 0, updatedAt: null }
+    return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
   }
 }
 
@@ -57,6 +102,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<PortalActivity[]>(initialData.activities)
   const [duty, setDuty] = useState<DutyRecord>(initialData.duty)
   const [incidentReports, setIncidentReports] = useState(initialData.incidentReports)
+  const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>(initialData.incidentHistory)
   const [equipmentFaults, setEquipmentFaults] = useState(initialData.equipmentFaults)
   const [lastUpdated, setLastUpdated] = useState<string | null>(initialData.updatedAt)
   const serializedRef = useRef(JSON.stringify(initialData))
@@ -70,11 +116,21 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     }
     const updatedAt = new Date().toISOString()
     setLastUpdated(updatedAt)
-    const data = { activities, duty, incidentReports, equipmentFaults, updatedAt }
+    const data = { activities, duty, incidentReports, incidentHistory, equipmentFaults, updatedAt }
     serializedRef.current = JSON.stringify(data)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     channelRef.current?.postMessage(data)
-  }, [activities, duty, incidentReports, equipmentFaults])
+  }, [activities, duty, incidentReports, incidentHistory, equipmentFaults])
+
+  useEffect(() => {
+    const retentionCheck = window.setInterval(() => {
+      setDuty(current => {
+        const nextDuty = pruneDutyPhotos(current)
+        return JSON.stringify(nextDuty) === JSON.stringify(current) ? current : nextDuty
+      })
+    }, 60 * 1000)
+    return () => window.clearInterval(retentionCheck)
+  }, [])
 
   useEffect(() => {
     const sync = (data: Partial<SharedPortalData> & { updatedAt: string | null }) => {
@@ -84,8 +140,9 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
       serializedRef.current = serialized
       applyingRemoteRef.current = true
       setActivities(nextActivities)
-      setDuty(data.duty ?? defaultDuty)
+      setDuty(pruneDutyPhotos(data.duty ?? defaultDuty))
       setIncidentReports(data.incidentReports ?? 0)
+      setIncidentHistory(data.incidentHistory ?? [])
       setEquipmentFaults(data.equipmentFaults ?? 0)
       setLastUpdated(data.updatedAt)
     }
@@ -115,6 +172,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     activities,
     duty,
     incidentReports,
+    incidentHistory,
     equipmentFaults,
     lastUpdated,
     isLive: true,
@@ -130,13 +188,18 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     recordIncident() {
       setIncidentReports(current => current + 1)
     },
+    addIncidentRecord(record) {
+      const createdAt = new Date().toISOString()
+      setIncidentHistory(current => [{ ...record, id: `INC-${Date.now()}`, status: 'Submitted', createdAt }, ...current].slice(0, 100))
+      setIncidentReports(current => current + 1)
+    },
     recordEquipmentFault() {
       setEquipmentFaults(current => current + 1)
     },
     clearActivities() {
       setActivities([])
     },
-  }), [activities, duty, incidentReports, equipmentFaults, lastUpdated])
+  }), [activities, duty, incidentReports, incidentHistory, equipmentFaults, lastUpdated])
 
   return <PortalDataContext.Provider value={value}>{children}</PortalDataContext.Provider>
 }

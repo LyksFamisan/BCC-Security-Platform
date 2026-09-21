@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePortalData } from '../state/PortalDataContext'
 
 const L = {
   card: 'rgba(255,255,255,0.94)',
@@ -60,14 +61,15 @@ function daysUntil(dateStr: string) {
 }
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'roster', label: 'Guard Roster / AO' },
+  { id: 'roster', label: 'Duty Roster / Assignment Order' },
   { id: 'deployment', label: 'DDO — Live Deployment' },
   { id: 'monitoring', label: 'Live Monitoring' },
   { id: 'attendance', label: 'Attendance & Timekeeping' },
   { id: 'training', label: 'Training & Certifications' },
 ]
 
-export default function ManpowerModule() {
+export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean }) {
+  const { activities, duty, incidentReports, equipmentFaults, isLive, lastUpdated, addActivity } = usePortalData()
   const [tab, setTab] = useState<Tab>('roster')
   const [search, setSearch] = useState('')
 
@@ -82,6 +84,23 @@ export default function ManpowerModule() {
       <div>
         <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted, letterSpacing: '0.08em', marginBottom: 8 }}>MANPOWER MONITORING</div>
         <h1 className="page-title" style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: L.shellHeading, margin: 0, letterSpacing: '-0.04em' }}>Personnel & Deployment Management</h1>
+        {!canEdit && <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted, marginTop: 6 }}>Operations view · AO / DDO monitoring, attendance, GPS, and reporting</div>}
+      </div>
+
+      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '12px 16px', boxShadow: L.shadow }}>
+        <div className="flex items-center justify-between gap-3" style={{ marginBottom: 8 }}>
+          <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Connected Portal Data</span>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE SYNC' : 'OFFLINE'}</span>
+        </div>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {[
+            { label: 'PERSONNEL DUTY', value: duty.checkedIn ? 'ON DUTY' : 'OFF DUTY', color: duty.checkedIn ? '#16a34a' : '#d97706' },
+            { label: 'INCIDENTS', value: String(incidentReports), color: '#dc2626' },
+            { label: 'EQUIPMENT ISSUES', value: String(equipmentFaults), color: '#d97706' },
+            { label: 'LAST SYNC', value: lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : 'Waiting', color: '#1976b9' },
+          ].map(item => <div key={item.label}><div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 600, color: L.muted, letterSpacing: '0.05em' }}>{item.label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: item.color, marginTop: 4 }}>{item.value}</div></div>)}
+        </div>
+        <div style={{ borderTop: `1px solid ${L.divider}`, marginTop: 9, paddingTop: 7, fontFamily: 'Inter', fontSize: 11, color: L.muted }}>{activities[0] ? `${activities[0].source}: ${activities[0].message}` : 'No shared portal activity yet.'}</div>
       </div>
 
       {/* KPI row */}
@@ -105,7 +124,7 @@ export default function ManpowerModule() {
           {tabs.map(t => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => { setTab(t.id); addActivity('Detachment Staff', 'VIEW', `Opened manpower view: ${t.label}`) }}
               className="theme-tab"
               style={{
                 fontFamily: 'Inter', fontWeight: 500, fontSize: 13,
@@ -200,8 +219,8 @@ export default function ManpowerModule() {
         <div>
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted, marginBottom: 12 }}>ATTENDANCE & TIMEKEEPING · {new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}</div>
           <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
-            <div className="grid px-5 py-3" style={{ gridTemplateColumns: '90px 1fr 110px 70px 80px 80px 60px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
-              {['Guard ID', 'Name', 'Detachment', 'Shift', 'Time In', 'Time Out', 'Hours'].map(h => (
+            <div className="grid px-5 py-3" style={{ gridTemplateColumns: '90px 1fr 110px 70px 80px 80px 60px 110px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
+              {['Guard ID', 'Name', 'Detachment', 'Shift', 'Time In', 'Time Out', 'Hours', 'Evidence'].map(h => (
                 <div key={h} style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: L.muted, letterSpacing: '0.06em' }}>{h}</div>
               ))}
             </div>
@@ -209,7 +228,7 @@ export default function ManpowerModule() {
               <div
                 key={g.id}
                 className="grid px-5 py-3"
-                style={{ gridTemplateColumns: '90px 1fr 110px 70px 80px 80px 60px', borderBottom: i < guards.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center' }}
+                style={{ gridTemplateColumns: '90px 1fr 110px 70px 80px 80px 60px 110px', borderBottom: i < guards.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center' }}
                 onMouseEnter={e => (e.currentTarget.style.background = L.rowHover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
@@ -217,15 +236,16 @@ export default function ManpowerModule() {
                 <div style={{ fontFamily: 'Inter', fontSize: 13, color: L.heading }}>{g.name}</div>
                 <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.body }}>{g.detachment}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>{g.shift}</div>
-                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: g.status === 'absent' ? '#dc2626' : L.heading }}>
-                  {g.status === 'absent' ? 'ABSENT' : '06:01'}
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: g.id === 'SG-00147' && duty.checkedIn ? '#16a34a' : g.status === 'absent' ? '#dc2626' : L.heading }}>
+                  {g.id === 'SG-00147' ? (duty.checkInTime || 'Not recorded') : g.status === 'absent' ? 'ABSENT' : '06:01'}
                 </div>
                 <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.muted }}>
-                  {g.status === 'on-duty' ? '—' : g.status === 'absent' ? '—' : '18:02'}
+                  {g.id === 'SG-00147' ? (duty.checkOutTime || '—') : g.status === 'on-duty' ? '—' : g.status === 'absent' ? '—' : '18:02'}
                 </div>
                 <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.muted }}>
-                  {g.status === 'absent' ? '—' : g.status === 'on-duty' ? (new Date().getHours() - 6).toFixed(1) : '12.0'}
+                  {g.id === 'SG-00147' ? (duty.checkInTime ? (duty.checkOutTime ? '12.0' : 'LIVE') : '—') : g.status === 'absent' ? '—' : g.status === 'on-duty' ? (new Date().getHours() - 6).toFixed(1) : '12.0'}
                 </div>
+                {g.id === 'SG-00147' && (duty.checkInPhoto || duty.checkOutPhoto) ? <div className="flex gap-1"><button type="button" onClick={() => duty.checkInPhoto && window.open(duty.checkInPhoto, '_blank', 'noopener,noreferrer')} disabled={!duty.checkInPhoto} style={{ border: `1px solid ${L.cardBorder}`, background: 'transparent', color: duty.checkInPhoto ? L.body : L.subtle, borderRadius: 5, padding: '4px 5px', fontFamily: 'Inter', fontSize: 10, cursor: duty.checkInPhoto ? 'pointer' : 'not-allowed' }}>In</button><button type="button" onClick={() => duty.checkOutPhoto && window.open(duty.checkOutPhoto, '_blank', 'noopener,noreferrer')} disabled={!duty.checkOutPhoto} style={{ border: `1px solid ${L.cardBorder}`, background: 'transparent', color: duty.checkOutPhoto ? L.body : L.subtle, borderRadius: 5, padding: '4px 5px', fontFamily: 'Inter', fontSize: 10, cursor: duty.checkOutPhoto ? 'pointer' : 'not-allowed' }}>Out</button><a href={duty.checkInPhoto ?? duty.checkOutPhoto} download="personnel-attendance.jpg" style={{ borderRadius: 5, padding: '4px 5px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, textDecoration: 'none' }}>Download</a></div> : <span style={{ fontFamily: 'Inter', fontSize: 10, color: L.subtle }}>No photo</span>}
               </div>
             ))}
           </div>
@@ -297,7 +317,7 @@ export default function ManpowerModule() {
                 </div>
               ))}
               <div className="px-5 py-4">
-                <button type="button" onClick={() => setTab('deployment')} style={{ width: '100%', fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#fff', background: '#1976b9', border: 'none', borderRadius: 7, padding: '10px 14px', cursor: 'pointer' }}>Open Escalation Queue</button>
+                <button type="button" onClick={() => { setTab('deployment'); addActivity('Detachment Staff', 'ESCALATION_QUEUE', 'Opened manpower escalation queue') }} style={{ width: '100%', fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#fff', background: '#1976b9', border: 'none', borderRadius: 7, padding: '10px 14px', cursor: 'pointer' }}>Open Escalation Queue</button>
               </div>
             </div>
           </div>

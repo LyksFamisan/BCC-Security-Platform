@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { Module } from '../App'
 import type { UserRole } from './LoginPortal'
+import { usePortalData } from '../state/PortalDataContext'
 
 interface NavItem {
   id: Module
@@ -92,16 +93,12 @@ const allNav: NavItem[] = [
 const roleLabel: Record<UserRole, string> = {
   guard: 'Security Personnel',
   operations: 'Operations Staff',
-  incident: 'Incident Manager',
-  executive: 'Executive',
   admin: 'Administrator',
 }
 
 const roleColor: Record<UserRole, string> = {
-  guard: '#16a34a',
+  guard: '#8B5CF6',
   operations: '#F06522',
-  incident: '#d97706',
-  executive: '#7c3aed',
   admin: '#dc2626',
 }
 
@@ -120,6 +117,8 @@ export default function Sidebar({
 }) {
   const nav = allNav.filter(n => allowed.includes(n.id))
   const color = roleColor[role]
+  const { incidentReports, equipmentFaults, activities, isLive } = usePortalData()
+  const latestPersonnelUpdate = activities.find(activity => activity.source === 'Security Personnel')
 
   return (
     <aside
@@ -146,7 +145,7 @@ export default function Sidebar({
           <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: '#12304a', letterSpacing: '0.02em' }}>
             BCC/CAT Security
           </div>
-          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#1976b9', fontWeight: 600, letterSpacing: '0.06em' }}>
+          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#F06522', fontWeight: 600, letterSpacing: '0.06em' }}>
             COMMAND SYSTEM
           </div>
         </div>
@@ -156,6 +155,12 @@ export default function Sidebar({
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 10px ${color}` }} />
         <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color, letterSpacing: '0.04em' }}>{roleLabel[role]}</span>
       </div>
+
+      {(incidentReports > 0 || equipmentFaults > 0) && role !== 'guard' && <div style={{ margin: '6px 12px 0', background: darkMode ? 'rgba(240,101,34,0.10)' : 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.28)', borderRadius: 8, padding: '7px 10px' }}>
+        <div className="flex items-center justify-between" style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: '#F06522' }}><span>PERSONNEL UPDATES</span><span style={{ color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE' : 'OFFLINE'}</span></div>
+        <div style={{ fontFamily: 'Inter', fontSize: 10, color: darkMode ? '#fff' : '#52718b', marginTop: 4 }}>{incidentReports} incident · {equipmentFaults} equipment</div>
+        {latestPersonnelUpdate && <div style={{ fontFamily: 'Inter', fontSize: 9, color: darkMode ? '#cbd5e1' : '#6b7280', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{latestPersonnelUpdate.message}</div>}
+      </div>}
 
       <nav className="flex-1 px-3 py-3 flex flex-col gap-1">
         {nav.map((item) => {
@@ -192,9 +197,11 @@ export default function Sidebar({
                 <span style={{ color: isActive ? '#fff' : '#1976b9', flexShrink: 0 }}>
                 {item.icon}
               </span>
-              <span style={{ fontFamily: 'Inter', fontWeight: isActive ? 600 : 500, fontSize: 13 }}>
+              <span style={{ fontFamily: 'Inter', fontWeight: isActive ? 600 : 500, fontSize: 13, flex: 1 }}>
                 {item.label}
               </span>
+              {item.id === 'incidents' && incidentReports > 0 && <span style={{ minWidth: 20, padding: '2px 5px', borderRadius: 10, background: isActive ? 'rgba(255,255,255,0.22)' : '#dc2626', color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 9, textAlign: 'center' }}>{incidentReports}</span>}
+              {item.id === 'equipment' && equipmentFaults > 0 && <span style={{ minWidth: 20, padding: '2px 5px', borderRadius: 10, background: isActive ? 'rgba(255,255,255,0.22)' : '#d97706', color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 9, textAlign: 'center' }}>{equipmentFaults}</span>}
             </button>
           )
         })}

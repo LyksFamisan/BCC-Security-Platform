@@ -255,7 +255,7 @@ function RadarMap({ threatLevel }: { threatLevel: string }) {
   )
 }
 
-export default function TacticalModule() {
+export default function TacticalModule({ canEdit = false }: { canEdit?: boolean }) {
   const { addActivity } = usePortalData()
   const [notice, setNotice] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -320,7 +320,7 @@ export default function TacticalModule() {
             <div className="flex items-center gap-2">
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
               <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: '#22c55e' }}>RADAR LIVE</span>
-              <button onClick={() => { setShowSettings(value => !value); setShowRoster(false); setNotice('') }} style={{ fontFamily: 'Inter', fontSize: 12, color: '#F06522', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginLeft: 12 }}>
+              <button disabled={!canEdit} onClick={() => { setShowSettings(value => !value); setShowRoster(false); setNotice('') }} style={{ fontFamily: 'Inter', fontSize: 12, color: canEdit ? '#F06522' : '#94a3b8', background: 'none', border: 'none', cursor: canEdit ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 4, marginLeft: 12 }}>
                 Telemetry Settings
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
@@ -422,13 +422,13 @@ export default function TacticalModule() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select value={threatLevel} onChange={event => { setThreatLevel(event.target.value as typeof threatLevel); addActivity('Tactical Room', 'THREAT_LEVEL', `Threat level changed to ${event.target.value}`) }} style={{ background: '#0b1c2d', color: threatLevel === 'CRITICAL' ? '#ff8d86' : '#fbbf24', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 5, padding: '5px 6px', fontFamily: 'JetBrains Mono', fontSize: 10 }} aria-label="Threat level">
+                    <select disabled={!canEdit} value={threatLevel} onChange={event => { setThreatLevel(event.target.value as typeof threatLevel); addActivity('Tactical Room', 'THREAT_LEVEL', `Threat level changed to ${event.target.value}`) }} style={{ background: '#0b1c2d', color: threatLevel === 'CRITICAL' ? '#ff8d86' : '#fbbf24', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 5, padding: '5px 6px', fontFamily: 'JetBrains Mono', fontSize: 10 }} aria-label="Threat level">
                       <option>ELEVATED</option><option>HIGH</option><option>CRITICAL</option>
                     </select>
                     <button type="button" onClick={refreshTelemetry} style={{ fontFamily: 'Inter', fontSize: 11, color: '#7dd3fc', background: 'transparent', border: '1px solid rgba(125,211,252,0.3)', borderRadius: 5, padding: '5px 7px', cursor: 'pointer' }}>Refresh</button>
                   </div>
                 </div>
-                  <button type="button" onClick={() => acknowledgeAlarm(a)} style={{ marginTop: 10, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: a.statusColor, background: 'transparent', border: `1px solid ${a.statusColor}`, borderRadius: 5, padding: '4px 8px', cursor: 'pointer' }}>Acknowledge Alarm</button>
+                  <button type="button" disabled={!canEdit} onClick={() => acknowledgeAlarm(a)} style={{ marginTop: 10, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: canEdit ? a.statusColor : '#94a3b8', background: 'transparent', border: `1px solid ${canEdit ? a.statusColor : '#475569'}`, borderRadius: 5, padding: '4px 8px', cursor: canEdit ? 'pointer' : 'not-allowed' }}>{canEdit ? 'Acknowledge Alarm' : 'Admin action'}</button>
               </div>
               )
             })}

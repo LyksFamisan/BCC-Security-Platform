@@ -64,12 +64,17 @@ const L = {
   filterIdleBorder: 'rgba(148,163,184,0.14)',
 }
 
-export default function IncidentModule() {
-  const { addActivity } = usePortalData()
+export default function IncidentModule({ canEdit = false, canReport = false }: { canEdit?: boolean; canReport?: boolean }) {
+  const { addActivity, recordIncident, incidentHistory, isLive } = usePortalData()
   const [tab, setTab] = useState<Tab>('list')
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState<string | null>(null)
   const [workflowState, setWorkflowState] = useState({ approved: false, investigationStarted: false, rootCauseReviewed: false, actionsClosed: false })
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportType, setReportType] = useState('')
+  const [reportSite, setReportSite] = useState('')
+  const [reportSeverity, setReportSeverity] = useState('P2')
+  const [reportDescription, setReportDescription] = useState('')
 
   const filtered = incidents.filter(i => filter === 'all' || i.severity === filter)
   const selectedInc = incidents.find(i => i.id === selected)
@@ -83,8 +88,41 @@ export default function IncidentModule() {
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
       <div>
         <div style={{ fontFamily: 'Inter', fontSize: 12, color: '#9bb3d1', letterSpacing: '0.08em', marginBottom: 8 }}>INCIDENT RESOLUTION</div>
-        <h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: L.heading, margin: 0, letterSpacing: '-0.04em' }}>Incident Reporting & Case Management</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: L.heading, margin: 0, letterSpacing: '-0.04em' }}>Incident Reporting & Case Management</h1>
+          {canReport && <button type="button" onClick={() => setReportOpen(value => !value)} style={{ background: '#F06522', border: 'none', borderRadius: 8, padding: '10px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>{reportOpen ? 'Close Report' : 'New Incident Report'}</button>}
+        </div>
       </div>
+
+      <div style={{ background: '#ffffff', border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '12px 16px', boxShadow: '0 10px 22px rgba(54,126,171,0.08)' }}>
+        <div className="flex items-center justify-between"><div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Personnel Portal Reports</div><div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>Shared submissions from Security Personnel · {isLive ? 'Live sync' : 'Offline'}</div></div><span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#dc2626' }}>{incidentHistory.length} TOTAL</span></div>
+        {incidentHistory.length > 0 && <div className="flex flex-col gap-1" style={{ marginTop: 9 }}>{incidentHistory.slice(0, 3).map(record => <div key={record.id} className="flex items-center justify-between gap-3" style={{ borderTop: `1px solid ${L.divider}`, paddingTop: 7, fontFamily: 'Inter', fontSize: 11, color: L.body }}><span>{record.type} · {record.location} · {record.severity}</span><span style={{ color: '#1976b9', fontWeight: 700 }}>{record.status}</span></div>)}</div>}
+      </div>
+
+      {reportOpen && (
+        <form
+          onSubmit={event => {
+            event.preventDefault()
+            recordIncident()
+            addActivity('Operations Staff', 'INCIDENT_REPORT', `${reportSeverity} ${reportType || 'incident'} reported at ${reportSite || 'assigned site'}`)
+            setReportOpen(false)
+            setReportType('')
+            setReportSite('')
+            setReportSeverity('P2')
+            setReportDescription('')
+          }}
+          style={{ background: '#ffffff', border: `1px solid ${L.cardBorder}`, borderRadius: 12, padding: 18, boxShadow: '0 12px 24px rgba(54,126,171,0.12)' }}
+        >
+          <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading, marginBottom: 12 }}>Operational Incident Intake</div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr 140px' }}>
+            <input value={reportType} onChange={event => setReportType(event.target.value)} placeholder="Incident type" required style={{ background: '#f3faff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 11px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
+            <input value={reportSite} onChange={event => setReportSite(event.target.value)} placeholder="Site / post / detachment" required style={{ background: '#f3faff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 11px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
+            <select value={reportSeverity} onChange={event => setReportSeverity(event.target.value)} style={{ background: '#f3faff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 11px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}><option>P1</option><option>P2</option><option>P3</option></select>
+          </div>
+          <textarea value={reportDescription} onChange={event => setReportDescription(event.target.value)} placeholder="Describe the event, personnel involved, and immediate action taken..." required rows={3} style={{ width: '100%', marginTop: 10, background: '#f3faff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 11px', fontFamily: 'Inter', fontSize: 13, color: L.heading, resize: 'vertical' }} />
+          <div className="flex justify-end" style={{ marginTop: 10 }}><button type="submit" style={{ background: '#dc2626', border: 'none', borderRadius: 7, padding: '9px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Submit Incident</button></div>
+        </form>
+      )}
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         {[
@@ -255,7 +293,7 @@ export default function IncidentModule() {
                 </div>
                 <div style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: 700, color: L.heading, marginBottom: 7 }}>{step.title}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, lineHeight: 1.5, minHeight: 38 }}>{step.detail}</div>
-                <button type="button" disabled={step.done} onClick={() => { setWorkflowState(current => ({ ...current, [step.key]: true })); addActivity('Incident Manager', 'WORKFLOW', `${step.action} completed for ${(selectedInc ?? incidents[0]).id}`) }} style={{ width: '100%', marginTop: 16, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: step.done ? '#16a34a' : '#fff', background: step.done ? 'rgba(34,197,94,0.08)' : '#1976b9', border: step.done ? '1px solid rgba(34,197,94,0.25)' : 'none', borderRadius: 7, padding: '9px 10px', cursor: step.done ? 'default' : 'pointer' }}>{step.done ? 'Completed' : step.action}</button>
+                <button type="button" disabled={step.done || !canEdit} onClick={() => { setWorkflowState(current => ({ ...current, [step.key]: true })); addActivity('Incident Manager', 'WORKFLOW', `${step.action} completed for ${(selectedInc ?? incidents[0]).id}`) }} style={{ width: '100%', marginTop: 16, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: step.done || !canEdit ? (step.done ? '#16a34a' : L.muted) : '#fff', background: step.done ? 'rgba(34,197,94,0.08)' : canEdit ? '#1976b9' : 'rgba(107,114,128,0.1)', border: step.done ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', borderRadius: 7, padding: '9px 10px', cursor: step.done || !canEdit ? 'not-allowed' : 'pointer' }}>{step.done ? 'Completed' : canEdit ? step.action : 'Admin action'}</button>
               </div>
             ))}
           </div>
