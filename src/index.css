@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@font-face {
+  font-family: 'Geist:SemiBold';
+  src: url('https://static.figma.com/font/Geist_wght__1') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+}
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: #eaf6ff;
+  --color-foreground: #12304a;
+  --color-card: #ffffff;
+  --color-card-foreground: #183b59;
+  --color-primary: #1976b9;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #d9efff;
+  --color-secondary-foreground: #16476d;
+  --color-muted: #d4ebfa;
+  --color-muted-foreground: #52718b;
+  --color-accent: #4ca9df;
+  --color-accent-foreground: #ffffff;
+  --color-border: rgba(54, 126, 171, 0.20);
+  --color-ring: #1976b9;
+  --radius: 12px;
+
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #eaf6ff;
+  background-image:
+    radial-gradient(circle at top left, rgba(76, 169, 223, 0.22), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(25, 118, 185, 0.12), transparent 24%),
+    linear-gradient(180deg, #f4fbff 0%, #e5f4fd 48%, #d9effc 100%);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #12304a;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.38), transparent 35%, rgba(76, 169, 223, 0.06) 70%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Page headings sit outside the light data cards and need a dark-mode override. */
+.theme-dark h1 {
+  color: #edf6ff !important;
+}
+
+.theme-dark .page-title {
+  color: #f06522 !important;
+}
+
+.theme-dark .theme-tab:not([style*="F06522"]) {
+  color: #a7b7d1 !important;
+}
+
+.theme-dark [style*="rgba(255,255,255,0.94)"],
+.theme-dark [style*="rgba(255,255,255,0.9)"] {
+  background: #10283d !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.24) !important;
+}
+
+.theme-dark [style*="rgba(248,249,252,0.97)"] {
+  background: #16344c !important;
+}
+
+.theme-dark [style*="#111827"] {
+  color: #edf6ff !important;
+}
+
+.theme-dark [style*="#374151"] {
+  color: #dfe7ff !important;
+}
+
+.theme-dark [style*="#6b7280"] {
+  color: #a7b7d1 !important;
+}
+
+.theme-dark [style*="#9ca3af"] {
+  color: #8ea0ba !important;
+}
+
+.theme-dark [style*="#5a6475"],
+.theme-dark [style*="#5a6478"],
+.theme-dark [style*="#52718b"],
+.theme-dark [style*="#7190a7"] {
+  color: #a7b7d1 !important;
+}
+
+.theme-dark input::placeholder {
+  color: #9bb0c6 !important;
+  opacity: 1;
+}
+
+.theme-sidebar-dark {
+  background: linear-gradient(180deg, #0b1c2d 0%, #102c43 100%) !important;
+  border-right-color: rgba(148, 163, 184, 0.16) !important;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.theme-sidebar-dark [style*="#12304a"],
+.theme-sidebar-dark [style*="#16476d"] {
+  color: #dfe7ff !important;
+}
+
+.theme-sidebar-dark [style*="#1976b9"] {
+  color: #7dd3fc !important;
+}
+
+.theme-sidebar-dark [style*="rgba(255,255,255,0.38)"],
+.theme-sidebar-dark [style*="rgba(255,255,255,0.48)"] {
+  background: rgba(15, 35, 54, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+/* Increase compact dashboard labels and metadata for easier scanning. */
+main [style*="font-size: 10px"] {
+  font-size: 12px !important;
+}
+
+main [style*="font-size: 11px"] {
+  font-size: 13px !important;
+}
+
+main [style*="font-size: 12px"] {
+  font-size: 14px !important;
+}
+
+main [style*="font-size: 13px"] {
+  font-size: 14px !important;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
