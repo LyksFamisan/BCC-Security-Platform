@@ -56,7 +56,6 @@ function AttendancePhotoGallery({
   checkOutTime,
   checkInLocation,
   checkOutLocation,
-  onRemoveToday,
 }: {
   checkInPhoto?: string
   checkOutPhoto?: string
@@ -64,7 +63,6 @@ function AttendancePhotoGallery({
   checkOutTime: string
   checkInLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
   checkOutLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
-  onRemoveToday: () => void
 }) {
   const photos = [
     { label: 'Check In Photo', photo: checkInPhoto, time: checkInTime, mode: 'check-in', savedLocation: checkInLocation },
@@ -80,7 +78,6 @@ function AttendancePhotoGallery({
         </div>
         <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#7C3AED' }}>{photos.length} RECORD{photos.length === 1 ? '' : 'S'}</span>
       </div>
-      {photos.length > 0 && <button type="button" onClick={onRemoveToday} style={{ marginBottom: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.06)', color: '#dc2626', borderRadius: 6, padding: '7px 10px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Remove Today&apos;s Photos</button>}
       {photos.length === 0 ? (
         <div style={{ border: `1px dashed ${L.cardBorder}`, borderRadius: 8, padding: '24px 16px', textAlign: 'center', fontFamily: 'Inter', fontSize: 13, color: L.muted }}>No attendance photos recorded yet.</div>
       ) : <div className="personnel-attendance-photos" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -378,7 +375,7 @@ export default function GuardModule() {
         ))}
       </div>
 
-      {activeTab === 'photos' && <AttendancePhotoGallery checkInPhoto={checkInPhoto} checkOutPhoto={checkOutPhoto} checkInTime={checkInTime} checkOutTime={checkOutTime} checkInLocation={checkInLocation} checkOutLocation={checkOutLocation} onRemoveToday={() => { setDuty({ ...duty, checkInPhoto: undefined, checkOutPhoto: undefined, checkInPhotoAt: undefined, checkOutPhotoAt: undefined, checkInLocation: undefined, checkOutLocation: undefined }); addActivity('Security Personnel', 'PHOTO_RETENTION', "Removed today's attendance photos") }} />}
+      {activeTab === 'photos' && <AttendancePhotoGallery checkInPhoto={checkInPhoto} checkOutPhoto={checkOutPhoto} checkInTime={checkInTime} checkOutTime={checkOutTime} checkInLocation={checkInLocation} checkOutLocation={checkOutLocation} />}
 
       {activeTab === 'history' && (
         <section style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 12, padding: '18px', boxShadow: L.shadow }}>
