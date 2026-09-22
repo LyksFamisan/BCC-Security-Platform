@@ -30,6 +30,16 @@ const escalations = [
   { time: '07:45', title: 'Communication Drop – SatRadio-04', site: 'Subic Depot', level: 'LOW', levelColor: '#6b7280', levelBg: 'rgba(107,114,128,0.1)', critical: false },
 ]
 
+const executivePersonnel = [
+  { id: 'SG-00147', name: 'Santos, Ricardo P.', site: 'BGC Financial Tower', shift: 'Day', attendance: 'Present', deployment: 'Deployed', position: 'Main Lobby' },
+  { id: 'SG-00283', name: 'Reyes, Manuel F.', site: 'Makati Central Mall', shift: 'Day', attendance: 'Absent', deployment: 'Unassigned', position: 'Parking Deck B' },
+  { id: 'SG-00391', name: 'Dela Cruz, Ana M.', site: 'NAIA Terminal 3', shift: 'Night', attendance: 'Present', deployment: 'Deployed', position: 'Departure Hall' },
+  { id: 'SG-00412', name: 'Bautista, Jose L.', site: 'Clark Freeport', shift: 'Day', attendance: 'Present', deployment: 'Deployed', position: 'Gate A' },
+  { id: 'SG-00558', name: 'Torres, Maria C.', site: 'Subic Logistics Depot', shift: 'Day', attendance: 'On Leave', deployment: 'Unassigned', position: 'Perimeter Gate' },
+]
+
+type ExecutiveControl = 'roster' | 'service' | 'detachments' | 'critical'
+
 const slaTarget = 99.5
 const slaActual = 99.4
 
@@ -41,17 +51,22 @@ export default function DashboardModule({ canEdit = false, onNavigate }: { canEd
   const [acknowledged, setAcknowledged] = useState<string[]>([])
   const [executiveReportRunAt, setExecutiveReportRunAt] = useState<string | null>(null)
   const [siteFilter, setSiteFilter] = useState('All Sites')
+  const [activeControl, setActiveControl] = useState<ExecutiveControl>('detachments')
+  const [shiftFilter, setShiftFilter] = useState('All Shifts')
 
   const totalPersonnel = 1160
   const deployedPersonnel = 1142
   const absentPersonnel = 12
   const understaffedSites = detachments.filter(detachment => detachment.deployed < detachment.required).length
   const personnelShortage = detachments.reduce((total, detachment) => total + Math.max(detachment.required - detachment.deployed, 0), 0)
-  const deploymentRate = Math.round((deployedPersonnel / totalPersonnel) * 1000) / 10
-  const attendanceRate = duty.checkedIn ? 98.4 : 97.8
-  const totalIncidents = 5 + incidentReports
-  const openIncidents = 2 + incidentReports
-  const criticalIncidents = 1
+  const selectedSite = detachments.find(detachment => detachment.name === siteFilter || detachment.client === siteFilter)
+  const scopedRequired = selectedSite?.required ?? totalPersonnel
+  const scopedDeployed = selectedSite?.deployed ?? deployedPersonnel
+  const deploymentRate = Math.round((scopedDeployed / scopedRequired) * 1000) / 10
+  const attendanceRate = selectedSite ? Math.round((selectedSite.deployed / selectedSite.required) * 1000) / 10 : (duty.checkedIn ? 98.4 : 97.8)
+  const totalIncidents = (selectedSite ? 1 : 5) + incidentReports
+  const openIncidents = (selectedSite ? 1 : 2) + incidentReports
+  const criticalIncidents = selectedSite?.name === 'Manila Port Terminal 3' || siteFilter === 'All Sites' ? 1 : 0
   const underInvestigation = 1
   const resolvedIncidents = Math.max(totalIncidents - openIncidents - underInvestigation, 0)
   const totalEquipment = 1289
@@ -61,12 +76,13 @@ export default function DashboardModule({ canEdit = false, onNavigate }: { canEd
   const availableEquipment = totalEquipment - assignedEquipment - underMaintenance
 
   const operationalAlerts = [
-    ...detachments.filter(detachment => detachment.deployed < detachment.required).map(detachment => ({ severity: 'HIGH', color: '#d97706', title: 'Understaffing detected', site: detachment.name, status: 'Open', action: 'View deployment', module: 'manpower' as Module })),
+    ...detachments.filter(detachment => detachment.deployed < detachment.required && (siteFilter === 'All Sites' || detachment.name === siteFilter || detachment.client === siteFilter)).map(detachment => ({ severity: 'HIGH', color: '#d97706', title: 'Understaffing detected', site: detachment.name, status: 'Open', action: 'View deployment', module: 'manpower' as Module })),
     ...(absentPersonnel > 0 ? [{ severity: 'HIGH', color: '#dc2626', title: 'Absenteeism requiring review', site: 'All detachments', status: 'Open', action: 'View attendance', module: 'manpower' as Module }] : []),
     ...(equipmentFaults > 0 ? [{ severity: 'HIGH', color: '#d97706', title: 'Equipment issues reported', site: 'Equipment Control', status: 'Open', action: 'View equipment', module: 'equipment' as Module }] : []),
-    { severity: 'CRITICAL', color: '#dc2626', title: 'Unscheduled firearms vault lockout', site: 'Manila Port Terminal 3', status: 'Under Investigation', action: 'View incident', module: 'incidents' as Module },
+    ...(siteFilter === 'All Sites' || siteFilter === 'Manila Port Terminal 3' || siteFilter === 'National Transit' ? [{ severity: 'CRITICAL', color: '#dc2626', title: 'Unscheduled firearms vault lockout', site: 'Manila Port Terminal 3', status: 'Under Investigation', action: 'View incident', module: 'incidents' as Module }] : []),
   ]
   const visibleDetachments = siteFilter === 'All Sites' ? detachments : detachments.filter(detachment => detachment.name === siteFilter || detachment.client === siteFilter)
+  const visiblePersonnel = executivePersonnel.filter(personnel => (siteFilter === 'All Sites' || personnel.site === siteFilter || detachments.find(detachment => detachment.name === personnel.site)?.client === siteFilter) && (shiftFilter === 'All Shifts' || personnel.shift === shiftFilter))
 
   const downloadExecutiveReport = () => {
     const generatedAt = executiveReportRunAt ?? new Date().toISOString()
@@ -194,26 +210,37 @@ export default function DashboardModule({ canEdit = false, onNavigate }: { canEd
             ))}
           </div>
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Show KPI:</span>
-            {kpis.map(kpi => (
-              <button key={kpi.id} type="button" onClick={() => toggleKpi(kpi.id)} style={{ fontFamily: 'Inter', fontSize: 11, color: enabledKpis.includes(kpi.id) ? '#1976b9' : L.subtle, background: enabledKpis.includes(kpi.id) ? 'rgba(25,118,185,0.08)' : 'transparent', border: `1px solid ${enabledKpis.includes(kpi.id) ? 'rgba(25,118,185,0.35)' : L.cardBorder}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer' }}>{kpi.label.replace('ACTIVE ', '').replace('CLIENT ', '')}</button>
+            <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Management controls:</span>
+            {([['roster', 'GUARD ROSTER'], ['service', 'SERVICE LEVEL'], ['detachments', 'DETACHMENTS'], ['critical', 'CRITICAL DISPATCHES']] as const).map(([control, label]) => (
+              <button key={control} type="button" onClick={() => setActiveControl(control)} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: activeControl === control ? '#fff' : '#1976b9', background: activeControl === control ? '#1976b9' : 'rgba(25,118,185,0.06)', border: `1px solid ${activeControl === control ? '#1976b9' : 'rgba(25,118,185,0.35)'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer' }}>{label}</button>
             ))}
             <select value={siteFilter} onChange={event => setSiteFilter(event.target.value)} aria-label="Filter by site or client" style={{ border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '5px 8px', fontFamily: 'Inter', fontSize: 11, color: L.body, background: '#fff' }}><option>All Sites</option>{detachments.flatMap(detachment => [detachment.name, detachment.client]).map(value => <option key={value}>{value}</option>)}</select>
+            {activeControl === 'roster' && <select value={shiftFilter} onChange={event => setShiftFilter(event.target.value)} aria-label="Filter by shift" style={{ border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '5px 8px', fontFamily: 'Inter', fontSize: 11, color: L.body, background: '#fff' }}><option>All Shifts</option><option>Day</option><option>Night</option></select>}
           </div>
         </div>
       </div>
 
+      {reportView === 'management' && <div className="executive-control-panel" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
+        {activeControl === 'roster' && <>
+          <div className="px-5 py-4" style={{ borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>Current Guard Roster</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>{visiblePersonnel.length} visible personnel · {visiblePersonnel.filter(personnel => personnel.deployment === 'Deployed').length} deployed · {visiblePersonnel.filter(personnel => personnel.attendance === 'Absent').length} absent · {visiblePersonnel.filter(personnel => personnel.attendance === 'On Leave').length} on leave · {visiblePersonnel.filter(personnel => personnel.deployment === 'Unassigned').length} unassigned</div></div>
+          <div className="executive-roster-table" style={{ overflowX: 'auto' }}><div className="executive-roster-grid" style={{ minWidth: 760, display: 'grid', gridTemplateColumns: '100px 1.4fr 1.2fr 80px 100px 100px 1fr', gap: 10, padding: '10px 20px', background: L.cardAlt, borderBottom: `1px solid ${L.divider}` }}>{['ID', 'Personnel', 'Assigned Site', 'Shift', 'Attendance', 'Deployment', 'Position'].map(header => <span key={header} style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.muted }}>{header}</span>)}</div>{visiblePersonnel.map(personnel => <button key={personnel.id} type="button" onClick={() => onNavigate?.('manpower')} className="executive-roster-grid" style={{ minWidth: 760, width: '100%', display: 'grid', gridTemplateColumns: '100px 1.4fr 1.2fr 80px 100px 100px 1fr', gap: 10, padding: '12px 20px', border: 0, borderBottom: `1px solid ${L.divider}`, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}><span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: '#1976b9' }}>{personnel.id}</span><span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: L.heading }}>{personnel.name}</span><span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>{personnel.site}</span><span style={{ fontFamily: 'Inter', fontSize: 11, color: L.body }}>{personnel.shift}</span><span style={{ fontFamily: 'Inter', fontSize: 11, color: personnel.attendance === 'Present' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>{personnel.attendance}</span><span style={{ fontFamily: 'Inter', fontSize: 11, color: personnel.deployment === 'Deployed' ? '#16a34a' : '#d97706', fontWeight: 700 }}>{personnel.deployment}</span><span style={{ fontFamily: 'Inter', fontSize: 11, color: L.body }}>{personnel.position}</span></button>)}</div>
+        </>}
+        {activeControl === 'service' && <div className="px-5 py-4"><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>Service-Level Performance</strong><div className="executive-service-list flex flex-col gap-2" style={{ marginTop: 12 }}>{visibleDetachments.map(site => { const percentage = Math.round((site.deployed / site.required) * 100); const status = percentage === 100 ? 'Secure' : percentage >= 95 ? 'Elevated Risk' : 'Shortage Alert'; const color = percentage === 100 ? '#16a34a' : percentage >= 95 ? '#d97706' : '#dc2626'; return <button key={site.name} type="button" onClick={() => onNavigate?.('manpower')} className="flex items-center gap-3" style={{ border: 0, background: L.cardAlt, borderRadius: 7, padding: '11px 12px', textAlign: 'left', cursor: 'pointer' }}><span style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: L.heading }}>{site.name}<small style={{ display: 'block', fontWeight: 400, color: L.muted }}>{site.client} · {site.deployed}/{site.required} deployed</small></span><span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color }}>{percentage}%</span><span style={{ minWidth: 100, fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color }}>{status}</span></button> })}</div></div>}
+        {activeControl === 'detachments' && <div className="px-5 py-4"><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>Active Detachments</strong><div className="executive-detachment-list grid gap-3" style={{ marginTop: 12 }}>{visibleDetachments.map(site => <button key={site.name} type="button" onClick={() => onNavigate?.('manpower')} style={{ border: `1px solid ${L.cardBorder}`, background: L.cardAlt, borderRadius: 8, padding: '13px', textAlign: 'left', cursor: 'pointer' }}><strong style={{ display: 'block', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>{site.name}</strong><span style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, color: L.muted, marginTop: 3 }}>{site.client} · {site.deployed}/{site.required} personnel · {Math.round((site.deployed / site.required) * 100)}%</span><span style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: site.statusColor, marginTop: 5 }}>{site.status}</span></button>)}</div></div>}
+        {activeControl === 'critical' && <div className="px-5 py-4"><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>Critical Dispatches</strong><div className="flex flex-col" style={{ marginTop: 12 }}>{operationalAlerts.filter(alert => alert.severity === 'CRITICAL' || alert.severity === 'HIGH').map(alert => <div key={`${alert.title}-${alert.site}`} className="executive-dispatch-row flex items-center gap-3" style={{ padding: '11px 0', borderBottom: `1px solid ${L.divider}` }}><span style={{ minWidth: 60, fontFamily: 'Inter', fontSize: 10, fontWeight: 800, color: alert.color }}>{alert.severity}</span><div style={{ flex: 1 }}><strong style={{ display: 'block', fontFamily: 'Inter', fontSize: 12, color: L.heading }}>{alert.title}</strong><span style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>{alert.site} · {new Date().toLocaleString('en-PH', { hour12: false })} · Team: Operations Desk</span></div><span style={{ fontFamily: 'Inter', fontSize: 10, color: alert.color, fontWeight: 700 }}>{alert.status}</span><button type="button" onClick={() => { if (canEdit) setAcknowledged(current => [...current, alert.title]); addActivity('Operations Dashboard', canEdit ? 'DISPATCH_ACKNOWLEDGED' : 'DISPATCH_VIEWED', `${alert.title} ${canEdit ? 'acknowledged' : 'opened'}`) }} style={{ minHeight: 36, border: `1px solid ${alert.color}`, background: 'transparent', color: alert.color, borderRadius: 6, padding: '6px 9px', fontFamily: 'Inter', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{canEdit ? 'Acknowledge' : 'Open Dispatch'}</button></div>)}</div></div>}
+      </div>}
+
       {reportView === 'management' && <div className="executive-management-content flex flex-col gap-5">
         <div className="executive-kpi-grid grid gap-4">
           {[
-            { label: 'TOTAL SECURITY PERSONNEL', value: totalPersonnel.toLocaleString(), detail: 'Approved roster', color: '#F06522', module: 'manpower' as Module },
-            { label: 'DEPLOYMENT RATE', value: `${deploymentRate}%`, detail: `${deployedPersonnel.toLocaleString()} deployed`, color: '#16a34a', module: 'manpower' as Module },
-            { label: 'ATTENDANCE RATE', value: `${attendanceRate}%`, detail: `${absentPersonnel} absent today`, color: '#1976b9', module: 'manpower' as Module },
-            { label: 'TOTAL EQUIPMENT', value: totalEquipment.toLocaleString(), detail: `${assignedEquipment.toLocaleString()} assigned`, color: '#7c3aed', module: 'equipment' as Module },
-            { label: 'OPEN INCIDENTS', value: String(openIncidents), detail: `${underInvestigation} under investigation`, color: '#d97706', module: 'incidents' as Module },
-            { label: 'CRITICAL INCIDENTS', value: String(criticalIncidents), detail: 'Requires immediate action', color: '#dc2626', module: 'incidents' as Module },
+            { label: 'TOTAL SECURITY PERSONNEL', value: scopedRequired.toLocaleString(), detail: selectedSite ? `${selectedSite.name} requirement` : 'Approved roster', color: '#F06522', module: 'manpower' as Module, control: 'roster' as ExecutiveControl },
+            { label: 'DEPLOYMENT RATE', value: `${deploymentRate}%`, detail: `${scopedDeployed.toLocaleString()} deployed`, color: '#16a34a', module: 'manpower' as Module, control: 'service' as ExecutiveControl },
+            { label: 'ATTENDANCE RATE', value: `${attendanceRate}%`, detail: `${selectedSite ? Math.max(scopedRequired - scopedDeployed, 0) : absentPersonnel} absent today`, color: '#1976b9', module: 'manpower' as Module, control: 'roster' as ExecutiveControl },
+            { label: 'TOTAL EQUIPMENT', value: totalEquipment.toLocaleString(), detail: `${assignedEquipment.toLocaleString()} assigned`, color: '#7c3aed', module: 'equipment' as Module, control: 'detachments' as ExecutiveControl },
+            { label: 'OPEN INCIDENTS', value: String(openIncidents), detail: `${underInvestigation} under investigation`, color: '#d97706', module: 'incidents' as Module, control: 'critical' as ExecutiveControl },
+            { label: 'CRITICAL INCIDENTS', value: String(criticalIncidents), detail: 'Requires immediate action', color: '#dc2626', module: 'incidents' as Module, control: 'critical' as ExecutiveControl },
           ].map(kpi => (
-            <button key={kpi.label} type="button" onClick={() => onNavigate?.(kpi.module)} className="executive-kpi-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow, textAlign: 'left', cursor: onNavigate ? 'pointer' : 'default' }}>
+            <button key={kpi.label} type="button" onClick={() => { setActiveControl(kpi.control); onNavigate?.(kpi.module) }} className="executive-kpi-card" style={{ background: L.card, border: `1px solid ${activeControl === kpi.control ? '#1976b9' : L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: activeControl === kpi.control ? '0 0 0 2px rgba(25,118,185,0.15)' : L.shadow, textAlign: 'left', cursor: 'pointer' }}>
               <div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.muted, letterSpacing: '0.06em' }}>{kpi.label}</div>
               <div style={{ fontFamily: 'Inter', fontWeight: 800, fontSize: 30, color: kpi.color, marginTop: 8 }}>{kpi.value}</div>
               <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, marginTop: 4 }}>{kpi.detail}</div>
