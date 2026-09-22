@@ -64,12 +64,14 @@ function AttendancePhotoGallery({
   checkInLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
   checkOutLocation?: { latitude: number; longitude: number; accuracy: number; source: 'live' | 'assigned-site' }
 }) {
+  const [viewingPhoto, setViewingPhoto] = useState<{ label: string; photo: string } | null>(null)
   const photos = [
     { label: 'Check In Photo', photo: checkInPhoto, time: checkInTime, mode: 'check-in', savedLocation: checkInLocation },
     { label: 'Check Out Photo', photo: checkOutPhoto, time: checkOutTime, mode: 'check-out', savedLocation: checkOutLocation },
   ].filter(item => item.photo)
 
   return (
+    <>
     <section className="personnel-attendance-gallery" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 12, padding: '16px 18px', boxShadow: L.shadow }}>
       <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
         <div>
@@ -88,13 +90,21 @@ function AttendancePhotoGallery({
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: L.muted, marginTop: 2 }}>{item.time || 'Recorded'}</div>
             {item.savedLocation && <div style={{ fontFamily: 'JetBrains Mono', fontSize: 8, color: '#7C3AED', lineHeight: 1.45, marginTop: 5 }}>LAT {item.savedLocation.latitude.toFixed(4)}<br />LON {item.savedLocation.longitude.toFixed(4)}<br />{item.savedLocation.source === 'live' ? 'LIVE GPS' : 'ASSIGNED SITE'}</div>}
             <div className="flex gap-1" style={{ marginTop: 6 }}>
-              <button type="button" onClick={() => window.open(item.photo, '_blank', 'noopener,noreferrer')} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
-              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} style={{ flex: 1, textAlign: 'center', borderRadius: 5, padding: '4px 3px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+              <button type="button" onClick={() => setViewingPhoto({ label: item.label, photo: item.photo })} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
+              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} aria-label={`Download ${item.label}`} style={{ flex: 1, textAlign: 'center', borderRadius: 5, padding: '4px 3px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
             </div>
           </div>
         ))}
       </div>}
     </section>
+    {viewingPhoto && <div role="dialog" aria-modal="true" aria-label={viewingPhoto.label} onClick={() => setViewingPhoto(null)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(2,6,23,0.84)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={event => event.stopPropagation()} style={{ width: 'min(100%, 560px)', background: '#fff', borderRadius: 12, padding: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: 8 }}><strong style={{ fontFamily: 'Inter', fontSize: 14, color: '#111827' }}>{viewingPhoto.label}</strong><button type="button" onClick={() => setViewingPhoto(null)} aria-label="Close photo" style={{ border: 0, background: 'transparent', color: '#6b7280', fontSize: 22, cursor: 'pointer' }}>×</button></div>
+        <img src={viewingPhoto.photo} alt={viewingPhoto.label} style={{ display: 'block', width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8, background: '#0f172a' }} />
+        <a href={viewingPhoto.photo} download={`security-personnel-${viewingPhoto.label.toLowerCase().replaceAll(' ', '-')}.jpg`} style={{ display: 'block', marginTop: 10, textAlign: 'center', borderRadius: 7, padding: '10px 12px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Download Photo</a>
+      </div>
+    </div>}
+    </>
   )
 }
 
