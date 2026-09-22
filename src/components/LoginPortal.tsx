@@ -331,7 +331,7 @@ function AdminLogin({ onBack, onLogin }: { onBack: () => void; onLogin: () => vo
   )
 }
 
-function UnifiedLogin({ onBack, onBackHome, onLogin, darkMode, onToggleTheme }: { onBack?: () => void; onBackHome: () => void; onLogin: (role: UserRole) => void; darkMode: boolean; onToggleTheme: () => void }) {
+function UnifiedLogin({ onBack, onBackHome, onLogin, darkMode, onToggleTheme }: { onBack?: () => void; onBackHome: () => void; onLogin: (role: UserRole, email: string) => void; darkMode: boolean; onToggleTheme: () => void }) {
   const roleByEmail: Record<string, UserRole> = {
     'security@gmail.com': 'guard',
     'ar@gmail.com': 'operations',
@@ -350,7 +350,7 @@ function UnifiedLogin({ onBack, onBackHome, onLogin, darkMode, onToggleTheme }: 
         <div style={{ fontFamily: 'Inter', fontWeight: 800, fontSize: 24, color: darkMode ? '#e8eaf0' : '#12304a', marginBottom: 6 }}>BCC/CAT Security Portal</div>
         <div style={{ fontFamily: 'Inter', fontSize: 13, color: darkMode ? '#a7b7d1' : '#52718b', marginBottom: 24 }}>Sign in with your authorized email to access the correct portal.</div>
         <div style={{ background: 'rgba(13,10,30,0.82)', border: '1px solid rgba(240,101,34,0.25)', borderRadius: 16, padding: '28px 32px', textAlign: 'left', boxShadow: '0 0 60px rgba(240,101,34,0.12)' }}>
-          <FormFields accent="#F06522" onLogin={email => onLogin(roleByEmail[email ?? ''])} allowedEmails={Object.keys(roleByEmail)} submitLabel="Sign In" inputBg="#0D0B1E" inputBorder="rgba(255,255,255,0.1)" />
+          <FormFields accent="#F06522" onLogin={email => onLogin(roleByEmail[email ?? ''], email ?? '')} allowedEmails={Object.keys(roleByEmail)} submitLabel="Sign In" inputBg="#0D0B1E" inputBorder="rgba(255,255,255,0.1)" />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
           {Object.keys(roleByEmail).map(email => <span key={email} style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#F06522', background: 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.18)', borderRadius: 20, padding: '5px 10px' }}>{email}</span>)}
@@ -396,7 +396,7 @@ const cards: PortalCard[] = [
 
 // ── Root component ────────────────────────────────────────────────────────────
 interface Props {
-  onLogin: (role: UserRole) => void
+  onLogin: (role: UserRole, email: string) => void
   darkMode: boolean
   onToggleTheme: () => void
   onBackHome: () => void

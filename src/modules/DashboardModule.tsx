@@ -32,7 +32,7 @@ const slaTarget = 99.5
 const slaActual = 99.4
 
 export default function DashboardModule({ canEdit = false }: { canEdit?: boolean }) {
-  const { addActivity, activities, duty, incidentReports, equipmentFaults, lastUpdated, isLive } = usePortalData()
+  const { addActivity, activities, sessions, duty, incidentReports, equipmentFaults, lastUpdated, isLive } = usePortalData()
   const [, setTick] = useState(0)
   const [reportView, setReportView] = useState<'operations' | 'management'>('operations')
   const [enabledKpis, setEnabledKpis] = useState(['roster', 'sla', 'detachments', 'critical'])
@@ -107,11 +107,12 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
           </div>
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE SYNC' : 'OFFLINE'}</span>
         </div>
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
           {[
             { label: 'PERSONNEL DUTY', value: duty.checkedIn ? 'ON DUTY' : 'OFF DUTY', color: duty.checkedIn ? '#16a34a' : '#d97706' },
             { label: 'INCIDENT REPORTS', value: String(incidentReports), color: '#dc2626' },
             { label: 'EQUIPMENT FAULTS', value: String(equipmentFaults), color: '#d97706' },
+            { label: 'ACTIVE PORTAL SESSIONS', value: String(sessions.length), color: '#7c3aed' },
             { label: 'LAST UPDATE', value: lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : 'Waiting', color: '#1976b9' },
           ].map(item => (
             <div key={item.label}>

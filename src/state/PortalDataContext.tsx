@@ -8,6 +8,15 @@ export type PortalActivity = {
   createdAt: string
 }
 
+export type PortalSession = {
+  id: string
+  source: string
+  email: string
+  role: string
+  loginAt: string
+  lastSeenAt: string
+}
+
 export type IncidentRecord = {
   id: string
   filedBy: string
@@ -34,6 +43,7 @@ export type DutyRecord = {
 
 export type SharedPortalData = {
   activities: PortalActivity[]
+  sessions: PortalSession[]
   duty: DutyRecord
   incidentReports: number
   incidentHistory: IncidentRecord[]
@@ -42,6 +52,7 @@ export type SharedPortalData = {
 
 type PortalDataContextValue = {
   activities: PortalActivity[]
+  sessions: PortalSession[]
   duty: DutyRecord
   incidentReports: number
   incidentHistory: IncidentRecord[]
@@ -49,6 +60,7 @@ type PortalDataContextValue = {
   lastUpdated: string | null
   isLive: boolean
   addActivity: (source: string, type: string, message: string) => void
+  recordLogin: (source: string, email: string, role: string) => void
   setDuty: (duty: DutyRecord) => void
   recordIncident: () => void
   addIncidentRecord: (record: Omit<IncidentRecord, 'id' | 'createdAt' | 'status'>) => void
@@ -82,7 +94,7 @@ function pruneDutyPhotos(duty: DutyRecord): DutyRecord {
 function readStoredData(): SharedPortalData & { updatedAt: string | null } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
+    if (!saved) return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
     const parsed = JSON.parse(saved)
     const storedDuty = parsed.duty ?? defaultDuty
     const now = new Date().toISOString()
@@ -91,15 +103,16 @@ function readStoredData(): SharedPortalData & { updatedAt: string | null } {
       checkInPhotoAt: storedDuty.checkInPhoto && !storedDuty.checkInPhotoAt ? now : storedDuty.checkInPhotoAt,
       checkOutPhotoAt: storedDuty.checkOutPhoto && !storedDuty.checkOutPhotoAt ? now : storedDuty.checkOutPhotoAt,
     }
-    return { activities: parsed.activities ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
+    return { activities: parsed.activities ?? [], sessions: parsed.sessions ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
   } catch {
-    return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
+    return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
   }
 }
 
 export function PortalDataProvider({ children }: { children: ReactNode }) {
   const initialData = readStoredData()
   const [activities, setActivities] = useState<PortalActivity[]>(initialData.activities)
+  const [sessions, setSessions] = useState<PortalSession[]>(initialData.sessions)
   const [duty, setDuty] = useState<DutyRecord>(initialData.duty)
   const [incidentReports, setIncidentReports] = useState(initialData.incidentReports)
   const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>(initialData.incidentHistory)
@@ -116,11 +129,11 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     }
     const updatedAt = new Date().toISOString()
     setLastUpdated(updatedAt)
-    const data = { activities, duty, incidentReports, incidentHistory, equipmentFaults, updatedAt }
+    const data = { activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, updatedAt }
     serializedRef.current = JSON.stringify(data)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     channelRef.current?.postMessage(data)
-  }, [activities, duty, incidentReports, incidentHistory, equipmentFaults])
+  }, [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults])
 
   useEffect(() => {
     const retentionCheck = window.setInterval(() => {
@@ -140,6 +153,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
       serializedRef.current = serialized
       applyingRemoteRef.current = true
       setActivities(nextActivities)
+      setSessions(data.sessions ?? [])
       setDuty(pruneDutyPhotos(data.duty ?? defaultDuty))
       setIncidentReports(data.incidentReports ?? 0)
       setIncidentHistory(data.incidentHistory ?? [])
@@ -170,6 +184,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<PortalDataContextValue>(() => ({
     activities,
+    sessions,
     duty,
     incidentReports,
     incidentHistory,
@@ -181,6 +196,10 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
         { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, source, type, message, createdAt: new Date().toISOString() },
         ...current,
       ].slice(0, 100))
+    },
+    recordLogin(source, email, role) {
+      const now = new Date().toISOString()
+      setSessions(current => [{ id: `${email}-${role}`, source, email, role, loginAt: now, lastSeenAt: now }, ...current.filter(session => session.id !== `${email}-${role}`)].slice(0, 50))
     },
     setDuty(nextDuty) {
       setDuty(nextDuty)
@@ -199,7 +218,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     clearActivities() {
       setActivities([])
     },
-  }), [activities, duty, incidentReports, incidentHistory, equipmentFaults, lastUpdated])
+  }), [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, lastUpdated])
 
   return <PortalDataContext.Provider value={value}>{children}</PortalDataContext.Provider>
 }

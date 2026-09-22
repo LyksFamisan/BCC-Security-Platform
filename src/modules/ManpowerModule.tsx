@@ -69,7 +69,7 @@ const tabs: { id: Tab; label: string }[] = [
 ]
 
 export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean }) {
-  const { activities, duty, incidentReports, equipmentFaults, isLive, lastUpdated, addActivity } = usePortalData()
+  const { activities, sessions, duty, incidentReports, equipmentFaults, isLive, lastUpdated, addActivity } = usePortalData()
   const [tab, setTab] = useState<Tab>('roster')
   const [search, setSearch] = useState('')
 
@@ -92,11 +92,12 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
           <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Connected Portal Data</span>
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE SYNC' : 'OFFLINE'}</span>
         </div>
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
           {[
             { label: 'PERSONNEL DUTY', value: duty.checkedIn ? 'ON DUTY' : 'OFF DUTY', color: duty.checkedIn ? '#16a34a' : '#d97706' },
             { label: 'INCIDENTS', value: String(incidentReports), color: '#dc2626' },
             { label: 'EQUIPMENT ISSUES', value: String(equipmentFaults), color: '#d97706' },
+            { label: 'ACTIVE PORTAL SESSIONS', value: String(sessions.length), color: '#7c3aed' },
             { label: 'LAST SYNC', value: lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : 'Waiting', color: '#1976b9' },
           ].map(item => <div key={item.label}><div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 600, color: L.muted, letterSpacing: '0.05em' }}>{item.label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: item.color, marginTop: 4 }}>{item.value}</div></div>)}
         </div>

@@ -55,7 +55,7 @@ const systemItems = [
 ]
 
 export default function AdminModule() {
-  const { activities, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults } = usePortalData()
+  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults } = usePortalData()
   const [tab, setTab] = useState<AdminTab>('users')
   const [search, setSearch] = useState('')
   const [showAddUser, setShowAddUser] = useState(false)
@@ -140,7 +140,7 @@ export default function AdminModule() {
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
           { label: 'Total Users', value: '65', sub: '5 roles', color: ACC },
-          { label: 'Active Sessions', value: '24', sub: 'right now', color: '#16a34a' },
+          { label: 'Active Sessions', value: String(sessions.length), sub: 'shared portal logins', color: '#16a34a' },
           { label: 'Active Workflows', value: '4', sub: '1 draft', color: '#7c3aed' },
           { label: 'System Health', value: '99.9%', sub: 'uptime', color: '#16a34a' },
         ].map(s => (

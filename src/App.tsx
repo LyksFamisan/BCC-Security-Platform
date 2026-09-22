@@ -44,7 +44,7 @@ function AppContent() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [active, setActive] = useState<Module>('dashboard')
   const [darkMode, setDarkMode] = useState(true)
-  const { addActivity } = usePortalData()
+  const { addActivity, recordLogin } = usePortalData()
 
   if (screen === 'splash') {
     return <SplashScreen darkMode={darkMode} onToggleTheme={() => setDarkMode(value => !value)} onEnter={() => setScreen('portal')} />
@@ -56,8 +56,9 @@ function AppContent() {
         darkMode={darkMode}
         onToggleTheme={() => setDarkMode(value => !value)}
         onBackHome={() => setScreen('splash')}
-        onLogin={(r) => {
+        onLogin={(r, email) => {
           const source = r === 'guard' ? 'Security Personnel' : r === 'operations' ? 'Detachment Staff' : 'Administrator'
+          recordLogin(source, email, r)
           addActivity(source, 'LOGIN', `${source} portal login completed`)
           setRole(r)
           setActive(roleDefaultModule[r])
