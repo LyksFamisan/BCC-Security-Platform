@@ -77,7 +77,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       <div className="splash-main" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
 
         {/* Logos */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 36 }}>
+        <div className="splash-logos" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 36 }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: '0 0 0 2px rgba(240,101,34,0.4), 0 8px 32px rgba(240,101,34,0.3)' }}>
             <img src="/assets/CAT_logo.jpg" alt="CAT" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
@@ -107,7 +107,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
         </p>
 
         {/* Feature pills */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 52, maxWidth: 660 }}>
+        <div className="splash-features" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 52, maxWidth: 660 }}>
           {[
             { label: 'Manpower Monitoring', dot: '#22c55e' },
             { label: 'Equipment Accountability', dot: '#F06522' },
@@ -124,6 +124,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
 
         {/* CTA */}
         <button
+          className="splash-cta"
           onClick={onEnter}
           style={{
             background: darkMode ? 'linear-gradient(135deg, #F06522 0%, #ea580c 100%)' : 'linear-gradient(135deg, #1976b9 0%, #4ca9df 100%)',

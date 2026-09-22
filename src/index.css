@@ -429,6 +429,21 @@ body {
     margin-bottom: 22px !important;
   }
 
+  .splash-logos {
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .splash-logos > div {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 14px !important;
+  }
+
+  .splash-logos > div:nth-child(2) {
+    height: 38px !important;
+  }
+
   .splash-main h1 {
     font-size: clamp(28px, 9vw, 44px) !important;
     line-height: 1.08 !important;
@@ -437,6 +452,25 @@ body {
   .splash-main p {
     font-size: 14px !important;
     line-height: 1.5 !important;
+  }
+
+  .splash-features {
+    gap: 7px !important;
+    margin-bottom: 28px !important;
+    max-width: 350px !important;
+  }
+
+  .splash-features > div {
+    padding: 6px 11px !important;
+  }
+
+  .splash-features span {
+    font-size: 11px !important;
+  }
+
+  .splash-cta {
+    padding: 14px 34px !important;
+    font-size: 15px !important;
   }
 
   .portal-home-shell > button:first-of-type {
