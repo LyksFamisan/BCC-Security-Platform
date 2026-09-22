@@ -128,6 +128,12 @@ body {
 }
 
 @media (max-width: 720px) {
+  html, body, #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
   .app-shell {
     height: 100dvh !important;
     overflow: hidden !important;
@@ -193,6 +199,7 @@ body {
     padding: 6px 10px !important;
     gap: 6px !important;
     flex: none !important;
+    scrollbar-width: thin;
   }
 
   .app-sidebar nav button {
@@ -218,6 +225,7 @@ body {
   .app-sidebar > div:last-child {
     order: 4;
     padding: 8px 10px !important;
+    min-height: 48px;
   }
 
   .app-main {
@@ -233,10 +241,12 @@ body {
   .app-main > div {
     padding: 16px !important;
     gap: 16px !important;
+    min-width: 0 !important;
   }
 
   .app-main .grid[style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
+    min-width: 0 !important;
   }
 
   .app-main > div > div[style*="overflow: hidden"] {
@@ -270,6 +280,11 @@ body {
 
   .app-main .flex.items-center.justify-between > * {
     min-width: 0;
+  }
+
+  .app-main section,
+  .app-main article {
+    max-width: 100%;
   }
 
   .app-main button {
@@ -393,6 +408,53 @@ body {
 
   .personnel-duty-card > div:last-child > div:last-child > div {
     flex: 1 1 42%;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-topbar {
+    padding: 8px !important;
+  }
+
+  .app-topbar > div:first-child {
+    font-size: 11px !important;
+  }
+
+  .app-topbar > div:last-child {
+    gap: 4px !important;
+  }
+
+  .app-topbar > div:last-child > div,
+  .app-topbar > div:last-child > button {
+    padding: 5px 8px !important;
+    font-size: 10px !important;
+  }
+
+  .app-sidebar > div:first-child {
+    padding-left: 8px !important;
+  }
+
+  .app-sidebar nav {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  .app-sidebar nav button {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .app-main > div {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+
+  .personnel-clock > div:first-child {
+    font-size: 29px !important;
+  }
+
+  .personnel-duty-card {
+    padding: 16px !important;
   }
 }
 
