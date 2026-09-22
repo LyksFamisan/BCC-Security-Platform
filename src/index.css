@@ -453,6 +453,11 @@ body {
     max-width: 520px !important;
   }
 
+  .portal-card-operations,
+  .portal-card-admin {
+    display: none;
+  }
+
   .personnel-login-brand {
     width: 100% !important;
     min-height: 40dvh;

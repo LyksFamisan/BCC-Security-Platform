@@ -403,7 +403,7 @@ interface Props {
 }
 
 export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHome }: Props) {
-  const [selected, setSelected] = useState<UserRole | null>('operations')
+  const [selected, setSelected] = useState<UserRole | null>(() => window.matchMedia('(max-width: 720px)').matches ? null : 'operations')
   const goBack = () => setSelected(null)
 
   if (selected) return <UnifiedLogin darkMode={darkMode} onToggleTheme={onToggleTheme} onBack={goBack} onBackHome={onBackHome} onLogin={onLogin} />
@@ -439,7 +439,7 @@ export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHo
 
       <div className="portal-home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, width: '100%', maxWidth: 1120, position: 'relative', zIndex: 1 }}>
         {cards.map(c => (
-          <button key={c.id} onClick={() => setSelected(c.id)}
+          <button key={c.id} className={`portal-card portal-card-${c.id}`} onClick={() => setSelected(c.id)}
             style={{ background: darkMode ? 'rgba(15,23,42,0.82)' : 'rgba(255,255,255,0.82)', border: darkMode ? '1px solid rgba(148,163,184,0.16)' : '1px solid rgba(54,126,171,0.18)', borderRadius: 16, padding: '26px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', boxShadow: darkMode ? '0 18px 40px rgba(2,6,23,0.36)' : '0 14px 30px rgba(54,126,171,0.16)' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = `${c.color}66`; e.currentTarget.style.transform = 'translateY(-3px)' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = darkMode ? 'rgba(148,163,184,0.16)' : 'rgba(54,126,171,0.18)'; e.currentTarget.style.transform = 'none' }}
