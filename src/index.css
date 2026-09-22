@@ -119,6 +119,10 @@ body {
 }
 
 @media (max-width: 720px) {
+  body {
+    overflow-x: hidden;
+  }
+
   .app-shell {
     height: 100dvh !important;
     overflow: hidden !important;
@@ -211,6 +215,20 @@ body {
     gap: 16px !important;
   }
 
+  .app-main .flex.gap-1,
+  .app-main .flex.gap-2 {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 3px;
+  }
+
+  .app-main .flex.gap-1 > button,
+  .app-main .flex.gap-2 > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .app-main .grid[style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
   }
@@ -240,6 +258,18 @@ body {
     min-height: 38px;
   }
 
+  .app-main form button,
+  .app-main form input,
+  .app-main form select,
+  .app-main form textarea {
+    width: 100%;
+  }
+
+  .app-main .grid.px-5 > *,
+  .app-main .grid.px-6 > * {
+    min-width: 0;
+  }
+
   .personnel-dashboard-grid,
   .personnel-duty-card {
     width: 100% !important;
@@ -251,6 +281,32 @@ body {
 
   .personnel-attendance-photos > div {
     width: min(100%, 180px) !important;
+  }
+
+  .personnel-attendance-photos {
+    justify-content: stretch;
+  }
+
+  .personnel-attendance-photos > div {
+    flex: 1 1 150px;
+  }
+
+  .personnel-login-form form {
+    gap: 12px !important;
+  }
+
+  .personnel-login-form input,
+  .personnel-login-form button {
+    min-height: 44px;
+  }
+
+  .personnel-app-shell .grid[style*="repeat(4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .personnel-app-shell .personnel-duty-card .flex.gap-2 {
+    overflow: visible;
+    flex-wrap: wrap !important;
   }
 
   .personnel-login-shell {
@@ -321,6 +377,26 @@ body {
 
   .personnel-duty-card > div:last-child > div:last-child > div {
     flex: 1 1 42%;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .app-topbar {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .app-topbar > div:last-child {
+    gap: 8px !important;
+  }
+
+  .app-main > div {
+    padding: 20px !important;
+  }
+
+  .app-main .grid[style*="380px"],
+  .app-main .grid[style*="320px"] {
+    grid-template-columns: 1fr !important;
   }
 }
 
