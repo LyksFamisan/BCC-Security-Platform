@@ -127,6 +127,10 @@ body {
   opacity: 1;
 }
 
+.splash-description-mobile {
+  display: none;
+}
+
 @media (max-width: 720px) {
   html, body, #root {
     width: 100%;
@@ -454,10 +458,17 @@ body {
     line-height: 1.5 !important;
   }
 
-  .splash-features {
-    gap: 7px !important;
+  .splash-description-desktop {
+    display: none !important;
+  }
+
+  .splash-description-mobile {
+    display: block !important;
     margin-bottom: 28px !important;
-    max-width: 350px !important;
+  }
+
+  .splash-features {
+    display: none !important;
   }
 
   .splash-features > div {

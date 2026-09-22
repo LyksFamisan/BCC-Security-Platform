@@ -102,8 +102,11 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
         </h1>
 
         {/* Sub-headline */}
-        <p style={{ fontFamily: 'Inter', fontSize: 16, color: darkMode ? 'rgba(148,163,184,0.8)' : '#52718b', margin: '0 0 48px', maxWidth: 540, lineHeight: 1.7 }}>
+        <p className="splash-description splash-description-desktop" style={{ fontFamily: 'Inter', fontSize: 16, color: darkMode ? 'rgba(148,163,184,0.8)' : '#52718b', margin: '0 0 48px', maxWidth: 540, lineHeight: 1.7 }}>
           Unified operational command platform for manpower, equipment, incident management, and executive intelligence.
+        </p>
+        <p className="splash-description splash-description-mobile" style={{ fontFamily: 'Inter', fontSize: 16, color: darkMode ? 'rgba(148,163,184,0.8)' : '#52718b', margin: '0 0 48px', maxWidth: 540, lineHeight: 1.7 }}>
+          Mobile duty access for attendance, GPS check-in, deployment details, and incident reporting.
         </p>
 
         {/* Feature pills */}
