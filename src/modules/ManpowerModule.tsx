@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
+import { downloadCsv } from '../utils/download'
 
 const L = {
   card: 'rgba(255,255,255,0.94)',
@@ -78,6 +79,8 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
     g.id.toLowerCase().includes(search.toLowerCase()) ||
     g.detachment.toLowerCase().includes(search.toLowerCase())
   )
+
+  const downloadManpower = () => downloadCsv('bcc-cat-manpower-roster.csv', ['Guard ID', 'Name', 'Rank', 'Detachment', 'Site', 'Shift', 'Status'], guards.map(g => [g.id, g.name, g.rank, g.detachment, g.site, g.shift, g.status]))
 
   return (
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
@@ -158,6 +161,7 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
               }}
             />
             <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted }}>{filtered.length} records</span>
+            <button type="button" onClick={downloadManpower} style={{ marginLeft: 'auto', background: '#1976b9', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Download CSV</button>
           </div>
           <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
             <div className="grid px-5 py-3" style={{ gridTemplateColumns: '90px 1fr 110px 120px 70px 90px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>

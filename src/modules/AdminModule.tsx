@@ -16,9 +16,11 @@ const L = {
   shadow: '0 1px 4px rgba(0,0,0,0.06)',
 }
 
-type AdminTab = 'users' | 'roles' | 'workflows' | 'system'
+type AdminTab = 'users' | 'approvals' | 'roles' | 'workflows' | 'system'
 
-const users = [
+type AdminUser = { id: string; name: string; email: string; role: string; status: 'Active' | 'Inactive'; lastLogin: string }
+
+const initialUsers: AdminUser[] = [
   { id: 'USR-001', name: 'Gen. R. Santos', email: 'rsantos@bcccat.com', role: 'Executive', status: 'Active', lastLogin: '2h ago' },
   { id: 'USR-002', name: 'Maj. D. Cruz', email: 'dcruz@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '5h ago' },
   { id: 'USR-003', name: 'Cpt. L. Reyes', email: 'lreyes@bcccat.com', role: 'Incident Manager', status: 'Active', lastLogin: '1d ago' },
@@ -54,14 +56,23 @@ const systemItems = [
   { label: 'Audit Log Retention', value: '90 days', type: 'info' },
 ]
 
+const initialApprovalRequests = [
+  { id: 'REQ-1042', requester: 'Pfc. M. Santos', type: 'New guard account', detail: 'Guard access for NCR-02 deployment', status: 'Pending' },
+  { id: 'REQ-1043', requester: 'Maj. D. Cruz', type: 'Role change', detail: 'Operations Staff · Tactical Room access', status: 'Pending' },
+]
+
 export default function AdminModule() {
-  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults } = usePortalData()
+  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults, addActivity } = usePortalData()
   const [tab, setTab] = useState<AdminTab>('users')
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(initialUsers)
   const [search, setSearch] = useState('')
   const [showAddUser, setShowAddUser] = useState(false)
+  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Guard' })
+  const [approvalRequests, setApprovalRequests] = useState(initialApprovalRequests)
   const [feedback, setFeedback] = useState('')
 
-  const filteredUsers = users.filter(u =>
+  const filteredUsers = adminUsers.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.role.toLowerCase().includes(search.toLowerCase())
   )
@@ -76,6 +87,10 @@ export default function AdminModule() {
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     },
     {
+      id: 'approvals', label: 'Approval Queue',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    },
+    {
       id: 'workflows', label: 'Workflows',
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     },
@@ -87,6 +102,27 @@ export default function AdminModule() {
 
   const roleColor: Record<string, string> = {
     'Executive': '#7c3aed', 'Operations Staff': ACC, 'Incident Manager': '#d97706', 'Guard': '#16a34a', 'Administrator': '#dc2626',
+  }
+
+  const downloadUsers = () => {
+    const csv = ['ID,Name,Email,Role,Status,Last Login', ...adminUsers.map(user => [user.id, user.name, user.email, user.role, user.status, user.lastLogin].map(value => `"${value.replaceAll('"', '""')}"`).join(','))].join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'bcc-cat-users.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+    setFeedback('User directory downloaded.')
+  }
+
+  const addUser = (event: React.FormEvent) => {
+    event.preventDefault()
+    const id = `USR-${String(adminUsers.length + 1).padStart(3, '0')}`
+    setAdminUsers(current => [...current, { ...newUser, id, status: 'Active', lastLogin: 'Never' }])
+    setNewUser({ name: '', email: '', role: 'Guard' })
+    setShowAddUser(false)
+    addActivity('Administrator', 'USER_CREATED', `${newUser.name} added as ${newUser.role}`)
+    setFeedback(`${newUser.name} was added with ${newUser.role} access.`)
   }
 
   return (
@@ -181,7 +217,14 @@ export default function AdminModule() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add User
             </button>
+            <button type="button" onClick={downloadUsers} style={{ background: 'transparent', border: `1px solid ${L.cardBorder}`, borderRadius: 8, padding: '9px 12px', fontFamily: 'Inter', fontWeight: 600, fontSize: 12, color: L.body, cursor: 'pointer', whiteSpace: 'nowrap' }}>Download CSV</button>
           </div>
+          {showAddUser && <form onSubmit={addUser} className="flex items-center gap-2" style={{ padding: '12px 20px', borderBottom: `1px solid ${L.divider}`, background: 'rgba(240,101,34,0.04)' }}>
+            <input required value={newUser.name} onChange={event => setNewUser(current => ({ ...current, name: event.target.value }))} placeholder="Full name" style={{ flex: 1, background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
+            <input required type="email" value={newUser.email} onChange={event => setNewUser(current => ({ ...current, email: event.target.value }))} placeholder="Email" style={{ flex: 1, background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
+            <select value={newUser.role} onChange={event => setNewUser(current => ({ ...current, role: event.target.value }))} style={{ background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select>
+            <button type="submit" style={{ background: '#16a34a', border: 'none', borderRadius: 7, padding: '8px 12px', color: '#fff', fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Create</button>
+          </form>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr 100px 100px 80px', gap: 0, padding: '10px 20px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
             {['Name', 'Email', 'Role', 'Status', 'Last Login', ''].map(h => (
               <span key={h} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: L.muted, letterSpacing: '0.06em' }}>{h}</span>
@@ -196,13 +239,34 @@ export default function AdminModule() {
                 <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13, color: L.heading }}>{u.name}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle }}>{u.id}</div>
               </div>
-              <span style={{ fontFamily: 'Inter', fontSize: 13, color: L.body }}>{u.email}</span>
-              <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>
+              {editingUser === u.id ? <input value={u.email} onChange={event => setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, email: event.target.value } : user))} style={{ width: '100%', border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }} /> : <span style={{ fontFamily: 'Inter', fontSize: 13, color: L.body }}>{u.email}</span>}
+              {editingUser === u.id ? <select value={u.role} onChange={event => setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, role: event.target.value } : user))} style={{ border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select> : <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>}
               <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: u.status === 'Active' ? '#16a34a' : L.muted, background: u.status === 'Active' ? 'rgba(22,163,74,0.1)' : 'rgba(107,114,128,0.1)', borderRadius: 20, padding: '3px 10px', display: 'inline-block' }}>{u.status}</span>
               <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.subtle }}>{u.lastLogin}</span>
               <div className="flex gap-2">
-                <button onClick={() => setFeedback(`Edit mode opened for ${u.name}.`)} style={{ fontFamily: 'Inter', fontSize: 11, color: ACC, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
-                <button onClick={() => setFeedback(`${u.name} has been marked for access review.`)} style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Disable</button>
+                <button onClick={() => { setEditingUser(editingUser === u.id ? null : u.id); setFeedback(editingUser === u.id ? `${u.name} changes saved.` : `Editing ${u.name}.`) }} style={{ fontFamily: 'Inter', fontSize: 11, color: ACC, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{editingUser === u.id ? 'Save' : 'Edit'}</button>
+                <button onClick={() => { setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, status: user.status === 'Active' ? 'Inactive' : 'Active' } : user)); setFeedback(`${u.name} access ${u.status === 'Active' ? 'disabled' : 'enabled'}.`) }} style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{u.status === 'Active' ? 'Disable' : 'Enable'}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'approvals' && (
+        <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 12, overflow: 'hidden', boxShadow: L.shadow }}>
+          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
+            <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>Pending Approval Requests</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>Review access, account, and operational requests before activation.</div>
+          </div>
+          {approvalRequests.length === 0 ? <div style={{ padding: 32, textAlign: 'center', fontFamily: 'Inter', fontSize: 13, color: L.subtle }}>No pending approval requests.</div> : approvalRequests.map(request => (
+            <div key={request.id} className="flex items-center justify-between gap-4" style={{ padding: '16px 20px', borderBottom: `1px solid ${L.divider}` }}>
+              <div>
+                <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>{request.type} · {request.id}</div>
+                <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.body, marginTop: 4 }}>{request.requester} · {request.detail}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { setApprovalRequests(current => current.filter(item => item.id !== request.id)); addActivity('Administrator', 'REQUEST_APPROVED', `${request.id} approved`); setFeedback(`${request.id} approved.`) }} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Approve</button>
+                <button type="button" onClick={() => { setApprovalRequests(current => current.filter(item => item.id !== request.id)); addActivity('Administrator', 'REQUEST_REJECTED', `${request.id} rejected`); setFeedback(`${request.id} rejected.`) }} style={{ background: 'transparent', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Reject</button>
               </div>
             </div>
           ))}

@@ -88,7 +88,7 @@ function AppContent() {
           {safeActive === 'dashboard' && <DashboardModule canEdit={role === 'admin'} />}
           {safeActive === 'manpower' && <ManpowerModule canEdit={role === 'admin'} />}
           {safeActive === 'equipment' && <EquipmentModule canEdit={role === 'admin'} canReport={role === 'admin' || role === 'operations'} />}
-          {safeActive === 'incidents' && <IncidentModule canEdit={role === 'admin'} canReport={role === 'admin' || role === 'operations'} />}
+          {safeActive === 'incidents' && <IncidentModule canEdit={role === 'admin' || role === 'operations'} canReport={role === 'admin' || role === 'operations'} />}
           {safeActive === 'tactical' && <TacticalModule canEdit={role === 'admin' || role === 'operations'} />}
           {safeActive === 'guard' && <GuardModule />}
           {safeActive === 'admin' && <AdminModule />}

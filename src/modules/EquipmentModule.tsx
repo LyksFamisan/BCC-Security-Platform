@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
+import { downloadCsv } from '../utils/download'
 
 const L = {
   card: 'rgba(255,255,255,0.94)',
@@ -88,11 +89,13 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
   const [faultAsset, setFaultAsset] = useState('')
   const [faultDescription, setFaultDescription] = useState('')
 
+  const downloadEquipment = () => downloadCsv('bcc-cat-equipment-inventory.csv', ['Asset ID', 'Model', 'Serial', 'Assigned To', 'Site', 'Status'], [...firearms.map(item => [item.id, item.model, item.serial, item.assignee, item.site, item.status]), ...radios.map(item => [item.id, item.model, item.serial, item.assignee, item.site, item.status])])
+
   return (
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
       <div>
         <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, letterSpacing: '0.08em', marginBottom: 4 }}>EQUIPMENT ACCOUNTABILITY</div>
-        <h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 24, color: L.heading, margin: 0 }}>Assets & Equipment Management</h1>
+        <div className="flex items-center justify-between gap-3"><h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 24, color: L.heading, margin: 0 }}>Assets & Equipment Management</h1><button type="button" onClick={downloadEquipment} style={{ background: '#1976b9', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Download CSV</button></div>
       </div>
 
       <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '12px 16px', boxShadow: L.shadow }}>
