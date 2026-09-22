@@ -142,6 +142,7 @@ body {
   .app-content {
     flex-direction: column !important;
     overflow: hidden !important;
+    min-height: 0 !important;
   }
 
   .app-topbar {
@@ -181,6 +182,7 @@ body {
     overflow-x: hidden !important;
     border-right: 0 !important;
     border-bottom: 1px solid rgba(148,163,184,0.16);
+    flex: 0 1 auto !important;
   }
 
   .app-sidebar > div:first-child {
@@ -237,8 +239,11 @@ body {
 
   .app-main {
     min-width: 0 !important;
+    min-height: 0 !important;
     width: 100% !important;
+    flex: 1 1 auto !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
 
   .app-main > * {
