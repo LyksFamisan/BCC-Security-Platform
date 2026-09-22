@@ -74,7 +74,7 @@ function AttendancePhotoGallery({
       <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
         <div>
           <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: L.heading }}>Attendance Photos</div>
-          <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>Check In and Check Out evidence with recorded location · saved automatically · retained for 7 days</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>Check In and Check Out evidence with recorded location · retained for 7 days</div>
         </div>
         <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#7C3AED' }}>{photos.length} RECORD{photos.length === 1 ? '' : 'S'}</span>
       </div>
@@ -87,8 +87,9 @@ function AttendancePhotoGallery({
             <div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.heading, marginTop: 6 }}>{item.label}</div>
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: L.muted, marginTop: 2 }}>{item.time || 'Recorded'}</div>
             {item.savedLocation && <div style={{ fontFamily: 'JetBrains Mono', fontSize: 8, color: '#7C3AED', lineHeight: 1.45, marginTop: 5 }}>LAT {item.savedLocation.latitude.toFixed(4)}<br />LON {item.savedLocation.longitude.toFixed(4)}<br />{item.savedLocation.source === 'live' ? 'LIVE GPS' : 'ASSIGNED SITE'}</div>}
-            <div style={{ marginTop: 6 }}>
-              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} aria-label={`Download ${item.label}`} style={{ display: 'block', width: '100%', minHeight: 34, boxSizing: 'border-box', textAlign: 'center', borderRadius: 5, padding: '8px 5px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+            <div className="flex gap-1" style={{ marginTop: 6 }}>
+              <button type="button" onClick={() => window.open(item.photo, '_blank', 'noopener,noreferrer')} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
+              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} style={{ flex: 1, textAlign: 'center', borderRadius: 5, padding: '4px 3px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
             </div>
           </div>
         ))}
@@ -98,7 +99,7 @@ function AttendancePhotoGallery({
 }
 
 export default function GuardModule() {
-  const { addActivity, duty, setDuty, addIncidentRecord, addEquipmentFaultRecord, incidentHistory, equipmentFaultHistory, activities, incidentReports, equipmentFaults, isLive, lastUpdated } = usePortalData()
+  const { addActivity, duty, setDuty, addIncidentRecord, recordEquipmentFault, incidentHistory, activities, incidentReports, equipmentFaults, isLive, lastUpdated } = usePortalData()
   const personnelIncidentHistory = incidentHistory.filter(record => record.filedBy === PERSONNEL_ID)
   const { checkedIn, checkInTime, checkOutTime, checkInPhoto, checkOutPhoto, checkInLocation, checkOutLocation, checkInPhotoAt, checkOutPhotoAt } = duty
   const [cameraMode, setCameraMode] = useState<'check-in' | 'check-out' | null>(null)
@@ -299,8 +300,9 @@ export default function GuardModule() {
             <div style={{ maxWidth: 420, margin: '0 auto 16px', border: `1px solid ${ACC}`, borderRadius: 10, padding: 10, background: '#fff' }}>
               <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: L.heading, marginBottom: 8 }}>Captured Attendance Photo</div>
               <img src={capturedPhoto} alt="Captured attendance" style={{ display: 'block', width: '100%', borderRadius: 7, aspectRatio: '16 / 10', objectFit: 'cover' }} />
-              <div className="flex justify-end" style={{ marginTop: 9 }}>
-                <a href={capturedPhoto} download={`security-personnel-${cameraMode}-${Date.now()}.jpg`} aria-label="Download captured attendance photo" style={{ minHeight: 40, borderRadius: 6, padding: '10px 16px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+              <div className="flex justify-end gap-2" style={{ marginTop: 9 }}>
+                <button type="button" onClick={() => window.open(capturedPhoto, '_blank', 'noopener,noreferrer')} style={{ border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 6, padding: '6px 11px', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>View</button>
+                <a href={capturedPhoto} download={`security-personnel-${cameraMode}-${Date.now()}.jpg`} style={{ borderRadius: 6, padding: '6px 11px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Download</a>
               </div>
             </div>
           )}
@@ -559,17 +561,12 @@ export default function GuardModule() {
             return <div key={asset.id} className="flex items-center justify-between gap-3" style={{ border: `1px solid ${L.cardBorder}`, borderRadius: 8, padding: '12px 14px', marginTop: 8, background: L.inset }}><div><div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: ACC }}>{asset.id}</div><div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13, color: L.heading }}>{asset.name}</div><div style={{ fontFamily: 'Inter', fontSize: 11, color: asset.color }}>{asset.status}</div></div><button type="button" disabled={acknowledged} onClick={() => { setEquipmentAcknowledged(current => [...current, asset.id]); addActivity('Security Personnel', 'EQUIPMENT_ACK', `Acknowledged assignment ${asset.id}`) }} style={{ border: `1px solid ${acknowledged ? L.cardBorder : '#1976b9'}`, background: acknowledged ? 'transparent' : '#1976b9', color: acknowledged ? L.muted : '#fff', borderRadius: 6, padding: '7px 10px', fontFamily: 'Inter', fontSize: 11, fontWeight: 600, cursor: acknowledged ? 'default' : 'pointer' }}>{acknowledged ? 'Acknowledged' : 'Acknowledge Receipt'}</button></div>
           })}
           {equipmentReportSubmitted ? <div style={{ marginTop: 12, border: '1px solid rgba(22,163,74,0.25)', background: 'rgba(22,163,74,0.06)', color: '#16a34a', borderRadius: 7, padding: '10px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>Equipment issue submitted and shared with Operations and Administrator.</div> : equipmentReportOpen ? (
-                  <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); addEquipmentFaultRecord({ asset: equipmentReportAsset, details: equipmentReportDetails, filedBy: PERSONNEL_ID }); addActivity('Security Personnel', 'EQUIPMENT_FAULT', `${equipmentReportAsset}: ${equipmentReportDetails}`); setEquipmentReportSubmitted(true); setEquipmentReportOpen(false); setEquipmentReportAsset(''); setEquipmentReportDetails('') }} style={{ marginTop: 12, padding: 12, border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, background: 'rgba(220,38,38,0.04)' }}>
+            <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); recordEquipmentFault(); addActivity('Security Personnel', 'EQUIPMENT_FAULT', `${equipmentReportAsset}: ${equipmentReportDetails}`); setEquipmentReportSubmitted(true); setEquipmentReportOpen(false); setEquipmentReportAsset(''); setEquipmentReportDetails('') }} style={{ marginTop: 12, padding: 12, border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, background: 'rgba(220,38,38,0.04)' }}>
               <select value={equipmentReportAsset} onChange={event => setEquipmentReportAsset(event.target.value)} required style={{ ...inputStyle, padding: '8px 10px' }}><option value="">Select assigned equipment...</option><option>RD-0114 · Motorola DP4400e Radio</option><option>FN-0021 · Beretta M9 Firearm</option></select>
               <input value={equipmentReportDetails} onChange={event => setEquipmentReportDetails(event.target.value)} required placeholder="Describe damage or defect..." style={{ ...inputStyle, padding: '8px 10px' }} />
               <div className="flex gap-2"><button type="button" onClick={() => setEquipmentReportOpen(false)} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 6, padding: 8, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, border: 'none', background: '#dc2626', color: '#fff', borderRadius: 6, padding: 8, fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Submit Report</button></div>
             </form>
           ) : <button type="button" onClick={() => setEquipmentReportOpen(true)} style={{ width: '100%', marginTop: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.06)', color: '#dc2626', borderRadius: 7, padding: '9px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Report Damaged / Defective Equipment</button>}
-          <div style={{ marginTop: 18, borderTop: `1px solid ${L.divider}`, paddingTop: 14 }}>
-            <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>My Equipment Fault History</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, margin: '3px 0 9px' }}>Reports filed by {PERSONNEL_ID}</div>
-            {equipmentFaultHistory.filter(record => record.filedBy === PERSONNEL_ID).length === 0 ? <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>No equipment damage reports yet.</div> : equipmentFaultHistory.filter(record => record.filedBy === PERSONNEL_ID).map(record => <div key={record.id} style={{ border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 10px', marginTop: 6, background: L.inset }}><div className="flex items-center justify-between gap-2"><strong style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: ACC }}>{record.asset}</strong><span style={{ fontFamily: 'Inter', fontSize: 10, color: '#d97706', fontWeight: 700 }}>{record.status}</span></div><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.body, marginTop: 4 }}>{record.details}</div><div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: L.muted, marginTop: 4 }}>{new Date(record.createdAt).toLocaleString('en-PH')}</div></div>)}
-          </div>
         </section>
       )}
     </div>

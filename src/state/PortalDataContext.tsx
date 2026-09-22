@@ -20,15 +20,6 @@ export type IncidentRecord = {
   createdAt: string
 }
 
-export type EquipmentFaultRecord = {
-  id: string
-  asset: string
-  details: string
-  filedBy: string
-  status: 'Submitted' | 'Under Review' | 'Resolved'
-  createdAt: string
-}
-
 export type DutyRecord = {
   checkedIn: boolean
   checkInTime: string
@@ -47,7 +38,6 @@ export type SharedPortalData = {
   incidentReports: number
   incidentHistory: IncidentRecord[]
   equipmentFaults: number
-  equipmentFaultHistory: EquipmentFaultRecord[]
 }
 
 type PortalDataContextValue = {
@@ -56,7 +46,6 @@ type PortalDataContextValue = {
   incidentReports: number
   incidentHistory: IncidentRecord[]
   equipmentFaults: number
-  equipmentFaultHistory: EquipmentFaultRecord[]
   lastUpdated: string | null
   isLive: boolean
   addActivity: (source: string, type: string, message: string) => void
@@ -64,7 +53,6 @@ type PortalDataContextValue = {
   recordIncident: () => void
   addIncidentRecord: (record: Omit<IncidentRecord, 'id' | 'createdAt' | 'status'>) => void
   recordEquipmentFault: () => void
-  addEquipmentFaultRecord: (record: Omit<EquipmentFaultRecord, 'id' | 'createdAt' | 'status'>) => void
   clearActivities: () => void
 }
 
@@ -94,7 +82,7 @@ function pruneDutyPhotos(duty: DutyRecord): DutyRecord {
 function readStoredData(): SharedPortalData & { updatedAt: string | null } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, equipmentFaultHistory: [], updatedAt: null }
+    if (!saved) return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
     const parsed = JSON.parse(saved)
     const storedDuty = parsed.duty ?? defaultDuty
     const now = new Date().toISOString()
@@ -103,9 +91,9 @@ function readStoredData(): SharedPortalData & { updatedAt: string | null } {
       checkInPhotoAt: storedDuty.checkInPhoto && !storedDuty.checkInPhotoAt ? now : storedDuty.checkInPhotoAt,
       checkOutPhotoAt: storedDuty.checkOutPhoto && !storedDuty.checkOutPhotoAt ? now : storedDuty.checkOutPhotoAt,
     }
-    return { activities: parsed.activities ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, equipmentFaultHistory: parsed.equipmentFaultHistory ?? [], updatedAt: parsed.updatedAt ?? null }
+    return { activities: parsed.activities ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
   } catch {
-    return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, equipmentFaultHistory: [], updatedAt: null }
+    return { activities: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
   }
 }
 
@@ -116,7 +104,6 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
   const [incidentReports, setIncidentReports] = useState(initialData.incidentReports)
   const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>(initialData.incidentHistory)
   const [equipmentFaults, setEquipmentFaults] = useState(initialData.equipmentFaults)
-  const [equipmentFaultHistory, setEquipmentFaultHistory] = useState<EquipmentFaultRecord[]>(initialData.equipmentFaultHistory)
   const [lastUpdated, setLastUpdated] = useState<string | null>(initialData.updatedAt)
   const serializedRef = useRef(JSON.stringify(initialData))
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -129,11 +116,11 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     }
     const updatedAt = new Date().toISOString()
     setLastUpdated(updatedAt)
-    const data = { activities, duty, incidentReports, incidentHistory, equipmentFaults, equipmentFaultHistory, updatedAt }
+    const data = { activities, duty, incidentReports, incidentHistory, equipmentFaults, updatedAt }
     serializedRef.current = JSON.stringify(data)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     channelRef.current?.postMessage(data)
-  }, [activities, duty, incidentReports, incidentHistory, equipmentFaults, equipmentFaultHistory])
+  }, [activities, duty, incidentReports, incidentHistory, equipmentFaults])
 
   useEffect(() => {
     const retentionCheck = window.setInterval(() => {
@@ -157,7 +144,6 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
       setIncidentReports(data.incidentReports ?? 0)
       setIncidentHistory(data.incidentHistory ?? [])
       setEquipmentFaults(data.equipmentFaults ?? 0)
-      setEquipmentFaultHistory(data.equipmentFaultHistory ?? [])
       setLastUpdated(data.updatedAt)
     }
     const syncStorage = (event: StorageEvent) => {
@@ -188,7 +174,6 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     incidentReports,
     incidentHistory,
     equipmentFaults,
-    equipmentFaultHistory,
     lastUpdated,
     isLive: true,
     addActivity(source, type, message) {
@@ -211,15 +196,10 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     recordEquipmentFault() {
       setEquipmentFaults(current => current + 1)
     },
-    addEquipmentFaultRecord(record) {
-      const createdAt = new Date().toISOString()
-      setEquipmentFaultHistory(current => [{ ...record, id: `EQF-${Date.now()}`, status: 'Submitted', createdAt }, ...current].slice(0, 100))
-      setEquipmentFaults(current => current + 1)
-    },
     clearActivities() {
       setActivities([])
     },
-  }), [activities, duty, incidentReports, incidentHistory, equipmentFaults, equipmentFaultHistory, lastUpdated])
+  }), [activities, duty, incidentReports, incidentHistory, equipmentFaults, lastUpdated])
 
   return <PortalDataContext.Provider value={value}>{children}</PortalDataContext.Provider>
 }

@@ -224,23 +224,11 @@ body {
   }
 
   .app-sidebar-profile {
-    order: 4;
+    order: 3;
     width: calc(100% - 20px);
     margin: 8px 10px 12px !important;
     padding: 10px 12px !important;
     border-radius: 10px;
-    display: flex !important;
-    flex-shrink: 0 !important;
-    position: relative;
-    z-index: 2;
-  }
-
-  .app-sidebar-profile > div:last-child {
-    min-width: 0;
-  }
-
-  .app-sidebar-profile > div:last-child > div {
-    overflow-wrap: anywhere;
   }
 
   .app-main {
