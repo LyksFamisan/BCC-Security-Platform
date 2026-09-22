@@ -130,6 +130,8 @@ body {
 
   .app-content {
     display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
@@ -211,6 +213,7 @@ body {
 
   .app-main {
     min-width: 0 !important;
+    min-height: 0 !important;
     width: 100% !important;
     overflow: visible !important;
   }
@@ -223,15 +226,16 @@ body {
   .app-main .flex.gap-1,
   .app-main .flex.gap-2 {
     max-width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap !important;
+    overflow: visible;
+    flex-wrap: wrap !important;
     padding-bottom: 3px;
   }
 
   .app-main .flex.gap-1 > button,
   .app-main .flex.gap-2 > button {
-    flex: 0 0 auto;
-    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
   }
 
   .app-main .grid[style*="grid-template-columns"] {
@@ -312,6 +316,24 @@ body {
   .personnel-app-shell .personnel-duty-card .flex.gap-2 {
     overflow: visible;
     flex-wrap: wrap !important;
+  }
+
+  .personnel-duty-controls > div {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .personnel-duty-controls > div > div {
+    flex: 1 1 42%;
+    min-width: 110px;
+  }
+
+  .app-main section,
+  .app-main article,
+  .app-main form {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .personnel-login-shell {
