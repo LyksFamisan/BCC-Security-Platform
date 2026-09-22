@@ -172,6 +172,10 @@ body {
     padding-bottom: 2px;
   }
 
+  .app-topbar > div:last-child > * {
+    margin: 0 !important;
+  }
+
   .app-topbar > div:last-child > div,
   .app-topbar > div:last-child > button {
     flex-shrink: 0;
@@ -202,7 +206,7 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: visible !important;
     padding: 8px 10px !important;
-    gap: 6px !important;
+    gap: 8px !important;
     flex: none !important;
   }
 
@@ -253,6 +257,16 @@ body {
   .app-main > div {
     padding: 12px !important;
     gap: 12px !important;
+  }
+
+  .app-main > div > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .app-main .flex.items-center.justify-between,
+  .app-main .flex.items-start.justify-between {
+    gap: 10px !important;
   }
 
   .app-main .flex.gap-1,
@@ -365,7 +379,7 @@ body {
   .personnel-tabs {
     display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px !important;
+    gap: 6px !important;
     width: 100%;
     overflow: visible !important;
     position: sticky;
