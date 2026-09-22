@@ -354,6 +354,23 @@ body {
     white-space: nowrap;
   }
 
+  .manpower-tabs {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding: 2px 2px 8px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .manpower-tabs > button {
+    flex: 0 0 auto;
+    min-height: 44px !important;
+    white-space: nowrap;
+    padding: 10px 16px !important;
+  }
+
   .tactical-module {
     padding: 12px !important;
     gap: 12px !important;

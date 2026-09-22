@@ -121,7 +121,7 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
 
       {/* Tabs */}
       <div style={{ borderBottom: `1px solid ${L.divider}` }}>
-        <div className="flex gap-1">
+        <div className="manpower-tabs flex gap-1">
           {tabs.map(t => (
             <button
               key={t.id}
