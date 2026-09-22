@@ -55,7 +55,7 @@ const systemItems = [
 ]
 
 export default function AdminModule() {
-  const { activities, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults } = usePortalData()
+  const { activities, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults, equipmentFaultHistory } = usePortalData()
   const [tab, setTab] = useState<AdminTab>('users')
   const [search, setSearch] = useState('')
   const [showAddUser, setShowAddUser] = useState(false)
@@ -111,7 +111,7 @@ export default function AdminModule() {
         <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
           <div>
             <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>Connected Portal Activity</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Shared Security Personnel and Operations Portal events · {isLive ? 'Live' : 'Offline'} · {incidentHistory.length} incident records</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Shared Security Personnel and Operations Portal events · {isLive ? 'Live' : 'Offline'} · {incidentHistory.length} incident · {equipmentFaultHistory.length} equipment records</div>
           </div>
           <div className="flex items-center gap-2">
             <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: L.subtle }}>{lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Waiting'}</span>

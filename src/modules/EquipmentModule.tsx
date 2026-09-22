@@ -80,7 +80,7 @@ const tabs: { id: Tab; label: string }[] = [
 ]
 
 export default function EquipmentModule({ canEdit = false, canReport = false }: { canEdit?: boolean; canReport?: boolean }) {
-  const { addActivity, recordEquipmentFault, equipmentFaults, activities, isLive } = usePortalData()
+  const { addActivity, addEquipmentFaultRecord, equipmentFaultHistory, equipmentFaults, activities, isLive } = usePortalData()
   const [tab, setTab] = useState<Tab>('inventory')
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<string[]>([])
   const [faultFormOpen, setFaultFormOpen] = useState(false)
@@ -98,6 +98,7 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
       <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '12px 16px', boxShadow: L.shadow }}>
         <div className="flex items-center justify-between"><div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Personnel Equipment Updates</div><div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>Shared assignments and defect reports · {isLive ? 'Live sync' : 'Offline'}</div></div><span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#d97706' }}>{equipmentFaults} ISSUES</span></div>
         {activities.find(activity => activity.type === 'EQUIPMENT_FAULT') && <div style={{ borderTop: `1px solid ${L.divider}`, marginTop: 8, paddingTop: 7, fontFamily: 'Inter', fontSize: 11, color: L.body }}>{activities.find(activity => activity.type === 'EQUIPMENT_FAULT')?.message}</div>}
+        {equipmentFaultHistory.slice(0, 3).map(record => <div key={record.id} style={{ borderTop: `1px solid ${L.divider}`, marginTop: 8, paddingTop: 7, fontFamily: 'Inter', fontSize: 11, color: L.body }}><strong>{record.asset}</strong> · {record.details} · {record.status}</div>)}
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -309,7 +310,7 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
                 {canReport && (faultSubmitted ? (
                   <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 7, padding: '10px 14px', textAlign: 'center' }}>Fault report submitted to Equipment Control.</div>
                 ) : faultFormOpen ? (
-                  <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); setFaultSubmitted(true); setFaultFormOpen(false); recordEquipmentFault(); addActivity('Equipment Control', 'FAULT_REPORT', `Fault reported for ${faultAsset}: ${faultDescription}`) }}>
+                  <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); setFaultSubmitted(true); setFaultFormOpen(false); addEquipmentFaultRecord({ asset: faultAsset, details: faultDescription, filedBy: 'Detachment Staff' }); addActivity('Equipment Control', 'FAULT_REPORT', `Fault reported for ${faultAsset}: ${faultDescription}`) }}>
                     <select value={faultAsset} onChange={event => setFaultAsset(event.target.value)} required style={{ background: L.cardSoft, border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>
                       <option value="">Select asset...</option>
                       <option>FN-0061 — Beretta M9</option>
