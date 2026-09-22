@@ -356,6 +356,15 @@ body {
     gap: 8px !important;
     width: 100%;
     overflow: visible !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 8px -16px -16px !important;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
+    background: rgba(7, 18, 35, 0.96);
+    border-top: 1px solid rgba(148,163,184,0.22);
+    box-shadow: 0 -8px 20px rgba(2, 6, 23, 0.24);
+    backdrop-filter: blur(12px);
   }
 
   .personnel-tab {
@@ -369,6 +378,10 @@ body {
 
   .personnel-tab:last-child {
     grid-column: 1 / -1;
+  }
+
+  .personnel-app-shell {
+    padding-bottom: 32px !important;
   }
 
   .personnel-duty-controls > div {
