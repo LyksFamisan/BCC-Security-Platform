@@ -132,7 +132,7 @@ export default function Sidebar({
       }}
     >
       <div
-        className="flex items-center gap-2 px-4"
+        className="sidebar-brand flex items-center gap-2 px-4"
         style={{ height: 64, borderBottom: '1px solid rgba(54,126,171,0.14)', background: 'rgba(255,255,255,0.38)' }}
       >
         <div style={{ width: 36, height: 36, borderRadius: 7, overflow: 'hidden', flexShrink: 0, background: '#000', boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
@@ -156,7 +156,7 @@ export default function Sidebar({
         <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color, letterSpacing: '0.04em' }}>{roleLabel[role]}</span>
       </div>
 
-      {(incidentReports > 0 || equipmentFaults > 0) && role !== 'guard' && <div style={{ margin: '6px 12px 0', background: darkMode ? 'rgba(240,101,34,0.10)' : 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.28)', borderRadius: 8, padding: '7px 10px' }}>
+      {(incidentReports > 0 || equipmentFaults > 0) && role !== 'guard' && <div className="sidebar-updates" style={{ margin: '6px 12px 0', background: darkMode ? 'rgba(240,101,34,0.10)' : 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.28)', borderRadius: 8, padding: '7px 10px' }}>
         <div className="flex items-center justify-between" style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: '#F06522' }}><span>PERSONNEL UPDATES</span><span style={{ color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE' : 'OFFLINE'}</span></div>
         <div style={{ fontFamily: 'Inter', fontSize: 10, color: darkMode ? '#fff' : '#52718b', marginTop: 4 }}>{incidentReports} incident · {equipmentFaults} equipment</div>
         {latestPersonnelUpdate && <div style={{ fontFamily: 'Inter', fontSize: 9, color: darkMode ? '#cbd5e1' : '#6b7280', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{latestPersonnelUpdate.message}</div>}
@@ -207,7 +207,7 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div className="px-4 pb-3">
+      <div className="sidebar-node px-4 pb-3">
         <div
           style={{
             background: 'rgba(255,255,255,0.48)',
@@ -228,7 +228,7 @@ export default function Sidebar({
       </div>
 
       <div
-        className="flex items-center gap-3 px-4 py-3"
+        className="sidebar-profile flex items-center gap-3 px-4 py-3"
         style={{ borderTop: '1px solid rgba(148,163,184,0.12)', background: 'rgba(15,23,42,0.2)' }}
       >
         <div

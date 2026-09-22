@@ -23,7 +23,7 @@ export default function TopBar({ section, title, darkMode, onToggleTheme, onLogo
         boxShadow: darkMode ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : '0 4px 16px rgba(54,126,171,0.08)',
       }}
     >
-      <div className="flex items-center gap-2" style={{ fontFamily: 'Inter', fontSize: 13 }}>
+      <div className="topbar-breadcrumb flex items-center gap-2" style={{ fontFamily: 'Inter', fontSize: 13 }}>
         <span style={{ color: darkMode ? '#94a3b8' : '#52718b' }}>CAT OPS</span>
         <span style={{ color: darkMode ? '#475569' : '#9bbbd0' }}>/</span>
         <span style={{ color: darkMode ? '#7dd3fc' : '#1976b9', fontWeight: 600 }}>{section}</span>
@@ -31,7 +31,7 @@ export default function TopBar({ section, title, darkMode, onToggleTheme, onLogo
         <span style={{ color: darkMode ? '#e2e8f0' : '#12304a', fontWeight: 700 }}>{title}</span>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="topbar-actions flex items-center gap-4">
         <button
           type="button"
           onClick={onToggleTheme}

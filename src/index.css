@@ -146,54 +146,81 @@ body {
   }
 
   .app-topbar {
-    height: auto !important;
-    min-height: 52px;
-    padding: 10px 12px !important;
+    height: 56px !important;
+    min-height: 56px;
+    padding: 8px 10px !important;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
-  .app-topbar > div:first-child {
-    width: 100%;
+  .topbar-breadcrumb {
+    flex: 1 1 auto;
+    width: auto !important;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
 
-  .app-topbar > div:last-child {
-    width: 100%;
-    justify-content: flex-start;
+  .topbar-actions {
+    flex: 0 0 auto;
+    width: auto !important;
+    justify-content: flex-end;
     gap: 6px !important;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    overflow: visible;
   }
 
-  .app-topbar > div:last-child > div,
-  .app-topbar > div:last-child > button {
+  .topbar-actions > div,
+  .topbar-actions > button {
     flex-shrink: 0;
+  }
+
+  .topbar-breadcrumb span:nth-of-type(1),
+  .topbar-breadcrumb span:nth-of-type(2),
+  .topbar-breadcrumb span:nth-of-type(4) {
+    display: none;
+  }
+
+  .topbar-actions > div:first-of-type,
+  .topbar-actions > div:nth-of-type(2) {
+    display: none !important;
+  }
+
+  .topbar-actions > button {
+    min-height: 40px;
+    padding: 7px 9px !important;
+  }
+
+  .topbar-actions > button span + * {
+    display: none;
   }
 
   .app-sidebar {
     width: 100% !important;
-    height: auto !important;
-    max-height: 220px !important;
-    overflow-y: auto !important;
+    height: 112px !important;
+    max-height: none !important;
+    overflow: hidden !important;
     overflow-x: hidden !important;
     border-right: 0 !important;
     border-bottom: 1px solid rgba(148,163,184,0.16);
-    flex: 0 1 auto !important;
+    flex: 0 0 112px !important;
   }
 
-  .app-sidebar > div:first-child {
+  .sidebar-brand {
     height: 48px !important;
     padding: 6px 12px !important;
   }
 
-  .app-sidebar > div:first-child img,
-  .app-sidebar > div:first-child > div {
+  .sidebar-brand img,
+  .sidebar-brand > div {
     transform: scale(0.82);
     transform-origin: left center;
+  }
+
+  .sidebar-updates,
+  .sidebar-node,
+  .sidebar-profile {
+    display: none !important;
   }
 
   .app-sidebar nav {
@@ -216,27 +243,6 @@ body {
     white-space: nowrap;
   }
 
-  .app-sidebar > div:nth-last-child(2),
-  .app-sidebar > div:last-child {
-    display: flex !important;
-    margin: 6px 10px !important;
-  }
-
-  .app-sidebar > div:nth-last-child(2) {
-    order: 3;
-  }
-
-  .app-sidebar > div:last-child {
-    order: 4;
-    padding: 8px 10px !important;
-    min-height: 48px;
-  }
-
-  .app-sidebar > div:nth-last-child(2),
-  .app-sidebar > div:last-child {
-    flex-shrink: 0;
-  }
-
   .app-main {
     min-width: 0 !important;
     min-height: 0 !important;
@@ -251,8 +257,8 @@ body {
   }
 
   .app-main > div {
-    padding: 16px !important;
-    gap: 16px !important;
+    padding: 14px !important;
+    gap: 14px !important;
     min-width: 0 !important;
   }
 
@@ -517,21 +523,21 @@ body {
     padding: 8px !important;
   }
 
-  .app-topbar > div:first-child {
+  .topbar-breadcrumb {
     font-size: 11px !important;
   }
 
-  .app-topbar > div:last-child {
+  .topbar-actions {
     gap: 4px !important;
   }
 
-  .app-topbar > div:last-child > div,
-  .app-topbar > div:last-child > button {
+  .topbar-actions > div,
+  .topbar-actions > button {
     padding: 5px 8px !important;
     font-size: 10px !important;
   }
 
-  .app-sidebar > div:first-child {
+  .sidebar-brand {
     padding-left: 8px !important;
   }
 
