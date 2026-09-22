@@ -251,8 +251,8 @@ body {
   }
 
   .app-main > div {
-    padding: 16px !important;
-    gap: 16px !important;
+    padding: 12px !important;
+    gap: 12px !important;
   }
 
   .app-main .flex.gap-1,
@@ -291,12 +291,24 @@ body {
     line-height: 1.15;
   }
 
+  .app-main h2 {
+    font-size: 20px !important;
+    line-height: 1.2;
+  }
+
+  .app-main p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .app-main .flex.items-center.justify-between {
     flex-wrap: wrap;
   }
 
   .app-main button {
     min-height: 38px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .app-main form button,
@@ -402,6 +414,21 @@ body {
   .app-main form {
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  .app-main [style*="padding: '24px"],
+  .app-main [style*="padding: '28px"],
+  .app-main [style*="padding: '32px"] {
+    padding: 16px !important;
+  }
+
+  .app-main .grid.gap-4,
+  .app-main .grid.gap-5 {
+    gap: 12px !important;
+  }
+
+  .app-sidebar .app-sidebar-profile {
+    margin-bottom: 8px !important;
   }
 
   .personnel-login-shell {
