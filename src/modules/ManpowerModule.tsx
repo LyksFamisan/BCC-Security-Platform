@@ -73,12 +73,14 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
   const { activities, sessions, duty, incidentReports, equipmentFaults, isLive, lastUpdated, addActivity } = usePortalData()
   const [tab, setTab] = useState<Tab>('roster')
   const [search, setSearch] = useState('')
+  const [selectedGuardId, setSelectedGuardId] = useState<string | null>(null)
 
   const filtered = guards.filter(g =>
     g.name.toLowerCase().includes(search.toLowerCase()) ||
     g.id.toLowerCase().includes(search.toLowerCase()) ||
     g.detachment.toLowerCase().includes(search.toLowerCase())
   )
+  const selectedGuard = guards.find(guard => guard.id === selectedGuardId)
 
   const downloadManpower = () => downloadCsv('bcc-cat-manpower-roster.csv', ['Guard ID', 'Name', 'Rank', 'Detachment', 'Site', 'Shift', 'Status'], guards.map(g => [g.id, g.name, g.rank, g.detachment, g.site, g.shift, g.status]))
 
@@ -163,6 +165,7 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
             <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted }}>{filtered.length} records</span>
             <button type="button" onClick={downloadManpower} style={{ marginLeft: 'auto', background: '#1976b9', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Download CSV</button>
           </div>
+          {selectedGuard && <div style={{ background: L.card, border: `1px solid #1976b9`, borderRadius: 10, padding: '14px 18px', marginBottom: 12, boxShadow: L.shadow }}><div className="flex items-center justify-between"><div><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>{selectedGuard.name} · {selectedGuard.id}</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 4 }}>{selectedGuard.rank} · {selectedGuard.site} · {selectedGuard.shift} shift</div></div><button type="button" onClick={() => setSelectedGuardId(null)} style={{ border: 0, background: 'transparent', color: L.muted, cursor: 'pointer', fontSize: 18 }}>×</button></div><div className="flex gap-3" style={{ marginTop: 10, flexWrap: 'wrap' }}><Badge status={selectedGuard.status} /><span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>License: {selectedGuard.license}</span><span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>Certifications: {selectedGuard.cert.join(', ')}</span></div></div>}
           <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
             <div className="grid px-5 py-3" style={{ gridTemplateColumns: '90px 1fr 110px 120px 70px 90px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
               {['Guard ID', 'Name / Rank', 'Detachment', 'Site', 'Shift', 'Status'].map(h => (
@@ -173,7 +176,8 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
               <div
                 key={g.id}
                 className="grid px-5 py-3"
-                style={{ gridTemplateColumns: '90px 1fr 110px 120px 70px 90px', borderBottom: i < filtered.length - 1 ? `1px solid ${L.divider}` : 'none', cursor: 'default', alignItems: 'center' }}
+                style={{ gridTemplateColumns: '90px 1fr 110px 120px 70px 90px', borderBottom: i < filtered.length - 1 ? `1px solid ${L.divider}` : 'none', cursor: 'pointer', alignItems: 'center' }}
+                onClick={() => setSelectedGuardId(g.id)}
                 onMouseEnter={e => (e.currentTarget.style.background = L.rowHover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >

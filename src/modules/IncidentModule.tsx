@@ -199,6 +199,7 @@ export default function IncidentModule({ canEdit = false, canReport = false }: {
                   background: i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.02)',
                   cursor: 'pointer',
                 }}
+                onClick={() => openCase(inc.id)}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                 onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.02)')}
               >

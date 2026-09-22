@@ -41,6 +41,9 @@ export type DutyRecord = {
   checkOutPhotoAt?: string
 }
 
+export type ManagedUser = { id: string; name: string; email: string; role: string; status: 'Active' | 'Inactive'; lastLogin: string }
+export type ApprovalRequest = { id: string; requester: string; type: string; detail: string; status: 'Pending' | 'Approved' | 'Rejected' }
+
 export type SharedPortalData = {
   activities: PortalActivity[]
   sessions: PortalSession[]
@@ -48,6 +51,8 @@ export type SharedPortalData = {
   incidentReports: number
   incidentHistory: IncidentRecord[]
   equipmentFaults: number
+  managedUsers: ManagedUser[]
+  approvalRequests: ApprovalRequest[]
 }
 
 type PortalDataContextValue = {
@@ -57,6 +62,8 @@ type PortalDataContextValue = {
   incidentReports: number
   incidentHistory: IncidentRecord[]
   equipmentFaults: number
+  managedUsers: ManagedUser[]
+  approvalRequests: ApprovalRequest[]
   lastUpdated: string | null
   isLive: boolean
   addActivity: (source: string, type: string, message: string) => void
@@ -65,6 +72,9 @@ type PortalDataContextValue = {
   recordIncident: () => void
   addIncidentRecord: (record: Omit<IncidentRecord, 'id' | 'createdAt' | 'status'>) => void
   recordEquipmentFault: () => void
+  createManagedUser: (user: Omit<ManagedUser, 'id' | 'lastLogin'>) => void
+  updateManagedUser: (id: string, changes: Partial<ManagedUser>) => void
+  resolveApprovalRequest: (id: string, status: 'Approved' | 'Rejected') => void
   clearActivities: () => void
 }
 
@@ -74,6 +84,18 @@ const PHOTO_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const PortalDataContext = createContext<PortalDataContextValue | null>(null)
 
 const defaultDuty: DutyRecord = { checkedIn: false, checkInTime: '', checkOutTime: '' }
+const defaultManagedUsers: ManagedUser[] = [
+  { id: 'USR-001', name: 'Gen. R. Santos', email: 'rsantos@bcccat.com', role: 'Executive', status: 'Active', lastLogin: '2h ago' },
+  { id: 'USR-002', name: 'Maj. D. Cruz', email: 'dcruz@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '5h ago' },
+  { id: 'USR-003', name: 'Cpt. L. Reyes', email: 'lreyes@bcccat.com', role: 'Incident Manager', status: 'Active', lastLogin: '1d ago' },
+  { id: 'USR-004', name: 'Pfc. J. Dela Cruz', email: 'jdelacruz@bcccat.com', role: 'Guard', status: 'Active', lastLogin: '30m ago' },
+  { id: 'USR-005', name: 'Pfc. M. Santos', email: 'msantos@bcccat.com', role: 'Guard', status: 'Inactive', lastLogin: '14d ago' },
+  { id: 'USR-006', name: 'Lt. R. Garcia', email: 'rgarcia@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '3h ago' },
+]
+const defaultApprovalRequests: ApprovalRequest[] = [
+  { id: 'REQ-1042', requester: 'Pfc. M. Santos', type: 'New guard account', detail: 'Guard access for NCR-02 deployment', status: 'Pending' },
+  { id: 'REQ-1043', requester: 'Maj. D. Cruz', type: 'Role change', detail: 'Operations Staff · Tactical Room access', status: 'Pending' },
+]
 
 function pruneDutyPhotos(duty: DutyRecord): DutyRecord {
   const nextDuty = { ...duty }
@@ -94,7 +116,7 @@ function pruneDutyPhotos(duty: DutyRecord): DutyRecord {
 function readStoredData(): SharedPortalData & { updatedAt: string | null } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
+    if (!saved) return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, managedUsers: defaultManagedUsers, approvalRequests: defaultApprovalRequests, updatedAt: null }
     const parsed = JSON.parse(saved)
     const storedDuty = parsed.duty ?? defaultDuty
     const now = new Date().toISOString()
@@ -103,9 +125,9 @@ function readStoredData(): SharedPortalData & { updatedAt: string | null } {
       checkInPhotoAt: storedDuty.checkInPhoto && !storedDuty.checkInPhotoAt ? now : storedDuty.checkInPhotoAt,
       checkOutPhotoAt: storedDuty.checkOutPhoto && !storedDuty.checkOutPhotoAt ? now : storedDuty.checkOutPhotoAt,
     }
-    return { activities: parsed.activities ?? [], sessions: parsed.sessions ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, updatedAt: parsed.updatedAt ?? null }
+    return { activities: parsed.activities ?? [], sessions: parsed.sessions ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, managedUsers: parsed.managedUsers ?? defaultManagedUsers, approvalRequests: parsed.approvalRequests ?? defaultApprovalRequests, updatedAt: parsed.updatedAt ?? null }
   } catch {
-    return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, updatedAt: null }
+    return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, managedUsers: defaultManagedUsers, approvalRequests: defaultApprovalRequests, updatedAt: null }
   }
 }
 
@@ -117,6 +139,8 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
   const [incidentReports, setIncidentReports] = useState(initialData.incidentReports)
   const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>(initialData.incidentHistory)
   const [equipmentFaults, setEquipmentFaults] = useState(initialData.equipmentFaults)
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>(initialData.managedUsers)
+  const [approvalRequests, setApprovalRequests] = useState<ApprovalRequest[]>(initialData.approvalRequests)
   const [lastUpdated, setLastUpdated] = useState<string | null>(initialData.updatedAt)
   const serializedRef = useRef(JSON.stringify(initialData))
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -129,11 +153,11 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     }
     const updatedAt = new Date().toISOString()
     setLastUpdated(updatedAt)
-    const data = { activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, updatedAt }
+    const data = { activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, managedUsers, approvalRequests, updatedAt }
     serializedRef.current = JSON.stringify(data)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     channelRef.current?.postMessage(data)
-  }, [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults])
+  }, [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, managedUsers, approvalRequests])
 
   useEffect(() => {
     const retentionCheck = window.setInterval(() => {
@@ -158,6 +182,8 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
       setIncidentReports(data.incidentReports ?? 0)
       setIncidentHistory(data.incidentHistory ?? [])
       setEquipmentFaults(data.equipmentFaults ?? 0)
+      setManagedUsers(data.managedUsers ?? defaultManagedUsers)
+      setApprovalRequests(data.approvalRequests ?? defaultApprovalRequests)
       setLastUpdated(data.updatedAt)
     }
     const syncStorage = (event: StorageEvent) => {
@@ -189,6 +215,8 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     incidentReports,
     incidentHistory,
     equipmentFaults,
+    managedUsers,
+    approvalRequests,
     lastUpdated,
     isLive: true,
     addActivity(source, type, message) {
@@ -215,10 +243,19 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     recordEquipmentFault() {
       setEquipmentFaults(current => current + 1)
     },
+    createManagedUser(user) {
+      setManagedUsers(current => [...current, { ...user, id: `USR-${String(current.length + 1).padStart(3, '0')}`, lastLogin: 'Never' }])
+    },
+    updateManagedUser(id, changes) {
+      setManagedUsers(current => current.map(user => user.id === id ? { ...user, ...changes } : user))
+    },
+    resolveApprovalRequest(id, status) {
+      setApprovalRequests(current => current.map(request => request.id === id ? { ...request, status } : request))
+    },
     clearActivities() {
       setActivities([])
     },
-  }), [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, lastUpdated])
+  }), [activities, sessions, duty, incidentReports, incidentHistory, equipmentFaults, managedUsers, approvalRequests, lastUpdated])
 
   return <PortalDataContext.Provider value={value}>{children}</PortalDataContext.Provider>
 }

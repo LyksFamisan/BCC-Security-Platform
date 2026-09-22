@@ -62,14 +62,12 @@ const initialApprovalRequests = [
 ]
 
 export default function AdminModule() {
-  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults, addActivity } = usePortalData()
+  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults, addActivity, managedUsers: adminUsers, approvalRequests, createManagedUser, updateManagedUser, resolveApprovalRequest } = usePortalData()
   const [tab, setTab] = useState<AdminTab>('users')
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(initialUsers)
   const [search, setSearch] = useState('')
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Guard' })
-  const [approvalRequests, setApprovalRequests] = useState(initialApprovalRequests)
   const [feedback, setFeedback] = useState('')
 
   const filteredUsers = adminUsers.filter(u =>
@@ -117,8 +115,7 @@ export default function AdminModule() {
 
   const addUser = (event: React.FormEvent) => {
     event.preventDefault()
-    const id = `USR-${String(adminUsers.length + 1).padStart(3, '0')}`
-    setAdminUsers(current => [...current, { ...newUser, id, status: 'Active', lastLogin: 'Never' }])
+    createManagedUser({ ...newUser, status: 'Active' })
     setNewUser({ name: '', email: '', role: 'Guard' })
     setShowAddUser(false)
     addActivity('Administrator', 'USER_CREATED', `${newUser.name} added as ${newUser.role}`)
@@ -239,13 +236,13 @@ export default function AdminModule() {
                 <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13, color: L.heading }}>{u.name}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle }}>{u.id}</div>
               </div>
-              {editingUser === u.id ? <input value={u.email} onChange={event => setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, email: event.target.value } : user))} style={{ width: '100%', border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }} /> : <span style={{ fontFamily: 'Inter', fontSize: 13, color: L.body }}>{u.email}</span>}
-              {editingUser === u.id ? <select value={u.role} onChange={event => setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, role: event.target.value } : user))} style={{ border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select> : <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>}
+              {editingUser === u.id ? <input value={u.email} onChange={event => updateManagedUser(u.id, { email: event.target.value })} style={{ width: '100%', border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }} /> : <span style={{ fontFamily: 'Inter', fontSize: 13, color: L.body }}>{u.email}</span>}
+              {editingUser === u.id ? <select value={u.role} onChange={event => updateManagedUser(u.id, { role: event.target.value })} style={{ border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select> : <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>}
               <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: u.status === 'Active' ? '#16a34a' : L.muted, background: u.status === 'Active' ? 'rgba(22,163,74,0.1)' : 'rgba(107,114,128,0.1)', borderRadius: 20, padding: '3px 10px', display: 'inline-block' }}>{u.status}</span>
               <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.subtle }}>{u.lastLogin}</span>
               <div className="flex gap-2">
                 <button onClick={() => { setEditingUser(editingUser === u.id ? null : u.id); setFeedback(editingUser === u.id ? `${u.name} changes saved.` : `Editing ${u.name}.`) }} style={{ fontFamily: 'Inter', fontSize: 11, color: ACC, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{editingUser === u.id ? 'Save' : 'Edit'}</button>
-                <button onClick={() => { setAdminUsers(current => current.map(user => user.id === u.id ? { ...user, status: user.status === 'Active' ? 'Inactive' : 'Active' } : user)); setFeedback(`${u.name} access ${u.status === 'Active' ? 'disabled' : 'enabled'}.`) }} style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{u.status === 'Active' ? 'Disable' : 'Enable'}</button>
+                <button onClick={() => { updateManagedUser(u.id, { status: u.status === 'Active' ? 'Inactive' : 'Active' }); setFeedback(`${u.name} access ${u.status === 'Active' ? 'disabled' : 'enabled'}.`) }} style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{u.status === 'Active' ? 'Disable' : 'Enable'}</button>
               </div>
             </div>
           ))}
@@ -265,8 +262,8 @@ export default function AdminModule() {
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.body, marginTop: 4 }}>{request.requester} · {request.detail}</div>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setApprovalRequests(current => current.filter(item => item.id !== request.id)); addActivity('Administrator', 'REQUEST_APPROVED', `${request.id} approved`); setFeedback(`${request.id} approved.`) }} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Approve</button>
-                <button type="button" onClick={() => { setApprovalRequests(current => current.filter(item => item.id !== request.id)); addActivity('Administrator', 'REQUEST_REJECTED', `${request.id} rejected`); setFeedback(`${request.id} rejected.`) }} style={{ background: 'transparent', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Reject</button>
+                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Approved'); addActivity('Administrator', 'REQUEST_APPROVED', `${request.id} approved`); setFeedback(`${request.id} approved.`) }} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Approve</button>
+                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Rejected'); addActivity('Administrator', 'REQUEST_REJECTED', `${request.id} rejected`); setFeedback(`${request.id} rejected.`) }} style={{ background: 'transparent', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Reject</button>
               </div>
             </div>
           ))}

@@ -88,8 +88,10 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
   const [faultSubmitted, setFaultSubmitted] = useState(false)
   const [faultAsset, setFaultAsset] = useState('')
   const [faultDescription, setFaultDescription] = useState('')
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
 
   const downloadEquipment = () => downloadCsv('bcc-cat-equipment-inventory.csv', ['Asset ID', 'Model', 'Serial', 'Assigned To', 'Site', 'Status'], [...firearms.map(item => [item.id, item.model, item.serial, item.assignee, item.site, item.status]), ...radios.map(item => [item.id, item.model, item.serial, item.assignee, item.site, item.status])])
+  const selectedAsset = [...firearms, ...radios].find(asset => asset.id === selectedAssetId)
 
   return (
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
@@ -138,6 +140,8 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
         </div>
       </div>
 
+      {selectedAsset && <div style={{ background: L.card, border: `1px solid #1976b9`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}><div className="flex items-center justify-between"><div><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>{selectedAsset.id} · {selectedAsset.model}</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 4 }}>Serial {selectedAsset.serial} · Assigned to {selectedAsset.assignee} · {selectedAsset.site}</div></div><button type="button" onClick={() => setSelectedAssetId(null)} style={{ border: 0, background: 'transparent', color: L.muted, cursor: 'pointer', fontSize: 18 }}>×</button></div><div style={{ marginTop: 9 }}><Badge status={selectedAsset.status} /></div></div>}
+
       {tab === 'inventory' && (
         <div className="flex flex-col gap-5">
           <div>
@@ -152,7 +156,8 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
                 <div
                   key={f.id}
                   className="grid px-5 py-3"
-                  style={{ gridTemplateColumns: '80px 160px 160px 60px 160px 100px 100px', borderBottom: i < firearms.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center' }}
+                  style={{ gridTemplateColumns: '80px 160px 160px 60px 160px 100px 100px', borderBottom: i < firearms.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => setSelectedAssetId(f.id)}
                   onMouseEnter={e => (e.currentTarget.style.background = L.rowHover)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
@@ -183,7 +188,8 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
                 <div
                   key={r.id}
                   className="grid px-5 py-3"
-                  style={{ gridTemplateColumns: '80px 200px 160px 160px 100px 100px', borderBottom: i < radios.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center' }}
+                  style={{ gridTemplateColumns: '80px 200px 160px 160px 100px 100px', borderBottom: i < radios.length - 1 ? `1px solid ${L.divider}` : 'none', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => setSelectedAssetId(r.id)}
                   onMouseEnter={e => (e.currentTarget.style.background = L.rowHover)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
