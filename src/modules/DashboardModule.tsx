@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { jsPDF } from 'jspdf'
 import { usePortalData } from '../state/PortalDataContext'
 
 const L = {
@@ -37,6 +38,48 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
   const [enabledKpis, setEnabledKpis] = useState(['roster', 'sla', 'detachments', 'critical'])
   const [acknowledged, setAcknowledged] = useState<string[]>([])
   const [executiveReportRunAt, setExecutiveReportRunAt] = useState<string | null>(null)
+
+  const downloadExecutiveReport = () => {
+    const generatedAt = executiveReportRunAt ?? new Date().toISOString()
+    const pdf = new jsPDF()
+    pdf.setFillColor(15, 23, 42)
+    pdf.rect(0, 0, 210, 34, 'F')
+    pdf.setTextColor(255, 255, 255)
+    pdf.setFontSize(18)
+    pdf.text('BCC/CAT Security Group', 16, 15)
+    pdf.setFontSize(11)
+    pdf.text('Executive Operations Report', 16, 24)
+    pdf.setTextColor(17, 24, 39)
+    pdf.setFontSize(10)
+    pdf.text(`Generated: ${new Date(generatedAt).toLocaleString('en-PH', { hour12: false })}`, 16, 47)
+    pdf.setFontSize(14)
+    pdf.text('Operational Summary', 16, 62)
+    pdf.setFontSize(11)
+    pdf.text(`Active guard roster: 1,142 / 1,160`, 20, 74)
+    pdf.text(`Client service level: ${slaActual.toFixed(2)}% (target ${slaTarget.toFixed(2)}%)`, 20, 83)
+    pdf.text(`Active detachments: 38 / 38`, 20, 92)
+    pdf.text(`Critical dispatches: 03`, 20, 101)
+    pdf.text(`Shared incident reports: ${incidentReports}`, 20, 110)
+    pdf.text(`Shared equipment issues: ${equipmentFaults}`, 20, 119)
+    pdf.setFontSize(14)
+    pdf.text('Detachment Deployment', 16, 140)
+    pdf.setFontSize(10)
+    detachments.forEach((detachment, index) => {
+      const y = 152 + index * 10
+      pdf.text(`${detachment.name} · ${detachment.client} · ${detachment.deployed}/${detachment.required} · ${detachment.status}`, 20, y)
+    })
+    pdf.setFontSize(14)
+    pdf.text('Escalations', 16, 204)
+    pdf.setFontSize(10)
+    escalations.forEach((alert, index) => {
+      pdf.text(`${alert.time} · ${alert.level} · ${alert.title} · ${alert.site}`, 20, 216 + index * 10)
+    })
+    pdf.setFontSize(9)
+    pdf.setTextColor(100, 116, 139)
+    pdf.text('Confidential operational report', 16, 280)
+    pdf.save(`bcc-cat-executive-report-${new Date(generatedAt).toISOString().slice(0, 10)}.pdf`)
+    addActivity('Operations Dashboard', 'EXECUTIVE_REPORT_DOWNLOAD', 'Downloaded Executive Report PDF')
+  }
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 60000)
     return () => clearInterval(t)
@@ -231,7 +274,7 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
             Run Executive Report
           </button>
         </div>
-        {executiveReportRunAt && <div style={{ marginTop: 8, fontFamily: 'Inter', fontSize: 11, color: '#16a34a', textAlign: 'right' }}>Report generated · {new Date(executiveReportRunAt).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>}
+        {executiveReportRunAt && <div className="flex items-center justify-end gap-3" style={{ marginTop: 8 }}><span style={{ fontFamily: 'Inter', fontSize: 11, color: '#16a34a' }}>Report generated · {new Date(executiveReportRunAt).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span><button type="button" onClick={downloadExecutiveReport} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#fff', background: '#F06522', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>Download PDF</button></div>}
       </div>
 
       {reportView === 'management' && (
