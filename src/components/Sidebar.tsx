@@ -228,7 +228,7 @@ export default function Sidebar({
       </div>
 
       <div
-        className="flex items-center gap-3 px-4 py-3"
+        className="app-sidebar-profile flex items-center gap-3 px-4 py-3"
         style={{ borderTop: '1px solid rgba(148,163,184,0.12)', background: 'rgba(15,23,42,0.2)' }}
       >
         <div
@@ -244,11 +244,11 @@ export default function Sidebar({
             flexShrink: 0,
           }}
         >
-          <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#e0f2fe' }}>{role === 'guard' ? 'JR' : role === 'operations' ? 'AR' : 'GS'}</span>
+          <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#e0f2fe' }}>GS</span>
         </div>
         <div>
-          <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{role === 'guard' ? 'Pfc. J. Reyes' : role === 'operations' ? 'A. Reyes' : 'Gen. R. Santos'}</div>
-          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#94a3b8' }}>{role === 'guard' ? 'Security Personnel' : role === 'operations' ? 'Detachment Staff' : 'Chief of Operations'}</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Gen. R. Santos</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#94a3b8' }}>Chief of Operations</div>
         </div>
       </div>
     </aside>

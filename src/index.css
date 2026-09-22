@@ -223,6 +223,14 @@ body {
     margin: 8px 10px !important;
   }
 
+  .app-sidebar-profile {
+    order: 3;
+    width: calc(100% - 20px);
+    margin: 8px 10px 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px;
+  }
+
   .app-main {
     min-width: 0 !important;
     min-height: 0 !important;
