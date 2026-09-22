@@ -85,7 +85,7 @@ function AppContent() {
       <div className="app-content flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
         <Sidebar darkMode={darkMode} active={safeActive} onChange={setActive} role={role} allowed={allowed} />
         <main className={`app-main flex-1 overflow-auto ${darkMode ? 'theme-dark' : 'theme-light'}`} style={{ background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.88), rgba(20, 13, 48, 0.82)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(239,249,255,0.90) 0%, rgba(220,241,252,0.78) 100%)' }}>
-          {safeActive === 'dashboard' && <DashboardModule canEdit={role === 'admin'} />}
+          {safeActive === 'dashboard' && <DashboardModule canEdit={role === 'admin'} onNavigate={setActive} />}
           {safeActive === 'manpower' && <ManpowerModule canEdit={role === 'admin'} />}
           {safeActive === 'equipment' && <EquipmentModule canEdit={role === 'admin'} canReport={role === 'admin' || role === 'operations'} />}
           {safeActive === 'incidents' && <IncidentModule canEdit={role === 'admin' || role === 'operations'} canReport={role === 'admin' || role === 'operations'} />}

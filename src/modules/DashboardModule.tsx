@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import { usePortalData } from '../state/PortalDataContext'
+import { downloadCsv } from '../utils/download'
+import type { Module } from '../App'
 
 const L = {
   card: 'rgba(255,255,255,0.94)',
@@ -31,13 +33,40 @@ const escalations = [
 const slaTarget = 99.5
 const slaActual = 99.4
 
-export default function DashboardModule({ canEdit = false }: { canEdit?: boolean }) {
+export default function DashboardModule({ canEdit = false, onNavigate }: { canEdit?: boolean; onNavigate?: (module: Module) => void }) {
   const { addActivity, activities, sessions, duty, incidentReports, equipmentFaults, lastUpdated, isLive } = usePortalData()
   const [, setTick] = useState(0)
   const [reportView, setReportView] = useState<'operations' | 'management'>('management')
   const [enabledKpis, setEnabledKpis] = useState(['roster', 'sla', 'detachments', 'critical'])
   const [acknowledged, setAcknowledged] = useState<string[]>([])
   const [executiveReportRunAt, setExecutiveReportRunAt] = useState<string | null>(null)
+  const [siteFilter, setSiteFilter] = useState('All Sites')
+
+  const totalPersonnel = 1160
+  const deployedPersonnel = 1142
+  const absentPersonnel = 12
+  const understaffedSites = detachments.filter(detachment => detachment.deployed < detachment.required).length
+  const personnelShortage = detachments.reduce((total, detachment) => total + Math.max(detachment.required - detachment.deployed, 0), 0)
+  const deploymentRate = Math.round((deployedPersonnel / totalPersonnel) * 1000) / 10
+  const attendanceRate = duty.checkedIn ? 98.4 : 97.8
+  const totalIncidents = 5 + incidentReports
+  const openIncidents = 2 + incidentReports
+  const criticalIncidents = 1
+  const underInvestigation = 1
+  const resolvedIncidents = Math.max(totalIncidents - openIncidents - underInvestigation, 0)
+  const totalEquipment = 1289
+  const assignedEquipment = 1204
+  const overdueMaintenance = 7
+  const underMaintenance = 12
+  const availableEquipment = totalEquipment - assignedEquipment - underMaintenance
+
+  const operationalAlerts = [
+    ...detachments.filter(detachment => detachment.deployed < detachment.required).map(detachment => ({ severity: 'HIGH', color: '#d97706', title: 'Understaffing detected', site: detachment.name, status: 'Open', action: 'View deployment', module: 'manpower' as Module })),
+    ...(absentPersonnel > 0 ? [{ severity: 'HIGH', color: '#dc2626', title: 'Absenteeism requiring review', site: 'All detachments', status: 'Open', action: 'View attendance', module: 'manpower' as Module }] : []),
+    ...(equipmentFaults > 0 ? [{ severity: 'HIGH', color: '#d97706', title: 'Equipment issues reported', site: 'Equipment Control', status: 'Open', action: 'View equipment', module: 'equipment' as Module }] : []),
+    { severity: 'CRITICAL', color: '#dc2626', title: 'Unscheduled firearms vault lockout', site: 'Manila Port Terminal 3', status: 'Under Investigation', action: 'View incident', module: 'incidents' as Module },
+  ]
+  const visibleDetachments = siteFilter === 'All Sites' ? detachments : detachments.filter(detachment => detachment.name === siteFilter || detachment.client === siteFilter)
 
   const downloadExecutiveReport = () => {
     const generatedAt = executiveReportRunAt ?? new Date().toISOString()
@@ -79,6 +108,22 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
     pdf.text('Confidential operational report', 16, 280)
     pdf.save(`bcc-cat-executive-report-${new Date(generatedAt).toISOString().slice(0, 10)}.pdf`)
     addActivity('Operations Dashboard', 'EXECUTIVE_REPORT_DOWNLOAD', 'Downloaded Executive Report PDF')
+  }
+
+  const downloadManagementReport = (period: string) => {
+    downloadCsv(`bcc-cat-${period.toLowerCase()}-executive-report.csv`, ['Metric', 'Value'], [
+      ['Total Security Personnel', totalPersonnel],
+      ['Deployment Rate', `${deploymentRate}%`],
+      ['Attendance Rate', `${attendanceRate}%`],
+      ['Total Equipment', totalEquipment],
+      ['Open Incidents', openIncidents],
+      ['Critical Incidents', criticalIncidents],
+      ['Understaffed Sites', understaffedSites],
+      ['Personnel Shortages', personnelShortage],
+      ['Fault / Defect Reports', equipmentFaults],
+      ['Overdue Maintenance', overdueMaintenance],
+    ])
+    addActivity('Operations Dashboard', 'EXECUTIVE_REPORT_DOWNLOAD', `${period} executive report downloaded`)
   }
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 60000)
@@ -153,9 +198,80 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
             {kpis.map(kpi => (
               <button key={kpi.id} type="button" onClick={() => toggleKpi(kpi.id)} style={{ fontFamily: 'Inter', fontSize: 11, color: enabledKpis.includes(kpi.id) ? '#1976b9' : L.subtle, background: enabledKpis.includes(kpi.id) ? 'rgba(25,118,185,0.08)' : 'transparent', border: `1px solid ${enabledKpis.includes(kpi.id) ? 'rgba(25,118,185,0.35)' : L.cardBorder}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer' }}>{kpi.label.replace('ACTIVE ', '').replace('CLIENT ', '')}</button>
             ))}
+            <select value={siteFilter} onChange={event => setSiteFilter(event.target.value)} aria-label="Filter by site or client" style={{ border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '5px 8px', fontFamily: 'Inter', fontSize: 11, color: L.body, background: '#fff' }}><option>All Sites</option>{detachments.flatMap(detachment => [detachment.name, detachment.client]).map(value => <option key={value}>{value}</option>)}</select>
           </div>
         </div>
       </div>
+
+      {reportView === 'management' && <div className="executive-management-content flex flex-col gap-5">
+        <div className="executive-kpi-grid grid gap-4">
+          {[
+            { label: 'TOTAL SECURITY PERSONNEL', value: totalPersonnel.toLocaleString(), detail: 'Approved roster', color: '#F06522', module: 'manpower' as Module },
+            { label: 'DEPLOYMENT RATE', value: `${deploymentRate}%`, detail: `${deployedPersonnel.toLocaleString()} deployed`, color: '#16a34a', module: 'manpower' as Module },
+            { label: 'ATTENDANCE RATE', value: `${attendanceRate}%`, detail: `${absentPersonnel} absent today`, color: '#1976b9', module: 'manpower' as Module },
+            { label: 'TOTAL EQUIPMENT', value: totalEquipment.toLocaleString(), detail: `${assignedEquipment.toLocaleString()} assigned`, color: '#7c3aed', module: 'equipment' as Module },
+            { label: 'OPEN INCIDENTS', value: String(openIncidents), detail: `${underInvestigation} under investigation`, color: '#d97706', module: 'incidents' as Module },
+            { label: 'CRITICAL INCIDENTS', value: String(criticalIncidents), detail: 'Requires immediate action', color: '#dc2626', module: 'incidents' as Module },
+          ].map(kpi => (
+            <button key={kpi.label} type="button" onClick={() => onNavigate?.(kpi.module)} className="executive-kpi-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow, textAlign: 'left', cursor: onNavigate ? 'pointer' : 'default' }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.muted, letterSpacing: '0.06em' }}>{kpi.label}</div>
+              <div style={{ fontFamily: 'Inter', fontWeight: 800, fontSize: 30, color: kpi.color, marginTop: 8 }}>{kpi.value}</div>
+              <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, marginTop: 4 }}>{kpi.detail}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="executive-two-column grid gap-4">
+          <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
+              <div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: L.heading }}>Management Site & Client Report</div><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>Deployment and service status by client location</div></div>
+              <button type="button" onClick={() => onNavigate?.('manpower')} style={{ border: 'none', background: 'transparent', color: '#F06522', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View detail</button>
+            </div>
+            <div className="executive-site-table" style={{ overflowX: 'auto' }}>
+              <div className="executive-site-grid" style={{ minWidth: 650, display: 'grid', gridTemplateColumns: '1.5fr 90px 90px 100px 120px', gap: 12, padding: '10px 20px', background: L.cardAlt, borderBottom: `1px solid ${L.divider}` }}>
+                {['Site / Client', 'Required', 'Deployed', 'Deployment', 'Service Status'].map(header => <span key={header} style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.muted }}>{header}</span>)}
+              </div>
+              {visibleDetachments.map(site => {
+                const percentage = Math.round((site.deployed / site.required) * 100)
+                return <button type="button" key={site.name} onClick={() => onNavigate?.('manpower')} className="executive-site-grid executive-site-row" style={{ minWidth: 650, width: '100%', display: 'grid', gridTemplateColumns: '1.5fr 90px 90px 100px 120px', gap: 12, padding: '13px 20px', border: 'none', borderBottom: `1px solid ${L.divider}`, background: 'transparent', textAlign: 'left', cursor: onNavigate ? 'pointer' : 'default' }}>
+                  <span><strong style={{ display: 'block', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>{site.name}</strong><small style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>{site.client}</small></span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: L.body }}>{site.required}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: L.body }}>{site.deployed}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: percentage === 100 ? '#16a34a' : '#d97706' }}>{percentage}%</span>
+                  <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: site.statusColor }}>{site.status}</span>
+                </button>
+              })}
+            </div>
+          </div>
+
+          <div className="executive-summary-stack flex flex-col gap-4">
+            <div className="executive-summary-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: 13 }}><strong style={{ fontFamily: 'Inter', fontSize: 14, color: L.heading }}>Manpower Summary</strong><button type="button" onClick={() => onNavigate?.('manpower')} style={{ border: 0, background: 'transparent', color: '#1976b9', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Open module</button></div>
+              <div className="executive-summary-grid grid gap-2">{[['Total personnel', totalPersonnel.toLocaleString()], ['Currently deployed', deployedPersonnel.toLocaleString()], ['Absent', String(absentPersonnel)], ['Understaffed sites', String(understaffedSites)], ['Personnel shortages', String(personnelShortage)], ['Shift status', duty.checkedIn ? 'Active shift' : 'Day shift']].map(([label, value]) => <div key={label} style={{ background: L.cardAlt, borderRadius: 7, padding: '9px 10px' }}><div style={{ fontFamily: 'Inter', fontSize: 10, color: L.muted }}>{label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: L.heading, marginTop: 3 }}>{value}</div></div>)}</div>
+            </div>
+            <div className="executive-summary-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: 13 }}><strong style={{ fontFamily: 'Inter', fontSize: 14, color: L.heading }}>Equipment Summary</strong><button type="button" onClick={() => onNavigate?.('equipment')} style={{ border: 0, background: 'transparent', color: '#1976b9', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Open module</button></div>
+              <div className="executive-summary-grid grid gap-2">{[['Total assets', totalEquipment.toLocaleString()], ['Assigned', assignedEquipment.toLocaleString()], ['Available', String(availableEquipment)], ['Under maintenance', String(underMaintenance)], ['Fault / defect reports', String(equipmentFaults)], ['Overdue maintenance', String(overdueMaintenance)]].map(([label, value]) => <div key={label} style={{ background: L.cardAlt, borderRadius: 7, padding: '9px 10px' }}><div style={{ fontFamily: 'Inter', fontSize: 10, color: L.muted }}>{label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: L.heading, marginTop: 3 }}>{value}</div></div>)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="executive-two-column grid gap-4">
+          <div className="executive-summary-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 13 }}><strong style={{ fontFamily: 'Inter', fontSize: 14, color: L.heading }}>Incident Overview</strong><button type="button" onClick={() => onNavigate?.('incidents')} style={{ border: 0, background: 'transparent', color: '#1976b9', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Open module</button></div>
+            <div className="executive-summary-grid grid gap-2">{[['Total incidents', totalIncidents], ['Open incidents', openIncidents], ['Critical incidents', criticalIncidents], ['Under investigation', underInvestigation], ['Resolved incidents', resolvedIncidents], ['Incident trend', '↓ 12% vs Aug']].map(([label, value]) => <div key={label} style={{ background: L.cardAlt, borderRadius: 7, padding: '9px 10px' }}><div style={{ fontFamily: 'Inter', fontSize: 10, color: L.muted }}>{label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: label === 'Critical incidents' ? '#dc2626' : L.heading, marginTop: 3 }}>{value}</div></div>)}</div>
+          </div>
+          <div className="executive-summary-card" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '17px 18px', boxShadow: L.shadow }}>
+            <div style={{ marginBottom: 13 }}><strong style={{ fontFamily: 'Inter', fontSize: 14, color: L.heading }}>Reports</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>Generate management snapshots for distribution</div></div>
+            <div className="executive-report-actions flex gap-2" style={{ flexWrap: 'wrap' }}>{['Daily', 'Weekly', 'Monthly'].map(period => <button key={period} type="button" onClick={() => downloadManagementReport(period)} style={{ flex: '1 1 100px', minHeight: 40, background: '#1976b9', border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{period} Report</button>)}<button type="button" onClick={() => { setExecutiveReportRunAt(new Date().toISOString()); downloadExecutiveReport() }} style={{ flex: '1 1 100px', minHeight: 40, background: '#F06522', border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Export PDF</button><button type="button" onClick={() => downloadManagementReport('Executive')} style={{ flex: '1 1 100px', minHeight: 40, background: 'transparent', border: '1px solid #1976b9', borderRadius: 7, color: '#1976b9', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Export Excel</button></div>
+          </div>
+        </div>
+
+        <div className="executive-notifications" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}><div><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>Automated Notifications</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>Real-time operational alerts and escalation management</div></div><span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#16a34a' }}>LIVE</span></div>
+          {operationalAlerts.map(alert => <div key={`${alert.title}-${alert.site}`} className="executive-alert-row flex items-center gap-3" style={{ padding: '13px 20px', borderBottom: `1px solid ${L.divider}` }}><span style={{ minWidth: 68, fontFamily: 'Inter', fontSize: 10, fontWeight: 800, color: alert.color }}>{alert.severity}</span><div style={{ flex: 1 }}><div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: L.heading }}>{alert.title}</div><div style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted }}>{alert.site} · {new Date().toLocaleString('en-PH', { hour12: false })}</div></div><span style={{ fontFamily: 'Inter', fontSize: 10, color: alert.status === 'Open' ? alert.color : L.muted, fontWeight: 700 }}>{alert.status}</span><button type="button" onClick={() => onNavigate?.(alert.module)} style={{ minHeight: 36, border: `1px solid ${alert.color}`, background: 'transparent', color: alert.color, borderRadius: 6, padding: '6px 9px', fontFamily: 'Inter', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>View Details</button></div>)}
+        </div>
+      </div>}
 
       {reportView === 'operations' && <>
       {/* Main 2-col */}

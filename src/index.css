@@ -138,6 +138,18 @@ body {
   display: none;
 }
 
+.executive-kpi-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.executive-two-column {
+  grid-template-columns: 1.2fr 1fr;
+}
+
+.executive-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 720px) {
   html, body, #root {
     width: 100%;
@@ -403,6 +415,29 @@ body {
     min-height: 44px !important;
     white-space: normal;
     padding: 10px 16px !important;
+  }
+
+  .executive-kpi-grid,
+  .executive-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .executive-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .executive-management-content {
+    gap: 12px !important;
+  }
+
+  .executive-alert-row {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+  }
+
+  .executive-alert-row > div {
+    min-width: 0;
+    flex: 1 1 180px;
   }
 
   .tactical-module {
