@@ -31,6 +31,15 @@
 
 * { box-sizing: border-box; }
 
+button, a, input, select, textarea { font: inherit; }
+
+:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -215,6 +224,14 @@ body {
     grid-template-columns: 1fr !important;
   }
 
+  .app-main > div > div[style*="overflow: hidden"] {
+    overflow-x: auto !important;
+  }
+
+  .app-main > div > div[style*="overflow: hidden"] > .grid[style*="grid-template-columns"] {
+    min-width: 680px;
+  }
+
   .app-main table,
   .app-main [style*="overflow: 'hidden'"] {
     max-width: 100%;
@@ -238,6 +255,12 @@ body {
 
   .app-main button {
     min-height: 38px;
+  }
+
+  .app-main input,
+  .app-main select,
+  .app-main textarea {
+    font-size: 16px !important;
   }
 
   .personnel-dashboard-grid,
@@ -321,6 +344,15 @@ body {
 
   .personnel-duty-card > div:last-child > div:last-child > div {
     flex: 1 1 42%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
