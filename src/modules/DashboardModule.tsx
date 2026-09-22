@@ -97,9 +97,9 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
   }
 
   return (
-    <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
+    <div className={`dashboard-module p-6 flex flex-col gap-5 min-h-full ${reportView === 'management' ? 'dashboard-management-view' : 'dashboard-operations-view'}`} style={{ background: 'transparent' }}>
 
-      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}>
+      <div className="dashboard-connected-data" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}>
         <div className="flex items-center justify-between gap-3" style={{ marginBottom: 10 }}>
           <div>
             <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>Connected Operations Data</div>
@@ -125,7 +125,7 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
       </div>
 
       {/* KPI Row */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="dashboard-kpis grid gap-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {kpis.filter(k => enabledKpis.includes(k.id)).map((k) => (
           <div key={k.label} style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '20px 22px', boxShadow: L.shadow }}>
             <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 500, color: L.muted, letterSpacing: '0.06em', marginBottom: 14 }}>{k.label}</div>
@@ -141,8 +141,8 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
       </div>
 
       <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}>
-        <div className="flex items-center justify-between gap-4" style={{ flexWrap: 'wrap' }}>
-          <div className="flex items-center gap-2">
+        <div className="dashboard-view-controls flex items-center justify-between gap-4" style={{ flexWrap: 'wrap' }}>
+          <div className="dashboard-view-tabs flex items-center gap-2">
             <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Dashboard View</span>
             {(['operations', 'management'] as const).map(view => (
               <button key={view} type="button" onClick={() => { setReportView(view); addActivity('Operations Dashboard', 'VIEW', `Opened ${view === 'operations' ? 'Operations' : 'Executive'} dashboard view`) }} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{view === 'operations' ? 'Operations' : 'Executive Report'}</button>
@@ -157,8 +157,9 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
         </div>
       </div>
 
+      {reportView === 'operations' && <>
       {/* Main 2-col */}
-      <div className="grid gap-4 flex-1" style={{ gridTemplateColumns: '1fr 380px', alignItems: 'start' }}>
+      <div className="dashboard-operations-panels grid gap-4 flex-1" style={{ gridTemplateColumns: '1fr 380px', alignItems: 'start' }}>
 
         {/* Active Client Detachments */}
         <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>
@@ -248,7 +249,7 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
       </div>
 
       {/* SLA Bar */}
-      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '18px 24px', boxShadow: L.shadow }}>
+      <div className="dashboard-sla" style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '18px 24px', boxShadow: L.shadow }}>
         <div className="flex items-center justify-between gap-6">
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 14, color: L.heading }}>SLA Performance Threshold: {slaTarget.toFixed(2)}% Target</div>
@@ -277,6 +278,7 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
         </div>
         {executiveReportRunAt && <div className="flex items-center justify-end gap-3" style={{ marginTop: 8 }}><span style={{ fontFamily: 'Inter', fontSize: 11, color: '#16a34a' }}>Report generated · {new Date(executiveReportRunAt).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span><button type="button" onClick={downloadExecutiveReport} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#fff', background: '#F06522', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>Download PDF</button></div>}
       </div>
+      </>}
 
       {reportView === 'management' && (
         <div className="grid gap-4" style={{ gridTemplateColumns: '1.15fr 1fr' }}>

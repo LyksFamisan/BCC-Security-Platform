@@ -131,6 +131,13 @@ body {
   display: none;
 }
 
+.dashboard-management-view .dashboard-connected-data,
+.dashboard-management-view .dashboard-kpis,
+.dashboard-management-view .dashboard-operations-panels,
+.dashboard-management-view .dashboard-sla {
+  display: none;
+}
+
 @media (max-width: 720px) {
   html, body, #root {
     width: 100%;
@@ -374,6 +381,27 @@ body {
     flex: 0 0 auto;
     min-height: 44px !important;
     white-space: nowrap;
+    padding: 10px 16px !important;
+  }
+
+  .dashboard-view-controls {
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-view-tabs {
+    width: 100%;
+    overflow: visible;
+    flex-wrap: wrap;
+    padding: 2px 2px 8px;
+    gap: 8px !important;
+  }
+
+  .dashboard-view-tabs > button {
+    flex: 1 1 140px;
+    min-width: 0;
+    min-height: 44px !important;
+    white-space: normal;
     padding: 10px 16px !important;
   }
 
