@@ -121,23 +121,25 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
 
       {/* Tabs */}
       <div style={{ borderBottom: `1px solid ${L.divider}` }}>
-        <div className="manpower-tabs flex gap-1">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { setTab(t.id); addActivity('Detachment Staff', 'VIEW', `Opened manpower view: ${t.label}`) }}
-              className="theme-tab"
-              style={{
-                fontFamily: 'Inter', fontWeight: 500, fontSize: 13,
-                color: tab === t.id ? '#F06522' : L.shellMuted,
-                background: 'none', border: 'none',
-                borderBottom: tab === t.id ? '2px solid #F06522' : '2px solid transparent',
-                padding: '8px 16px', cursor: 'pointer', marginBottom: -1, transition: 'color 0.15s',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="manpower-tabs-viewport">
+          <div className="manpower-tabs flex gap-1">
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => { setTab(t.id); addActivity('Detachment Staff', 'VIEW', `Opened manpower view: ${t.label}`) }}
+                className="theme-tab"
+                style={{
+                  fontFamily: 'Inter', fontWeight: 500, fontSize: 13,
+                  color: tab === t.id ? '#F06522' : L.shellMuted,
+                  background: 'none', border: 'none',
+                  borderBottom: tab === t.id ? '2px solid #F06522' : '2px solid transparent',
+                  padding: '8px 16px', cursor: 'pointer', marginBottom: -1, transition: 'color 0.15s',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
