@@ -170,7 +170,7 @@ body {
   .app-sidebar {
     width: 100% !important;
     height: auto !important;
-    max-height: 170px;
+    max-height: none !important;
     overflow: hidden;
     border-right: 0 !important;
     border-bottom: 1px solid rgba(148,163,184,0.16);
@@ -205,14 +205,29 @@ body {
     white-space: nowrap;
   }
 
-  .app-sidebar > div:nth-last-child(-n+2) {
-    display: none !important;
+  .app-sidebar > div:nth-last-child(2),
+  .app-sidebar > div:last-child {
+    display: flex !important;
+    margin: 6px 10px !important;
+  }
+
+  .app-sidebar > div:nth-last-child(2) {
+    order: 3;
+  }
+
+  .app-sidebar > div:last-child {
+    order: 4;
+    padding: 8px 10px !important;
   }
 
   .app-main {
     min-width: 0 !important;
     width: 100% !important;
     overflow-x: hidden !important;
+  }
+
+  .app-main > * {
+    max-width: 100%;
   }
 
   .app-main > div {
@@ -253,6 +268,10 @@ body {
     flex-wrap: wrap;
   }
 
+  .app-main .flex.items-center.justify-between > * {
+    min-width: 0;
+  }
+
   .app-main button {
     min-height: 38px;
   }
@@ -276,10 +295,40 @@ body {
     width: min(100%, 180px) !important;
   }
 
+  .personnel-attendance-photos {
+    justify-content: center;
+  }
+
   .personnel-login-shell {
     display: block !important;
     min-height: 100dvh !important;
     overflow-y: auto !important;
+  }
+
+  .unified-login-shell {
+    min-height: 100dvh !important;
+    justify-content: flex-start !important;
+    overflow-y: auto !important;
+    padding: 76px 16px 32px !important;
+  }
+
+  .unified-login-shell > div:last-child {
+    max-width: 100% !important;
+  }
+
+  .unified-login-shell form {
+    gap: 12px !important;
+  }
+
+  .portal-home-shell {
+    min-height: 100dvh !important;
+    padding: 72px 16px 28px !important;
+    overflow-y: auto !important;
+  }
+
+  .portal-home-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 520px !important;
   }
 
   .personnel-login-brand {

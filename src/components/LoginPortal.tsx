@@ -146,7 +146,7 @@ function GuardLogin({ onBack, onLogin }: { onBack: () => void; onLogin: () => vo
 // ══════════════════════════════════════════════════════════════════════════════
 function OpsLogin({ onBack, onLogin, darkMode, onToggleTheme }: { onBack: () => void; onLogin: () => void; darkMode: boolean; onToggleTheme: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: darkMode ? "linear-gradient(160deg, rgba(8, 10, 24, 0.78), rgba(20, 13, 48, 0.9)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, #f4fbff 0%, #d9effc 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', padding: 24 }}>
+    <div className="unified-login-shell" style={{ minHeight: '100vh', background: darkMode ? "linear-gradient(160deg, rgba(8, 10, 24, 0.78), rgba(20, 13, 48, 0.9)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, #f4fbff 0%, #d9effc 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', padding: 24 }}>
       {/* Diagonal stripe accent */}
       <div style={{ position: 'absolute', top: 0, right: 0, width: 320, height: '100%', background: 'linear-gradient(135deg, transparent 40%, rgba(240,101,34,0.07) 100%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: 0, left: 0, width: 180, height: 180, background: 'radial-gradient(circle, rgba(240,101,34,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -409,7 +409,7 @@ export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHo
   if (selected) return <UnifiedLogin darkMode={darkMode} onToggleTheme={onToggleTheme} onBack={goBack} onBackHome={onBackHome} onLogin={onLogin} />
 
   return (
-    <div style={{ minHeight: '100vh', background: darkMode ? "linear-gradient(160deg, rgba(8, 10, 24, 0.78), rgba(20, 13, 48, 0.9)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, #f4fbff 0%, #d9effc 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '52px 24px 40px', position: 'relative', overflow: 'hidden' }}>
+    <div className="portal-home-shell" style={{ minHeight: '100vh', background: darkMode ? "linear-gradient(160deg, rgba(8, 10, 24, 0.78), rgba(20, 13, 48, 0.9)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, #f4fbff 0%, #d9effc 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '52px 24px 40px', position: 'relative', overflow: 'hidden' }}>
       <button type="button" onClick={onBackHome} style={{ position: 'absolute', top: 22, left: 26, zIndex: 2, fontFamily: 'Inter', fontSize: 12, color: darkMode ? '#dfe7ff' : '#52718b', background: 'none', border: 'none', cursor: 'pointer' }}>⌂ Home</button>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 10%, rgba(76,169,223,0.22), transparent 26%), radial-gradient(circle at 80% 18%, rgba(25,118,185,0.12), transparent 24%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #7bc5ec, #1976b9, #4ca9df)' }} />
@@ -437,7 +437,7 @@ export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHo
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, width: '100%', maxWidth: 1120, position: 'relative', zIndex: 1 }}>
+      <div className="portal-home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, width: '100%', maxWidth: 1120, position: 'relative', zIndex: 1 }}>
         {cards.map(c => (
           <button key={c.id} onClick={() => setSelected(c.id)}
             style={{ background: darkMode ? 'rgba(15,23,42,0.82)' : 'rgba(255,255,255,0.82)', border: darkMode ? '1px solid rgba(148,163,184,0.16)' : '1px solid rgba(54,126,171,0.18)', borderRadius: 16, padding: '26px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', boxShadow: darkMode ? '0 18px 40px rgba(2,6,23,0.36)' : '0 14px 30px rgba(54,126,171,0.16)' }}
