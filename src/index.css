@@ -449,7 +449,20 @@ body {
   .splash-logos {
     gap: 10px !important;
     margin-bottom: 20px !important;
-    transform: scale(0.72);
+    transform: none !important;
+    width: 100%;
+  }
+
+  .splash-logos > div {
+    width: 58px !important;
+    height: 58px !important;
+    flex: 0 0 58px !important;
+  }
+
+  .splash-logos > div:nth-child(2) {
+    width: 2px !important;
+    flex: 0 0 2px !important;
+    height: 42px !important;
   }
 
   .splash-content > div[style*="letterSpacing: '0.22em'"] {

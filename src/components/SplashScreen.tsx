@@ -77,7 +77,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       <div className="splash-content" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
 
         {/* Logos */}
-        <div className="splash-logos" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 36 }}>
+        <div className="splash-logos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', gap: 16, marginBottom: 36 }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: '0 0 0 2px rgba(240,101,34,0.4), 0 8px 32px rgba(240,101,34,0.3)' }}>
             <img src="/assets/CAT_logo.jpg" alt="CAT" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
