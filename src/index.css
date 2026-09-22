@@ -324,7 +324,12 @@ body {
     min-height: 100dvh !important;
     justify-content: flex-start !important;
     overflow-y: auto !important;
-    padding: 76px 16px 32px !important;
+    padding: calc(96px + env(safe-area-inset-top)) 16px 32px !important;
+  }
+
+  .unified-login-shell > div:first-child,
+  .portal-home-shell > button {
+    z-index: 20 !important;
   }
 
   .unified-login-shell > div:last-child {
@@ -337,8 +342,17 @@ body {
 
   .portal-home-shell {
     min-height: 100dvh !important;
-    padding: 72px 16px 28px !important;
+    padding: calc(104px + env(safe-area-inset-top)) 16px 28px !important;
     overflow-y: auto !important;
+  }
+
+  .portal-home-shell > button:first-of-type {
+    top: calc(14px + env(safe-area-inset-top)) !important;
+    left: 14px !important;
+    padding: 8px 10px !important;
+    background: rgba(8, 18, 40, 0.82) !important;
+    border: 1px solid rgba(147,197,253,0.28) !important;
+    border-radius: 8px !important;
   }
 
   .portal-home-grid {
