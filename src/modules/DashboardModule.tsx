@@ -34,7 +34,7 @@ const slaActual = 99.4
 export default function DashboardModule({ canEdit = false }: { canEdit?: boolean }) {
   const { addActivity, activities, sessions, duty, incidentReports, equipmentFaults, lastUpdated, isLive } = usePortalData()
   const [, setTick] = useState(0)
-  const [reportView, setReportView] = useState<'operations' | 'management'>('operations')
+  const [reportView, setReportView] = useState<'operations' | 'management'>('management')
   const [enabledKpis, setEnabledKpis] = useState(['roster', 'sla', 'detachments', 'critical'])
   const [acknowledged, setAcknowledged] = useState<string[]>([])
   const [executiveReportRunAt, setExecutiveReportRunAt] = useState<string | null>(null)
@@ -144,7 +144,7 @@ export default function DashboardModule({ canEdit = false }: { canEdit?: boolean
         <div className="dashboard-view-controls flex items-center justify-between gap-4" style={{ flexWrap: 'wrap' }}>
           <div className="dashboard-view-tabs flex items-center gap-2">
             <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Dashboard View</span>
-            {(['operations', 'management'] as const).map(view => (
+            {(['management'] as const).map(view => (
               <button key={view} type="button" onClick={() => { setReportView(view); addActivity('Operations Dashboard', 'VIEW', `Opened ${view === 'operations' ? 'Operations' : 'Executive'} dashboard view`) }} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{view === 'operations' ? 'Operations' : 'Executive Report'}</button>
             ))}
           </div>
