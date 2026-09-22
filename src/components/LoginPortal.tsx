@@ -403,7 +403,7 @@ interface Props {
 }
 
 export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHome }: Props) {
-  const [selected, setSelected] = useState<UserRole | null>(() => window.matchMedia('(max-width: 720px)').matches ? 'guard' : null)
+  const [selected, setSelected] = useState<UserRole | null>('guard')
   const goBack = () => setSelected(null)
 
   if (selected) return <UnifiedLogin darkMode={darkMode} onToggleTheme={onToggleTheme} onBack={goBack} onBackHome={onBackHome} onLogin={onLogin} />
