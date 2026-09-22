@@ -122,7 +122,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`flex flex-col shrink-0 ${darkMode ? 'theme-sidebar-dark' : ''}`}
+      className={`app-sidebar flex flex-col shrink-0 ${darkMode ? 'theme-sidebar-dark' : ''}`}
       style={{
         width: 228,
         background: 'linear-gradient(180deg, #d9effc 0%, #cbe8f8 100%)',

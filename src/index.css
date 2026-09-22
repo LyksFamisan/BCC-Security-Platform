@@ -119,6 +119,140 @@ body {
 }
 
 @media (max-width: 720px) {
+  .app-shell {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .app-content {
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .app-topbar {
+    height: auto !important;
+    min-height: 52px;
+    padding: 10px 12px !important;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .app-topbar > div:first-child {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .app-topbar > div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .app-topbar > div:last-child > div,
+  .app-topbar > div:last-child > button {
+    flex-shrink: 0;
+  }
+
+  .app-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 170px;
+    overflow: hidden;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(148,163,184,0.16);
+  }
+
+  .app-sidebar > div:first-child {
+    height: 48px !important;
+    padding: 6px 12px !important;
+  }
+
+  .app-sidebar > div:first-child img,
+  .app-sidebar > div:first-child > div {
+    transform: scale(0.82);
+    transform-origin: left center;
+  }
+
+  .app-sidebar nav {
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    flex: none !important;
+  }
+
+  .app-sidebar nav button {
+    width: auto !important;
+    min-width: max-content;
+    padding: 9px 12px !important;
+  }
+
+  .app-sidebar nav button span:last-child {
+    white-space: nowrap;
+  }
+
+  .app-sidebar > div:nth-last-child(-n+2) {
+    display: none !important;
+  }
+
+  .app-main {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-main > div {
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+
+  .app-main .grid[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-main table,
+  .app-main [style*="overflow: 'hidden'"] {
+    max-width: 100%;
+  }
+
+  .app-main input,
+  .app-main select,
+  .app-main textarea {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .app-main h1 {
+    font-size: clamp(22px, 7vw, 30px) !important;
+    line-height: 1.15;
+  }
+
+  .app-main .flex.items-center.justify-between {
+    flex-wrap: wrap;
+  }
+
+  .app-main button {
+    min-height: 38px;
+  }
+
+  .personnel-dashboard-grid,
+  .personnel-duty-card {
+    width: 100% !important;
+  }
+
+  .personnel-attendance-gallery {
+    overflow: hidden;
+  }
+
+  .personnel-attendance-photos > div {
+    width: min(100%, 180px) !important;
+  }
+
   .personnel-login-shell {
     display: block !important;
     min-height: 100dvh !important;

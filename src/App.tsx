@@ -73,7 +73,7 @@ function AppContent() {
 
   return (
     <div
-      className="flex flex-col h-screen overflow-hidden"
+      className="app-shell flex flex-col h-screen overflow-hidden"
       style={{
         background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.78), rgba(20, 13, 48, 0.86)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(244,251,255,0.98) 0%, rgba(218,240,252,0.98) 100%)',
         border: darkMode ? '1px solid rgba(148,163,184,0.16)' : '1px solid rgba(54,126,171,0.16)',
@@ -81,9 +81,9 @@ function AppContent() {
       }}
     >
       <TopBar darkMode={darkMode} onToggleTheme={() => setDarkMode(value => !value)} section={meta.section} title={meta.title} onLogout={() => { setRole(null); setScreen('splash') }} />
-      <div className="flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
+      <div className="app-content flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
         <Sidebar darkMode={darkMode} active={safeActive} onChange={setActive} role={role} allowed={allowed} />
-        <main className={`flex-1 overflow-auto ${darkMode ? 'theme-dark' : 'theme-light'}`} style={{ background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.88), rgba(20, 13, 48, 0.82)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(239,249,255,0.90) 0%, rgba(220,241,252,0.78) 100%)' }}>
+        <main className={`app-main flex-1 overflow-auto ${darkMode ? 'theme-dark' : 'theme-light'}`} style={{ background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.88), rgba(20, 13, 48, 0.82)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(239,249,255,0.90) 0%, rgba(220,241,252,0.78) 100%)' }}>
           {safeActive === 'dashboard' && <DashboardModule canEdit={role === 'admin'} />}
           {safeActive === 'manpower' && <ManpowerModule canEdit={role === 'admin'} />}
           {safeActive === 'equipment' && <EquipmentModule canEdit={role === 'admin'} canReport={role === 'admin' || role === 'operations'} />}

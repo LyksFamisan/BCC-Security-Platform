@@ -12,7 +12,7 @@ export default function TopBar({ section, title, darkMode, onToggleTheme, onLogo
 
   return (
     <header
-      className="flex items-center justify-between shrink-0"
+      className="app-topbar flex items-center justify-between shrink-0"
       style={{
         height: 52,
         background: darkMode ? 'rgba(9,14,22,0.96)' : 'rgba(255,255,255,0.88)',
