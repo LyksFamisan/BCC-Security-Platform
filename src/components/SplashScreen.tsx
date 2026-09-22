@@ -21,6 +21,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
 
   return (
     <div
+      className="splash-shell"
       style={{
         minHeight: '100vh',
         position: 'relative',
@@ -51,16 +52,17 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #7bc5ec 0%, #4ca9df 50%, #1976b9 100%)', zIndex: 20 }} />
 
       {/* ── Top HUD row ──────────────────────────────────────── */}
-      <div style={{ position: 'absolute', top: 20, left: 28, fontFamily: 'JetBrains Mono', fontSize: 11, color: '#52718b', letterSpacing: '0.08em', zIndex: 20 }}>
+      <div className="splash-clock" style={{ position: 'absolute', top: 20, left: 28, fontFamily: 'JetBrains Mono', fontSize: 11, color: '#52718b', letterSpacing: '0.08em', zIndex: 20 }}>
         {timeStr} <span style={{ color: 'rgba(255,255,255,0.2)' }}>PHT</span>
       </div>
 
-      <div style={{ position: 'absolute', top: 16, right: 28, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(240,101,34,0.4)', borderRadius: 6, padding: '6px 14px', zIndex: 20 }}>
+      <div className="splash-status" style={{ position: 'absolute', top: 16, right: 28, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(240,101,34,0.4)', borderRadius: 6, padding: '6px 14px', zIndex: 20 }}>
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#F06522', boxShadow: '0 0 6px #F06522' }} />
         <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#F06522', letterSpacing: '0.1em' }}>ALL SYSTEMS OPERATIONAL</span>
       </div>
 
       <button
+        className="splash-theme-toggle"
         type="button"
         onClick={onToggleTheme}
         aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -72,7 +74,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       </button>
 
       {/* ── Main content ─────────────────────────────────────── */}
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
+      <div className="splash-main" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
 
         {/* Logos */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 36 }}>
