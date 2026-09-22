@@ -33,10 +33,8 @@
 
 html, body, #root {
   height: 100%;
-  width: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
 }
 
 body {
@@ -121,31 +119,14 @@ body {
 }
 
 @media (max-width: 720px) {
-  html,
-  body,
-  #root {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  body {
-    overflow-x: hidden;
-  }
-
   .app-shell {
-    width: 100% !important;
-    max-width: 100vw !important;
     height: 100dvh !important;
     overflow: hidden !important;
   }
 
   .app-content {
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
 
   .app-topbar {
@@ -180,8 +161,8 @@ body {
   .app-sidebar {
     width: 100% !important;
     height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
+    max-height: 170px;
+    overflow: hidden;
     border-right: 0 !important;
     border-bottom: 1px solid rgba(148,163,184,0.16);
   }
@@ -198,64 +179,36 @@ body {
   }
 
   .app-sidebar nav {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    overflow: visible !important;
-    padding: 8px 10px !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 6px 10px !important;
     gap: 6px !important;
     flex: none !important;
   }
 
   .app-sidebar nav button {
-    width: 100% !important;
-    min-width: 0;
-    min-height: 44px;
-    padding: 9px 10px !important;
+    width: auto !important;
+    min-width: max-content;
+    padding: 9px 12px !important;
   }
 
   .app-sidebar nav button span:last-child {
-    white-space: normal;
-    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .app-sidebar > div:nth-last-child(-n+2) {
-    display: block !important;
-    margin: 8px 10px !important;
-  }
-
-  .app-sidebar-profile {
-    order: 3;
-    width: calc(100% - 20px);
-    margin: 8px 10px 12px !important;
-    padding: 10px 12px !important;
-    border-radius: 10px;
+    display: none !important;
   }
 
   .app-main {
     min-width: 0 !important;
-    min-height: 0 !important;
     width: 100% !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
   }
 
   .app-main > div {
     padding: 16px !important;
     gap: 16px !important;
-  }
-
-  .app-main .flex.gap-1,
-  .app-main .flex.gap-2 {
-    max-width: 100%;
-    overflow: visible;
-    flex-wrap: wrap !important;
-    padding-bottom: 3px;
-  }
-
-  .app-main .flex.gap-1 > button,
-  .app-main .flex.gap-2 > button {
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: normal;
   }
 
   .app-main .grid[style*="grid-template-columns"] {
@@ -287,18 +240,6 @@ body {
     min-height: 38px;
   }
 
-  .app-main form button,
-  .app-main form input,
-  .app-main form select,
-  .app-main form textarea {
-    width: 100%;
-  }
-
-  .app-main .grid.px-5 > *,
-  .app-main .grid.px-6 > * {
-    min-width: 0;
-  }
-
   .personnel-dashboard-grid,
   .personnel-duty-card {
     width: 100% !important;
@@ -310,50 +251,6 @@ body {
 
   .personnel-attendance-photos > div {
     width: min(100%, 180px) !important;
-  }
-
-  .personnel-attendance-photos {
-    justify-content: stretch;
-  }
-
-  .personnel-attendance-photos > div {
-    flex: 1 1 150px;
-  }
-
-  .personnel-login-form form {
-    gap: 12px !important;
-  }
-
-  .personnel-login-form input,
-  .personnel-login-form button {
-    min-height: 44px;
-  }
-
-  .personnel-app-shell .grid[style*="repeat(4"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  .personnel-app-shell .personnel-duty-card .flex.gap-2 {
-    overflow: visible;
-    flex-wrap: wrap !important;
-  }
-
-  .personnel-duty-controls > div {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .personnel-duty-controls > div > div {
-    flex: 1 1 42%;
-    min-width: 110px;
-  }
-
-  .app-main section,
-  .app-main article,
-  .app-main form {
-    max-width: 100%;
-    overflow-wrap: anywhere;
   }
 
   .personnel-login-shell {
@@ -424,142 +321,6 @@ body {
 
   .personnel-duty-card > div:last-child > div:last-child > div {
     flex: 1 1 42%;
-  }
-}
-
-@media (max-width: 720px) {
-  .splash-screen {
-    width: 100% !important;
-    max-width: 100vw;
-    box-sizing: border-box;
-    min-height: 100dvh !important;
-    height: auto !important;
-    overflow-y: auto !important;
-    justify-content: flex-start !important;
-    padding: 108px 16px 76px !important;
-  }
-
-  .splash-clock {
-    top: 14px !important;
-    left: 16px !important;
-    font-size: 9px !important;
-  }
-
-  .splash-status {
-    top: 12px !important;
-    right: 16px !important;
-    max-width: calc(100% - 32px);
-    padding: 5px 8px !important;
-  }
-
-  .splash-status span {
-    font-size: 8px !important;
-    letter-spacing: 0.04em !important;
-  }
-
-  .splash-theme-toggle {
-    top: 48px !important;
-    right: 16px !important;
-    padding: 6px 9px !important;
-    font-size: 10px !important;
-  }
-
-  .splash-content {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding: 0 !important;
-  }
-
-  .splash-logos {
-    gap: 10px !important;
-    margin-bottom: 20px !important;
-    transform: none !important;
-    width: 100%;
-  }
-
-  .splash-logos > div {
-    width: 58px !important;
-    height: 58px !important;
-    flex: 0 0 58px !important;
-  }
-
-  .splash-logos > div:nth-child(2) {
-    width: 2px !important;
-    flex: 0 0 2px !important;
-    height: 42px !important;
-  }
-
-  .splash-content > div[style*="letterSpacing: '0.22em'"] {
-    max-width: 100%;
-    margin-bottom: 12px !important;
-    padding: 5px 10px !important;
-    font-size: 8px !important;
-  }
-
-  .splash-content h1 {
-    font-size: clamp(27px, 9vw, 42px) !important;
-    line-height: 1.08 !important;
-    letter-spacing: 0 !important;
-    overflow-wrap: anywhere;
-  }
-
-  .splash-content p {
-    max-width: 100% !important;
-    font-size: 13px !important;
-    line-height: 1.5 !important;
-    margin-bottom: 24px !important;
-  }
-
-  .splash-features {
-    max-width: 100% !important;
-    gap: 7px !important;
-    margin-bottom: 26px !important;
-  }
-
-  .splash-features > div {
-    padding: 6px 10px !important;
-    border-radius: 14px !important;
-  }
-
-  .splash-features span {
-    font-size: 10px !important;
-  }
-
-  .splash-cta {
-    width: min(100%, 320px);
-    justify-content: center;
-    padding: 14px 22px !important;
-  }
-
-  .splash-date {
-    bottom: 14px !important;
-    padding: 0 16px;
-  }
-
-  .splash-date span {
-    font-size: 8px !important;
-    text-align: center;
-  }
-}
-
-@media (min-width: 721px) and (max-width: 1100px) {
-  .app-topbar {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
-
-  .app-topbar > div:last-child {
-    gap: 8px !important;
-  }
-
-  .app-main > div {
-    padding: 20px !important;
-  }
-
-  .app-main .grid[style*="380px"],
-  .app-main .grid[style*="320px"] {
-    grid-template-columns: 1fr !important;
   }
 }
 

@@ -21,7 +21,6 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
 
   return (
     <div
-      className="splash-screen"
       style={{
         minHeight: '100vh',
         position: 'relative',
@@ -52,11 +51,11 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #7bc5ec 0%, #4ca9df 50%, #1976b9 100%)', zIndex: 20 }} />
 
       {/* ── Top HUD row ──────────────────────────────────────── */}
-      <div className="splash-clock" style={{ position: 'absolute', top: 20, left: 28, fontFamily: 'JetBrains Mono', fontSize: 11, color: '#52718b', letterSpacing: '0.08em', zIndex: 20 }}>
+      <div style={{ position: 'absolute', top: 20, left: 28, fontFamily: 'JetBrains Mono', fontSize: 11, color: '#52718b', letterSpacing: '0.08em', zIndex: 20 }}>
         {timeStr} <span style={{ color: 'rgba(255,255,255,0.2)' }}>PHT</span>
       </div>
 
-      <div className="splash-status" style={{ position: 'absolute', top: 16, right: 28, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(240,101,34,0.4)', borderRadius: 6, padding: '6px 14px', zIndex: 20 }}>
+      <div style={{ position: 'absolute', top: 16, right: 28, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(240,101,34,0.4)', borderRadius: 6, padding: '6px 14px', zIndex: 20 }}>
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#F06522', boxShadow: '0 0 6px #F06522' }} />
         <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#F06522', letterSpacing: '0.1em' }}>ALL SYSTEMS OPERATIONAL</span>
       </div>
@@ -66,7 +65,6 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
         onClick={onToggleTheme}
         aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="splash-theme-toggle"
         style={{ position: 'absolute', top: 68, right: 28, zIndex: 20, display: 'flex', alignItems: 'center', gap: 7, border: darkMode ? '1px solid rgba(147,197,253,0.3)' : '1px solid rgba(54,126,171,0.18)', borderRadius: 8, padding: '7px 12px', background: darkMode ? 'rgba(8,18,40,0.7)' : 'rgba(255,255,255,0.7)', color: darkMode ? '#dbeafe' : '#16476d', fontFamily: 'Inter', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
       >
         <span aria-hidden="true">{darkMode ? '☀' : '☾'}</span>
@@ -74,10 +72,10 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       </button>
 
       {/* ── Main content ─────────────────────────────────────── */}
-      <div className="splash-content" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
 
         {/* Logos */}
-        <div className="splash-logos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', gap: 16, marginBottom: 36 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 36 }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: '0 0 0 2px rgba(240,101,34,0.4), 0 8px 32px rgba(240,101,34,0.3)' }}>
             <img src="/assets/CAT_logo.jpg" alt="CAT" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
@@ -107,7 +105,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
         </p>
 
         {/* Feature pills */}
-        <div className="splash-features" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 52, maxWidth: 660 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 52, maxWidth: 660 }}>
           {[
             { label: 'Manpower Monitoring', dot: '#22c55e' },
             { label: 'Equipment Accountability', dot: '#F06522' },
@@ -124,7 +122,6 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
 
         {/* CTA */}
         <button
-          className="splash-cta"
           onClick={onEnter}
           style={{
             background: darkMode ? 'linear-gradient(135deg, #F06522 0%, #ea580c 100%)' : 'linear-gradient(135deg, #1976b9 0%, #4ca9df 100%)',
@@ -158,7 +155,7 @@ export default function SplashScreen({ onEnter, darkMode, onToggleTheme }: Props
       </div>
 
       {/* ── Bottom date strip ───────────────────────────────── */}
-      <div className="splash-date" style={{ position: 'absolute', bottom: 20, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+      <div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
         <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#7190a7', letterSpacing: '0.1em' }}>
           {dateStr.toUpperCase()}
         </span>

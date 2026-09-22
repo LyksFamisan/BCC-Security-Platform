@@ -228,7 +228,7 @@ export default function Sidebar({
       </div>
 
       <div
-        className="app-sidebar-profile flex items-center gap-3 px-4 py-3"
+        className="flex items-center gap-3 px-4 py-3"
         style={{ borderTop: '1px solid rgba(148,163,184,0.12)', background: 'rgba(15,23,42,0.2)' }}
       >
         <div
