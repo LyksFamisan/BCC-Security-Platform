@@ -357,12 +357,11 @@ export default function GuardModule() {
       </div>
 
       {/* Tabs */}
-      <div className="personnel-tabs flex gap-2">
+      <div className="flex gap-2">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className="personnel-tab"
             style={{
               fontFamily: 'Inter', fontSize: 13, fontWeight: 600, padding: '8px 20px', borderRadius: 8, border: 'none',
               background: activeTab === t.id ? ACC : 'rgba(255,255,255,0.8)',

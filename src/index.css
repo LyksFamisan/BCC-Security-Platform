@@ -172,10 +172,6 @@ body {
     padding-bottom: 2px;
   }
 
-  .app-topbar > div:last-child > * {
-    margin: 0 !important;
-  }
-
   .app-topbar > div:last-child > div,
   .app-topbar > div:last-child > button {
     flex-shrink: 0;
@@ -206,7 +202,7 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: visible !important;
     padding: 8px 10px !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex: none !important;
   }
 
@@ -255,18 +251,8 @@ body {
   }
 
   .app-main > div {
-    padding: 12px !important;
-    gap: 12px !important;
-  }
-
-  .app-main > div > * {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-
-  .app-main .flex.items-center.justify-between,
-  .app-main .flex.items-start.justify-between {
-    gap: 10px !important;
+    padding: 16px !important;
+    gap: 16px !important;
   }
 
   .app-main .flex.gap-1,
@@ -305,24 +291,12 @@ body {
     line-height: 1.15;
   }
 
-  .app-main h2 {
-    font-size: 20px !important;
-    line-height: 1.2;
-  }
-
-  .app-main p {
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
   .app-main .flex.items-center.justify-between {
     flex-wrap: wrap;
   }
 
   .app-main button {
     min-height: 38px;
-    max-width: 100%;
-    overflow-wrap: anywhere;
   }
 
   .app-main form button,
@@ -376,42 +350,6 @@ body {
     flex-wrap: wrap !important;
   }
 
-  .personnel-tabs {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px !important;
-    width: 100%;
-    overflow: visible !important;
-    position: sticky;
-    bottom: 0;
-    z-index: 30;
-    margin: 8px -16px -16px !important;
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom)) !important;
-    background: rgba(7, 18, 35, 0.96);
-    border-top: 1px solid rgba(148,163,184,0.22);
-    box-shadow: 0 -8px 20px rgba(2, 6, 23, 0.24);
-    backdrop-filter: blur(12px);
-  }
-
-  .personnel-tab {
-    width: 100% !important;
-    min-height: 56px !important;
-    padding: 7px 3px !important;
-    border-radius: 8px !important;
-    font-size: 10px !important;
-    line-height: 1.2;
-    white-space: normal !important;
-    overflow-wrap: anywhere;
-  }
-
-  .personnel-tab:last-child {
-    grid-column: auto;
-  }
-
-  .personnel-app-shell {
-    padding-bottom: 32px !important;
-  }
-
   .personnel-duty-controls > div {
     width: 100%;
     justify-content: center;
@@ -428,21 +366,6 @@ body {
   .app-main form {
     max-width: 100%;
     overflow-wrap: anywhere;
-  }
-
-  .app-main [style*="padding: '24px"],
-  .app-main [style*="padding: '28px"],
-  .app-main [style*="padding: '32px"] {
-    padding: 16px !important;
-  }
-
-  .app-main .grid.gap-4,
-  .app-main .grid.gap-5 {
-    gap: 12px !important;
-  }
-
-  .app-sidebar .app-sidebar-profile {
-    margin-bottom: 8px !important;
   }
 
   .personnel-login-shell {
