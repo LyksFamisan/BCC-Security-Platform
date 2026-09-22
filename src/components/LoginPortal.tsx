@@ -425,7 +425,7 @@ export default function LoginPortal({ onLogin, darkMode, onToggleTheme, onBackHo
         {darkMode ? 'Light Mode' : 'Dark Mode'}
       </button>
 
-      <div style={{ textAlign: 'center', marginBottom: 52, position: 'relative', zIndex: 1 }}>
+      <div className="portal-home-header" style={{ textAlign: 'center', marginBottom: 52, position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
           <Logos size={52} />
         </div>
