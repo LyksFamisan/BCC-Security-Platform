@@ -119,11 +119,21 @@ body {
 }
 
 @media (max-width: 720px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
   body {
     overflow-x: hidden;
   }
 
   .app-shell {
+    width: 100% !important;
+    max-width: 100vw !important;
     height: 100dvh !important;
     overflow: hidden !important;
   }
@@ -409,6 +419,9 @@ body {
 
 @media (max-width: 720px) {
   .splash-screen {
+    width: 100% !important;
+    max-width: 100vw;
+    box-sizing: border-box;
     min-height: 100dvh !important;
     height: auto !important;
     overflow-y: auto !important;
@@ -443,6 +456,8 @@ body {
 
   .splash-content {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding: 0 !important;
   }
 
