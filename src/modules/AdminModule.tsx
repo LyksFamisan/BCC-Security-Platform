@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
+import { downloadPdf } from '../utils/download'
 
 const ACC = '#F06522'
 
@@ -103,14 +104,8 @@ export default function AdminModule() {
   }
 
   const downloadUsers = () => {
-    const csv = ['ID,Name,Email,Role,Status,Last Login', ...adminUsers.map(user => [user.id, user.name, user.email, user.role, user.status, user.lastLogin].map(value => `"${value.replaceAll('"', '""')}"`).join(','))].join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'bcc-cat-users.csv'
-    link.click()
-    URL.revokeObjectURL(url)
-    setFeedback('User directory downloaded.')
+    downloadPdf('bcc-cat-users.pdf', 'Administrator User Directory', ['ID', 'Name', 'Email', 'Role', 'Status', 'Last Login'], adminUsers.map(user => [user.id, user.name, user.email, user.role, user.status, user.lastLogin]))
+    setFeedback('User directory PDF downloaded.')
   }
 
   const addUser = (event: React.FormEvent) => {
@@ -214,7 +209,7 @@ export default function AdminModule() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add User
             </button>
-            <button type="button" onClick={downloadUsers} style={{ background: 'transparent', border: `1px solid ${L.cardBorder}`, borderRadius: 8, padding: '9px 12px', fontFamily: 'Inter', fontWeight: 600, fontSize: 12, color: L.body, cursor: 'pointer', whiteSpace: 'nowrap' }}>Download CSV</button>
+            <button type="button" onClick={downloadUsers} style={{ background: 'transparent', border: `1px solid ${L.cardBorder}`, borderRadius: 8, padding: '9px 12px', fontFamily: 'Inter', fontWeight: 600, fontSize: 12, color: L.body, cursor: 'pointer', whiteSpace: 'nowrap' }}>Download PDF</button>
           </div>
           {showAddUser && <form onSubmit={addUser} className="flex items-center gap-2" style={{ padding: '12px 20px', borderBottom: `1px solid ${L.divider}`, background: 'rgba(240,101,34,0.04)' }}>
             <input required value={newUser.name} onChange={event => setNewUser(current => ({ ...current, name: event.target.value }))} placeholder="Full name" style={{ flex: 1, background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />

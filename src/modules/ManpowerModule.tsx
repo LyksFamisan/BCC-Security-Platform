@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
-import { downloadCsv } from '../utils/download'
+import { downloadPdf } from '../utils/download'
 
 const L = {
   card: 'rgba(255,255,255,0.94)',
@@ -82,7 +82,7 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
   )
   const selectedGuard = guards.find(guard => guard.id === selectedGuardId)
 
-  const downloadManpower = () => downloadCsv('bcc-cat-manpower-roster.csv', ['Guard ID', 'Name', 'Rank', 'Detachment', 'Site', 'Shift', 'Status'], guards.map(g => [g.id, g.name, g.rank, g.detachment, g.site, g.shift, g.status]))
+  const downloadManpower = () => downloadPdf('bcc-cat-manpower-roster.pdf', 'Manpower Roster', ['Guard ID', 'Name', 'Rank', 'Detachment', 'Site', 'Shift', 'Status'], guards.map(g => [g.id, g.name, g.rank, g.detachment, g.site, g.shift, g.status]))
 
   return (
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
@@ -163,7 +163,7 @@ export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean 
               }}
             />
             <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.shellMuted }}>{filtered.length} records</span>
-            <button type="button" onClick={downloadManpower} style={{ marginLeft: 'auto', background: '#1976b9', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Download CSV</button>
+            <button type="button" onClick={downloadManpower} style={{ marginLeft: 'auto', background: '#1976b9', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Download PDF</button>
           </div>
           {selectedGuard && <div style={{ background: L.card, border: `1px solid #1976b9`, borderRadius: 10, padding: '14px 18px', marginBottom: 12, boxShadow: L.shadow }}><div className="flex items-center justify-between"><div><strong style={{ fontFamily: 'Inter', fontSize: 15, color: L.heading }}>{selectedGuard.name} · {selectedGuard.id}</strong><div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 4 }}>{selectedGuard.rank} · {selectedGuard.site} · {selectedGuard.shift} shift</div></div><button type="button" onClick={() => setSelectedGuardId(null)} style={{ border: 0, background: 'transparent', color: L.muted, cursor: 'pointer', fontSize: 18 }}>×</button></div><div className="flex gap-3" style={{ marginTop: 10, flexWrap: 'wrap' }}><Badge status={selectedGuard.status} /><span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>License: {selectedGuard.license}</span><span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body }}>Certifications: {selectedGuard.cert.join(', ')}</span></div></div>}
           <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, overflow: 'hidden', boxShadow: L.shadow }}>

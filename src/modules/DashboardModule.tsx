@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import { usePortalData } from '../state/PortalDataContext'
-import { downloadCsv } from '../utils/download'
+import { downloadCsv, downloadPdf } from '../utils/download'
 import type { Module } from '../App'
 
 const L = {
@@ -127,7 +127,7 @@ export default function DashboardModule({ canEdit = false, onNavigate }: { canEd
   }
 
   const downloadManagementReport = (period: string) => {
-    downloadCsv(`bcc-cat-${period.toLowerCase()}-executive-report.csv`, ['Metric', 'Value'], [
+    downloadPdf(`bcc-cat-${period.toLowerCase()}-executive-report.pdf`, `${period} Executive Operations Report`, ['Metric', 'Value'], [
       ['Total Security Personnel', totalPersonnel],
       ['Deployment Rate', `${deploymentRate}%`],
       ['Attendance Rate', `${attendanceRate}%`],

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
-import { downloadCsv } from '../utils/download'
+import { downloadPdf } from '../utils/download'
 
 type Tab = 'list' | 'detail' | 'workflow' | 'analytics'
 
@@ -80,7 +80,7 @@ export default function IncidentModule({ canEdit = false, canReport = false }: {
   const filtered = incidents.filter(i => filter === 'all' || i.severity === filter)
   const selectedInc = incidents.find(i => i.id === selected)
 
-  const downloadIncidents = () => downloadCsv('bcc-cat-incident-register.csv', ['Case ID', 'Title', 'Type', 'Severity', 'Site', 'Client', 'Status', 'Assigned To'], incidents.map(incident => [incident.id, incident.title, incident.type, incident.severity, incident.site, incident.client, incident.status, incident.assignedTo]))
+  const downloadIncidents = () => downloadPdf('bcc-cat-incident-register.pdf', 'Incident Register', ['Case ID', 'Title', 'Type', 'Severity', 'Site', 'Client', 'Status', 'Assigned To'], incidents.map(incident => [incident.id, incident.title, incident.type, incident.severity, incident.site, incident.client, incident.status, incident.assignedTo]))
 
   function openCase(id: string) {
     setSelected(id)
@@ -91,9 +91,9 @@ export default function IncidentModule({ canEdit = false, canReport = false }: {
     <div className="p-6 flex flex-col gap-5 min-h-full" style={{ background: 'transparent' }}>
       <div>
         <div style={{ fontFamily: 'Inter', fontSize: 12, color: '#9bb3d1', letterSpacing: '0.08em', marginBottom: 8 }}>INCIDENT RESOLUTION</div>
-        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
           <h1 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: L.heading, margin: 0, letterSpacing: '-0.04em' }}>Incident Reporting & Case Management</h1>
-          <div className="flex items-center gap-2">{canReport && <button type="button" onClick={() => setReportOpen(value => !value)} style={{ background: '#F06522', border: 'none', borderRadius: 8, padding: '10px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>{reportOpen ? 'Close Report' : 'New Incident Report'}</button>}<button type="button" onClick={downloadIncidents} style={{ background: '#1976b9', border: 'none', borderRadius: 8, padding: '10px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Download CSV</button></div>
+          <div className="flex items-center gap-2">{canReport && <button type="button" onClick={() => setReportOpen(value => !value)} style={{ background: '#F06522', border: 'none', borderRadius: 8, padding: '10px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>{reportOpen ? 'Close Report' : 'New Incident Report'}</button>}<button type="button" onClick={downloadIncidents} style={{ background: '#1976b9', border: 'none', borderRadius: 8, padding: '10px 14px', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Download PDF</button></div>
         </div>
       </div>
 
