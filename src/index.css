@@ -354,6 +354,97 @@ body {
     white-space: nowrap;
   }
 
+  .tactical-module {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+
+  .tactical-layout {
+    flex-direction: column !important;
+    flex: none !important;
+    min-height: auto !important;
+    gap: 12px !important;
+  }
+
+  .tactical-map-panel,
+  .tactical-feed-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .tactical-map-panel {
+    min-height: 0 !important;
+  }
+
+  .tactical-feed-panel {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .tactical-panel-header {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .tactical-panel-header > div {
+    min-width: 0;
+    flex: 1 1 180px;
+  }
+
+  .tactical-panel-header > div:last-child,
+  .tactical-panel-header > button {
+    margin-left: 0 !important;
+    flex: 0 1 auto;
+  }
+
+  .tactical-panel-header button,
+  .tactical-radar > button {
+    min-height: 40px !important;
+    padding: 9px 10px !important;
+  }
+
+  .tactical-radar {
+    height: 320px !important;
+    min-height: 320px !important;
+  }
+
+  .tactical-popover,
+  .tactical-notice {
+    position: static !important;
+    width: calc(100% - 24px) !important;
+    margin: 8px 12px 0 !important;
+  }
+
+  .tactical-alarm-content {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .tactical-alarm-info,
+  .tactical-alarm-meta {
+    min-width: 0;
+  }
+
+  .tactical-alarm-meta {
+    text-align: right;
+  }
+
+  .tactical-alarm-controls {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .tactical-alarm-controls select,
+  .tactical-alarm-controls button,
+  .tactical-feed-panel button {
+    min-height: 40px;
+  }
+
   .personnel-login-shell {
     display: block !important;
     min-height: 100dvh !important;

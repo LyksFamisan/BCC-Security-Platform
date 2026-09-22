@@ -284,11 +284,12 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
   }
 
   return (
-    <div className="p-5 flex flex-col gap-4 min-h-full" style={{ background: 'transparent' }}>
-      <div className="flex gap-4 flex-1" style={{ minHeight: 0 }}>
+    <div className="tactical-module p-5 flex flex-col gap-4 min-h-full" style={{ background: 'transparent' }}>
+      <div className="tactical-layout flex gap-4 flex-1" style={{ minHeight: 0 }}>
 
         {/* ── Left: Guards Deployment Coordinates Grid ── */}
         <div
+          className="tactical-map-panel"
           style={{
             flex: 1,
             background: 'rgba(10,8,24,0.88)',
@@ -301,7 +302,7 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
         >
           {/* Panel header */}
           <div
-            className="flex items-center justify-between px-5 py-4"
+            className="tactical-panel-header flex items-center justify-between px-5 py-4"
             style={{ borderBottom: '1px solid rgba(240,101,34,0.1)', flexShrink: 0, background: 'rgba(240,101,34,0.03)' }}
           >
             <div className="flex items-center gap-2">
@@ -327,16 +328,16 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
             </div>
           </div>
 
-          {showSettings && <div style={{ position: 'absolute', top: 68, right: 20, zIndex: 2, width: 250, background: '#10283d', border: '1px solid rgba(240,101,34,0.35)', borderRadius: 8, padding: 14, color: '#dfe7ff', fontFamily: 'Inter', fontSize: 12, boxShadow: '0 12px 28px rgba(2,6,23,0.4)' }}>
+          {showSettings && <div className="tactical-popover" style={{ position: 'absolute', top: 68, right: 20, zIndex: 2, width: 250, background: '#10283d', border: '1px solid rgba(240,101,34,0.35)', borderRadius: 8, padding: 14, color: '#dfe7ff', fontFamily: 'Inter', fontSize: 12, boxShadow: '0 12px 28px rgba(2,6,23,0.4)' }}>
             <div style={{ fontWeight: 700, marginBottom: 10, color: '#fff' }}>Telemetry Settings</div>
             <label style={{ display: 'block', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px 0' }}>GPS refresh interval<select value={telemetryInterval} onChange={event => setTelemetryInterval(event.target.value)} style={{ display: 'block', width: '100%', marginTop: 5, background: '#0b1c2d', color: '#dfe7ff', border: '1px solid rgba(148,163,184,0.25)', borderRadius: 5, padding: '5px' }}><option>5 seconds</option><option>10 seconds</option><option>30 seconds</option></select></label>
             <button type="button" onClick={() => setNotice('Critical alarm sound enabled.')} style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px 0', background: 'transparent', color: '#dfe7ff', cursor: 'pointer' }}>Critical alarm sound · On</button>
             <button type="button" onClick={() => setNotice('Auto-escalation is active.')} style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px 0', background: 'transparent', color: '#dfe7ff', cursor: 'pointer' }}>Auto-escalation · On</button>
           </div>}
-          {notice && <div style={{ position: 'absolute', top: 68, right: 20, zIndex: 2, background: 'rgba(25,118,185,0.94)', color: '#fff', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12 }}>{notice}</div>}
+          {notice && <div className="tactical-notice" style={{ position: 'absolute', top: 68, right: 20, zIndex: 2, background: 'rgba(25,118,185,0.94)', color: '#fff', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12 }}>{notice}</div>}
 
           {/* Animated radar canvas */}
-          <div style={{ flex: 1, position: 'relative', minHeight: 400 }}>
+          <div className="tactical-radar" style={{ flex: 1, position: 'relative', minHeight: 400 }}>
             <RadarMap threatLevel={threatLevel} />
             <button type="button" onClick={() => { setSelectedMarker('BGC Tower'); setNotice('BGC Tower marker selected: 24 guards secure.') }} style={{ position: 'absolute', top: '35%', left: '35%', border: '1px solid #34c759', background: 'rgba(15,30,34,0.88)', color: '#8bf0a7', borderRadius: 5, padding: '5px 7px', fontFamily: 'JetBrains Mono', fontSize: 10, cursor: 'pointer' }}>BGC TOWER</button>
             <button type="button" onClick={() => { setSelectedMarker('Manila Port'); setNotice('Manila Port marker selected: incident detected.') }} style={{ position: 'absolute', bottom: '30%', right: '20%', border: '1px solid #ef4444', background: 'rgba(38,16,24,0.9)', color: '#ff8d86', borderRadius: 5, padding: '5px 7px', fontFamily: 'JetBrains Mono', fontSize: 10, cursor: 'pointer' }}>MANILA PORT</button>
@@ -346,6 +347,7 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
 
         {/* ── Right: Telemetry Feed Alarm Queue ── */}
         <div
+          className="tactical-feed-panel"
           style={{
             width: 360,
             flexShrink: 0,
@@ -359,7 +361,7 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
         >
           {/* Panel header */}
           <div
-            className="flex items-center justify-between px-5 py-4"
+            className="tactical-panel-header flex items-center justify-between px-5 py-4"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}
           >
             <div className="flex items-center gap-2">
@@ -408,20 +410,20 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
                 onMouseEnter={e => { if (!a.critical) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
                 onMouseLeave={e => { if (!a.critical) e.currentTarget.style.background = 'transparent' }}
               >
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="tactical-alarm-content flex items-start justify-between">
+                  <div className="tactical-alarm-info">
                     <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 14, color: '#e8eaf0', marginBottom: 3 }}>
                       {a.site}
                     </div>
                     <div style={{ fontFamily: 'Inter', fontSize: 12, color: '#5a6478' }}>{a.sensor}</div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="tactical-alarm-meta flex flex-col items-end gap-1">
                     <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: '#5a6478' }}>{a.age}</span>
                     <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: a.statusColor }}>
                       {a.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="tactical-alarm-controls flex items-center gap-2">
                     <select disabled={!canEdit} value={threatLevel} onChange={event => { setThreatLevel(event.target.value as typeof threatLevel); addActivity('Tactical Room', 'THREAT_LEVEL', `Threat level changed to ${event.target.value}`) }} style={{ background: '#0b1c2d', color: threatLevel === 'CRITICAL' ? '#ff8d86' : '#fbbf24', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 5, padding: '5px 6px', fontFamily: 'JetBrains Mono', fontSize: 10 }} aria-label="Threat level">
                       <option>ELEVATED</option><option>HIGH</option><option>CRITICAL</option>
                     </select>
