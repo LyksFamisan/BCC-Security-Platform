@@ -201,13 +201,13 @@ body {
 
   .app-sidebar {
     width: 100% !important;
-    height: 112px !important;
+    height: 150px !important;
     max-height: none !important;
     overflow: hidden !important;
     overflow-x: hidden !important;
     border-right: 0 !important;
     border-bottom: 1px solid rgba(148,163,184,0.16);
-    flex: 0 0 112px !important;
+    flex: 0 0 150px !important;
   }
 
   .sidebar-brand {
@@ -230,10 +230,12 @@ body {
   .app-sidebar nav {
     flex-direction: row !important;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 6px 10px !important;
     gap: 6px !important;
     flex: none !important;
     min-height: 54px;
+    height: 60px;
     scrollbar-width: thin;
   }
 

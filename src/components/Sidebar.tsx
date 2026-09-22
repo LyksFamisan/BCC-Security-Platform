@@ -151,7 +151,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div style={{ margin: '10px 12px 4px', background: `${color}12`, border: `1px solid ${color}30`, borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="sidebar-role" style={{ margin: '10px 12px 4px', background: `${color}12`, border: `1px solid ${color}30`, borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 10px ${color}` }} />
         <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color, letterSpacing: '0.04em' }}>{roleLabel[role]}</span>
       </div>
