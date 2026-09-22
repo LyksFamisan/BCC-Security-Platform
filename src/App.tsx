@@ -43,7 +43,7 @@ function AppContent() {
   const [screen, setScreen] = useState<Screen>('splash')
   const [role, setRole] = useState<UserRole | null>(null)
   const [active, setActive] = useState<Module>('dashboard')
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   const { addActivity } = usePortalData()
 
   if (screen === 'splash') {
