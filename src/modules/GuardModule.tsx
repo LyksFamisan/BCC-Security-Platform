@@ -87,9 +87,8 @@ function AttendancePhotoGallery({
             <div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.heading, marginTop: 6 }}>{item.label}</div>
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: L.muted, marginTop: 2 }}>{item.time || 'Recorded'}</div>
             {item.savedLocation && <div style={{ fontFamily: 'JetBrains Mono', fontSize: 8, color: '#7C3AED', lineHeight: 1.45, marginTop: 5 }}>LAT {item.savedLocation.latitude.toFixed(4)}<br />LON {item.savedLocation.longitude.toFixed(4)}<br />{item.savedLocation.source === 'live' ? 'LIVE GPS' : 'ASSIGNED SITE'}</div>}
-            <div className="flex gap-1" style={{ marginTop: 6 }}>
-              <button type="button" onClick={() => window.open(item.photo, '_blank', 'noopener,noreferrer')} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
-              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} style={{ flex: 1, textAlign: 'center', borderRadius: 5, padding: '4px 3px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+            <div style={{ marginTop: 6 }}>
+              <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} style={{ display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'center', borderRadius: 5, padding: '6px 5px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
             </div>
           </div>
         ))}
@@ -300,9 +299,8 @@ export default function GuardModule() {
             <div style={{ maxWidth: 420, margin: '0 auto 16px', border: `1px solid ${ACC}`, borderRadius: 10, padding: 10, background: '#fff' }}>
               <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: L.heading, marginBottom: 8 }}>Captured Attendance Photo</div>
               <img src={capturedPhoto} alt="Captured attendance" style={{ display: 'block', width: '100%', borderRadius: 7, aspectRatio: '16 / 10', objectFit: 'cover' }} />
-              <div className="flex justify-end gap-2" style={{ marginTop: 9 }}>
-                <button type="button" onClick={() => window.open(capturedPhoto, '_blank', 'noopener,noreferrer')} style={{ border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 6, padding: '6px 11px', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>View</button>
-                <a href={capturedPhoto} download={`security-personnel-${cameraMode}-${Date.now()}.jpg`} style={{ borderRadius: 6, padding: '6px 11px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+              <div className="flex justify-end" style={{ marginTop: 9 }}>
+                <a href={capturedPhoto} download={`security-personnel-${cameraMode}-${Date.now()}.jpg`} style={{ borderRadius: 6, padding: '6px 14px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Download</a>
               </div>
             </div>
           )}
