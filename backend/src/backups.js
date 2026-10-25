@@ -81,18 +81,18 @@ export async function snapshot(pool) {
     for (const table of tables)
       result.tables[table] = (await c.query(`SELECT * FROM ${table}`)).rows
     let total = 0
-    for (const incident of result.tables.incidents) {
-      if (!incident.photo_key) continue
-      if (!/^[\da-f-]{36}\.jpg$/.test(incident.photo_key))
-        throw Error("Unsafe evidence filename")
-      const data = await fileStore(pool).read("evidence/"+incident.photo_key)
+    const photoKeys=new Set(result.tables.incidents.map(i=>i.photo_key).filter(Boolean))
+    for(const record of result.tables.operational_records) if(record.kind === "attendance" && record.data?.photo_id) photoKeys.add(record.data.photo_id+".jpg")
+    for (const photoKey of photoKeys) {
+      if (!/^[\da-f-]{36}\.jpg$/.test(photoKey)) throw Error("Unsafe evidence filename")
+      const data = await fileStore(pool).read("evidence/"+photoKey)
       total += data.length
       if (total > 70 * 1024 * 1024)
         throw Object.assign(
           Error("Use provider-managed backups for evidence larger than 70 MB"),
           { status: 409 },
         )
-      result.photos[incident.photo_key] = data.toString("base64")
+      result.photos[photoKey] = data.toString("base64")
     }
     await c.query("COMMIT")
     return result

@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
+import multer from "multer"
+import sharp from "sharp"
+import {encodePhoto,decodePhoto} from "./photo-storage.js"
 import jwt from "jsonwebtoken"
 import { createBackup, listBackups } from "./backups.js"
 import {fileStore} from "./file-store.js"
@@ -505,10 +508,33 @@ export function mountOperations(app, pool, notify) {
     notify({ site_id: row.site_id, reporter_id: req.user.id })
     res.json(row)
   })
-  app.post("/attendance", async (req, res) => {
-    role(req, ["guard"])
-    const d = valid(attendanceSchema, req.body)
-    const row = await transaction(async (c) => {
+  const attendanceUpload = multer({storage:multer.memoryStorage(),limits:{fileSize:Math.min(Number(process.env.MAX_UPLOAD_BYTES || 3*1024*1024),3*1024*1024),files:1,fields:5},fileFilter:(req,file,cb)=>cb(null,["image/jpeg","image/png","image/webp"].includes(file.mimetype))})
+  app.get("/attendance/:id/photo", async (req,res) => {
+    role(req,["guard","supervisor","operations"])
+    const id=valid(uuid,req.params.id)
+    const row=(await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind='attendance'",[id])).rows[0]
+    if(!row) problem(404,"Attendance not found")
+    await siteAccess(req.user,row.site_id)
+    if(req.user.role === "guard" && row.subject_id !== req.user.id) problem(403,"Own attendance only")
+    if(!row.data.photo_id) problem(404,"No attendance photo")
+    const bytes=await fileStore(pool).read("evidence/"+row.data.photo_id+".jpg")
+    await audit(pool,req.user,"VIEW_ATTENDANCE_PHOTO",row.id,row.site_id)
+    res.set({"Content-Type":"image/jpeg","Cache-Control":"private, no-store"}).send(decodePhoto(bytes))
+  })
+  app.post("/attendance", (req,res,next)=>{role(req,["guard"]);next()}, attendanceUpload.single("photo"), async (req, res) => {
+    const body={...req.body}
+    for(const key of ["latitude","longitude","accuracy"]) if(typeof body[key] === "string" && body[key].trim() !== "") body[key]=Number(body[key])
+    const d = valid(attendanceSchema, body)
+    if(!req.file) problem(400,"A time-in/time-out photo (JPEG, PNG or WebP, max 3 MB) is required")
+    let source
+    try {
+      const input=sharp(req.file.buffer,{limitInputPixels:25000000})
+      if(!["jpeg","png","webp"].includes((await input.metadata()).format)) throw Error()
+      source=await input.rotate().resize({width:1000,height:1400,fit:"inside"}).jpeg({quality:85}).toBuffer()
+    } catch { problem(400,"Invalid attendance photo") }
+    let storedPhoto
+    let row
+    try { row = await transaction(async (c) => {
       await c.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
         req.user.id,
       ])
@@ -560,11 +586,13 @@ export function mountOperations(app, pool, notify) {
       )
       if (distance > settings.radius_m)
         problem(403, "You are outside the assigned site geofence")
-      const data = {
-        ...d,
-        recorded_at: new Date().toISOString(),
-        distance_m: Math.round(distance),
-      }
+      const recorded_at=new Date().toISOString(), photo_id=randomUUID()
+      const width=(await sharp(source).metadata()).width
+      const stamp=`<svg width="${width}" height="112"><rect width="100%" height="100%" fill="#071a2c"/><g fill="white" font-family="sans-serif" font-size="18"><text x="16" y="28">${d.event === "in" ? "TIME IN" : "TIME OUT"} · ${new Date(recorded_at).toLocaleString("en-PH",{timeZone:"Asia/Manila",hour12:false})} (Asia/Manila)</text><text x="16" y="58">GPS ${d.latitude.toFixed(6)}, ${d.longitude.toFixed(6)} · accuracy ±${Math.round(d.accuracy)} m</text><text x="16" y="88">Inside site geofence · ${Math.round(distance)} m from centre · radius ${settings.radius_m} m</text></g></svg>`
+      const image=await sharp(source).extend({bottom:112,background:"#071a2c"}).composite([{input:Buffer.from(stamp),gravity:"south"}]).jpeg({quality:85}).toBuffer()
+      storedPhoto="evidence/"+photo_id+".jpg"
+      await fileStore(c).write(storedPhoto,encodePhoto(image))
+      const data = {...d,recorded_at,distance_m:Math.round(distance),radius_m:settings.radius_m,geofence_status:"Inside",photo_id}
       const r = (
         await c.query(
           "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'attendance',$2,$3,$3,$4) RETURNING *",
@@ -580,7 +608,10 @@ export function mountOperations(app, pool, notify) {
         { shift_id: shift.id },
       )
       return r
-    })
+    }) } catch(error) {
+      if(storedPhoto && process.env.FILE_STORAGE !== "postgres") await fileStore(pool).remove(storedPhoto).catch(()=>{})
+      throw error
+    }
     notify({ site_id: row.site_id, reporter_id: req.user.id })
     res.status(201).json(row)
   })
@@ -1032,6 +1063,7 @@ export function mountOperations(app, pool, notify) {
       ![
         "shifts",
         "attendance",
+        "billing",
         "equipment",
         "assignments",
         "maintenance",
@@ -1054,7 +1086,7 @@ export function mountOperations(app, pool, notify) {
         Object.entries(req.query).filter(([k]) => k !== "kind"),
       ),
     )
-    let rows = await list(req.user, kind)
+    let rows = await list(req.user, kind === "billing" ? "attendance" : kind)
     if (filters.site_id)
       rows = rows.filter((r) => r.site_id === filters.site_id)
     if (filters.from)
@@ -1074,7 +1106,7 @@ export function mountOperations(app, pool, notify) {
         .replaceAll('"', '""')
         .replace(/^[=+@-]/, "'$&") +
       '"'
-    const csv = [
+    let table = [
       ["id", "site", "person", "created_at", "details"],
       ...rows.map((r) => [
         r.id,
@@ -1084,7 +1116,23 @@ export function mountOperations(app, pool, notify) {
         JSON.stringify(r.data),
       ]),
     ]
-      .map((r) => r.map(quote).join(","))
+    if(kind === "billing") {
+      const shifts=await list(req.user,"shifts")
+      const groups=new Map()
+      for(const row of rows) {
+        const key=row.subject_id+":"+row.data.shift_id
+        if(!groups.has(key)) groups.set(key,{row})
+        const g=groups.get(key)
+        if(row.data.event === "in") g.in=row
+        if(row.data.event === "out") g.out=row
+      }
+      table=[["shift_id","site","guard","post","time_in_utc","time_out_utc","recorded_hours","review_status","in_latitude","in_longitude","out_latitude","out_longitude","in_photo_record","out_photo_record"],...Array.from(groups.values()).map(g=>{
+        const a=g.in?.data,b=g.out?.data,shift=shifts.find(s=>s.id === g.row.data.shift_id)
+        const hours=a&&b ? (+new Date(b.recorded_at)- +new Date(a.recorded_at))/3600000 : null
+        return [g.row.data.shift_id,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
+      })]
+    }
+    const csv = table.map((r) => r.map(quote).join(","))
       .join("\r\n")
     res
       .set({
@@ -1112,6 +1160,7 @@ export function mountOperations(app, pool, notify) {
           report_kind: z.enum([
             "shifts",
             "attendance",
+            "billing",
             "equipment",
             "assignments",
             "maintenance",

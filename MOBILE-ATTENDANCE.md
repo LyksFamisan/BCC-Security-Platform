@@ -15,3 +15,13 @@ Verified: five simulated native-location adapter tests (`node --test mobile/test
 Open `https://bcc-security-platform.vercel.app/guard` in the phone browser. Sign in with a Guard account. Duty contains Time In with GPS / Time Out with GPS, Check GPS and Send Current Location. Browser and phone location permissions must be enabled. Each attendance action gets a fresh high-accuracy location and uses the same server geofence validation and database as the native app. The portal refuses accuracy worse than 100 metres; the server can require tighter accuracy. Cancelled shifts cannot record attendance.
 
 The web portal attendance flow is verified with browser geolocation fixtures against an isolated database; this does not replace physical-phone acceptance testing.
+
+## Photo evidence and billing review
+
+Every new Guard Time In and Time Out now requires a new JPEG/PNG/WebP photo, max 3 MB, in addition to fresh GPS. Native app opens the camera; the browser offers a camera-enabled file picker (camera behaviour depends on browser/device). Capture or select the photo again for Time Out. Outdated mobile clients sending JSON-only attendance must update; imported historical attendance remains available without invented evidence.
+
+The API validates the shift, location accuracy and site geofence, then stamps the saved JPEG footer with server receipt time in Asia/Manila, GPS coordinates, accuracy, boundary radius and distance. Timestamp is the server receipt time, not a claim about the camera shutter time. Photos are encrypted when PHOTO_ENCRYPTION_KEY is configured and stored privately in the hosted database. Photo reads enforce Guard ownership / Supervisor site scope / SSD scope. Snapshot backups include attendance photos. Guard can review the stamped evidence in History; Supervisor/SSD can view it in web Attendance.
+
+Supervisor/SSD → Reports → Attendance hours (billing review) → Download CSV. Exports pair recorded Time In/Out by guard and shift and include UTC timestamps, raw elapsed hours, GPS and photo record references. Date filters apply to attendance event creation times; a range excluding one event produces an incomplete pair. Incomplete pairs have blank hours. Recorded hours require review; rates, unpaid breaks, rounding, overtime approval and invoice totals are not calculated.
+
+Verified with local browser photo uploads, server-stamped image reads, paired attendance export, authorization tests and hosted file storage tests. Actual phone camera/GPS operation still requires device acceptance testing.

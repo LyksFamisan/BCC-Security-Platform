@@ -34,6 +34,12 @@ test("TOR workflows persist across clients, enforce scope, geofence, concurrency
   const site1 = "10000000-0000-4000-8000-000000000001",
     site2 = "10000000-0000-4000-8000-000000000002"
   async function call(role, url, data, method = data ? "POST" : "GET") {
+    if(url === "/attendance" && data) {
+      const form=new FormData()
+      for(const [k,v] of Object.entries(data)) form.append(k,String(v))
+      form.append("photo",new Blob([await sharp({create:{width:640,height:480,channels:3,background:"#345678"}}).jpeg().toBuffer()],{type:"image/jpeg"}),"attendance.jpg")
+      return fetch(base+url,{method,headers:{Authorization:"Bearer "+tokens[role]},body:form})
+    }
     return fetch(base + url, {
       method,
       headers: {
@@ -159,7 +165,21 @@ test("TOR workflows persist across clients, enforce scope, geofence, concurrency
       (await call("guard", "/attendance", { ...punch, accuracy: 500 })).status,
       400,
     )
-    await ok("guard", "/attendance", punch)
+    const attendanceRecord=await ok("guard", "/attendance", punch)
+    assert.equal(attendanceRecord.data.geofence_status,"Inside")
+    assert(attendanceRecord.data.photo_id)
+    const photoResponse=await call("supervisor","/attendance/"+attendanceRecord.id+"/photo")
+    assert.equal(photoResponse.status,200)
+    const metadata=await sharp(Buffer.from(await photoResponse.arrayBuffer())).metadata()
+    assert(metadata.height > 480,"Stamped photo includes metadata footer")
+    assert.equal((await call("guard2","/attendance/"+attendanceRecord.id+"/photo")).status,403)
+    assert.equal((await call("admin","/attendance/"+attendanceRecord.id+"/photo")).status,403)
+    const missing=await fetch(base+"/attendance",{method:"POST",headers:{Authorization:"Bearer "+tokens.guard,"Content-Type":"application/json"},body:JSON.stringify(punch)})
+    assert.equal(missing.status,400,"New attendance requires a photo")
+    const billing=await call("supervisor","/reports/export?kind=billing")
+    assert.equal(billing.status,200)
+    assert((await billing.text()).includes("Incomplete - review required"))
+    assert.equal((await call("guard","/reports/export?kind=billing")).status,403)
     assert.equal(
       (await call("guard", "/attendance", punch)).status,
       409,

@@ -28,6 +28,7 @@ type Module = {
 type Choice = { id: string; name: string; role?: string }
 type Request = (url: string, options?: RequestInit) => Promise<Response>
 const labels: Record<string, string> = {
+  billing: "Attendance hours (billing review)",
   start: "Start",
   end: "End",
   post: "Duty post",
@@ -64,6 +65,8 @@ export default function OperationsWorkspace({
   request: Request
   onIncidents: () => void
 }) {
+  const [attendancePhotoUrl,setAttendancePhotoUrl]=useState<string|null>(null)
+  useEffect(()=>()=>{if(attendancePhotoUrl)URL.revokeObjectURL(attendancePhotoUrl)},[attendancePhotoUrl])
   const [catalog, setCatalog] = useState<Module[]>([]),
     [section, setSection] = useState(
       role === "admin" ? "accounts" : "dashboard",
@@ -317,6 +320,7 @@ export default function OperationsWorkspace({
         ]
   return (
     <div className="ops-shell">
+      {attendancePhotoUrl && <div role="dialog" aria-label="Attendance photo" className="attendance-photo-dialog"><button onClick={()=>setAttendancePhotoUrl(null)}>Close attendance photo</button><img src={attendancePhotoUrl} alt="Attendance photo with server timestamp and GPS" /></div>}
       <aside className="ops-sidebar">
         <p>
           {role === "admin"
@@ -663,6 +667,7 @@ export default function OperationsWorkspace({
                         </div>
                       ))}
                     </dl>
+                    {section === "attendance" && !!row.data.photo_id && <button onClick={()=>void (async()=>{try{const response=await request("/attendance/"+row.id+"/photo");if(!response.ok)throw Error("Could not load attendance photo");setAttendancePhotoUrl(URL.createObjectURL(await response.blob()))}catch(e){setError((e as Error).message)}})()}>View attendance photo</button>}
                     {module?.writable && (
                       <button onClick={() => edit(row)}>Edit</button>
                     )}
@@ -705,6 +710,7 @@ export default function OperationsWorkspace({
                 {[
                   "shifts",
                   "attendance",
+                  "billing",
                   "equipment",
                   "assignments",
                   "maintenance",

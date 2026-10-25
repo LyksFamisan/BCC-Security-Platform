@@ -17,6 +17,9 @@ export default function GuardPortal() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [gpsStatus, setGpsStatus] = useState("GPS not checked")
+  const [attendancePhoto,setAttendancePhoto]=useState<{shiftId:string;file:File}|null>(null)
+  const [photoView,setPhotoView]=useState<string|null>(null)
+  useEffect(()=>()=>{if(photoView)URL.revokeObjectURL(photoView)},[photoView])
   const [tab, setTab] = useState<Tab>("duty")
   const [sites, setSites] = useState<Site[]>([])
   const [siteId, setSiteId] = useState("")
@@ -81,7 +84,7 @@ export default function GuardPortal() {
   }
   async function logout() {
     if (session) await request("/auth/logout", { method: "POST" }).catch(() => {})
-    setSession(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
+    setSession(null); setAttendancePhoto(null); setPhotoView(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
   }
   function getPosition(): Promise<GeolocationCoordinates> {
     return new Promise((resolve, reject) => {
@@ -105,11 +108,14 @@ export default function GuardPortal() {
   async function markAttendance(event: "in" | "out", shiftId: string) {
     setBusy(true); setError(""); setNotice("")
     try {
+      if(!attendancePhoto || attendancePhoto.shiftId !== shiftId) throw Error("Take or attach a new photo before recording attendance.")
+      if(attendancePhoto.file.size > 3*1024*1024 || !["image/jpeg","image/png","image/webp"].includes(attendancePhoto.file.type)) throw Error("Attendance photo must be JPEG, PNG or WebP, under 3 MB.")
       const gps = await getPosition()
-      await request("/attendance", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shift_id: shiftId, event, latitude: gps.latitude, longitude: gps.longitude, accuracy: gps.accuracy }),
-      })
+      const form=new FormData()
+      for(const [key,value] of Object.entries({shift_id:shiftId,event,latitude:gps.latitude,longitude:gps.longitude,accuracy:gps.accuracy})) form.append(key,String(value))
+      form.append("photo",attendancePhoto.file)
+      await request("/attendance", {method:"POST",body:form})
+      setAttendancePhoto(null)
       setNotice(event === "in" ? "Check-in recorded successfully." : "Check-out recorded successfully.")
       await refresh()
     } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
@@ -141,8 +147,16 @@ export default function GuardPortal() {
       setNotice("Incident report submitted."); setTab("reports"); await refresh()
     } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
+  async function viewAttendancePhoto(id:string) {
+    try {
+      const response=await fetch(API+"/attendance/"+id+"/photo",{headers:{Authorization:"Bearer "+session?.token}})
+      if(!response.ok) throw Error("Unable to load attendance photo")
+      setPhotoView(URL.createObjectURL(await response.blob()))
+    } catch(e){setError((e as Error).message)}
+  }
   const active = attendance.filter(a => a.data?.event === "in").length - attendance.filter(a => a.data?.event === "out").length
   return <div className="guard-page">
+    {photoView && <div role="dialog" aria-label="Attendance photo" className="attendance-photo-dialog"><button onClick={()=>setPhotoView(null)}>Close attendance photo</button><img src={photoView} alt="Attendance evidence with server timestamp and GPS" /></div>}
     <div className="guard-shell">
       <header className="guard-head">
         <div className="guard-logos"><img src="/assets/BCC_logo.jpg" alt="BCC" /><img src="/assets/CAT_logo.jpg" alt="CAT" /></div>
@@ -171,8 +185,9 @@ export default function GuardPortal() {
               const events = attendance.filter(a => a.data.shift_id === shift.id)
               const checkedIn = events.some(a => a.data.event === "in")
               const checkedOut = events.some(a => a.data.event === "out")
-              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small><button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
+              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small>{!checkedOut && shift.data.status !== "Cancelled" && <label>Time In/Out photo<input aria-label={"Attendance photo for " + shift.data.title} type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={e=>setAttendancePhoto(e.target.files?.[0]?{shiftId:shift.id,file:e.target.files[0]}:null)} /><small>{attendancePhoto?.shiftId===shift.id ? attendancePhoto.file.name : "New photo required for each Time In and Time Out · max 3 MB"}</small></label>}<button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
             })}
+            <h2>Attendance history</h2>{attendance.map(a=><article className="guard-card" key={a.id}><strong>{a.data.event === "in" ? "Time In" : "Time Out"}</strong><p>{new Date(a.data.recorded_at).toLocaleString()}</p><p>GPS: {a.data.latitude ?? "—"}, {a.data.longitude ?? "—"} · {a.data.geofence_status || a.data.source || "Legacy record"}</p>{a.data.photo_id && <button className="guard-secondary" onClick={()=>void viewAttendancePhoto(a.id)}>View attendance photo</button>}</article>)}
             <h2>GPS Check-in</h2><p role="status">{gpsStatus}</p><section className="guard-card"><p>Share your current location with operations. GPS permission and internet connectivity are required.</p><button className="guard-secondary" disabled={busy} onClick={() => { setBusy(true); setError(""); void getPosition().catch(e => setError(e.message)).finally(() => setBusy(false)) }}>Check GPS</button><label>Assigned site<select value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="guard-secondary" disabled={busy || !siteId} onClick={() => void updatePosition()}>Send Current Location</button></section>
           </>}
           {tab === "reports" && <><div className="guard-row"><h2>My Incident Reports</h2><button className="guard-secondary" onClick={() => void refresh()}>Refresh</button></div>{reports.length === 0 ? <div className="guard-card">No incident reports yet.</div> : reports.map(r => <article key={r.id} className="guard-card"><div className="guard-row"><strong>{r.title}</strong><span className="guard-pill">{r.status}</span></div><p>{r.description}</p><small>{r.site_name || r.location}</small></article>)}</>}

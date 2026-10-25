@@ -543,6 +543,7 @@ function App() {
                     key={token}
                     role={APP_ROLE}
                     request={request}
+                    attendancePhotoSource={id=>({uri:api+"/attendance/"+id+"/photo",headers:{Authorization:"Bearer "+token}})}
                   />
                 )}
                 {tab === "home" && (

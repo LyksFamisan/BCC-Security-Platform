@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from "react"
 import {
   View,
+  Image,
+  Modal,
   Text,
   TextInput,
   Pressable,
@@ -9,6 +11,7 @@ import {
   Switch,
   Platform,
 } from "react-native"
+import * as ImagePicker from "expo-image-picker"
 import {getDutyPosition, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
 import DateTimePicker from "@react-native-community/datetimepicker"
@@ -46,12 +49,15 @@ const jsonOptions = (data: object, method = "POST") => ({
 export default function OperationsPanel({
   role,
   request,
+  attendancePhotoSource,
 }: {
   role: string
+  attendancePhotoSource: (id:string)=>{uri:string;headers:Record<string,string>}
   request: (url: string, options?: RequestInit) => Promise<any>
 }) {
   const s=useThemedStyles(baseStyles)
   const {dark}=useTheme()
+  const [photoRecord,setPhotoRecord]=useState<string|null>(null)
   const [section, setSection] = useState("shifts"),
     [catalog, setCatalog] = useState<Module[]>([]),
     [rows, setRows] = useState<Row[]>([]),
@@ -159,11 +165,17 @@ export default function OperationsPanel({
   }
   async function punch(shift: Row, event: string) {
     await run(async () => {
+      const permission=await ImagePicker.requestCameraPermissionsAsync()
+      if(!permission.granted) throw Error("Camera permission is required for an attendance photo.")
+      const result=await ImagePicker.launchCameraAsync({mediaTypes:["images"],cameraType:ImagePicker.CameraType.front,quality:0.7,allowsEditing:false})
+      if(result.canceled) throw Error("Photo cancelled. Attendance was not recorded.")
+      const image=result.assets[0]
+      if((image.fileSize || 0)>3*1024*1024) throw Error("Attendance photo must be under 3 MB. Retake the photo.")
       const coords = await position()
-      return request(
-        "/attendance",
-        jsonOptions({ shift_id: shift.id, event, ...coords }),
-      )
+      const form=new FormData()
+      for(const [key,value] of Object.entries({shift_id:shift.id,event,...coords})) form.append(key,String(value))
+      form.append("photo",{uri:image.uri,name:image.fileName || "attendance.jpg",type:image.mimeType || "image/jpeg"} as any)
+      return request("/attendance",{method:"POST",body:form})
     })
   }
   function start(row?: Row) {
@@ -219,6 +231,7 @@ export default function OperationsPanel({
     role === "guard"
       ? [
           ["shifts", "Attendance"],
+          ["attendance", "History"],
           ["assignments", "Equipment"],
           ["training", "Training"],
           ["certifications", "Licenses"],
@@ -228,6 +241,7 @@ export default function OperationsPanel({
       : catalog.map((m) => [m.key, m.label])
   return (
     <View style={s.wrap}>
+      <Modal visible={!!photoRecord} transparent onRequestClose={()=>setPhotoRecord(null)}><View style={{flex:1,backgroundColor:"#061326f5",padding:24,justifyContent:"center"}}><Pressable accessibilityRole="button" onPress={()=>setPhotoRecord(null)} style={s.button}><Text style={s.white}>Close attendance photo</Text></Pressable>{photoRecord && <Image accessibilityLabel="Attendance photo with timestamp and GPS" source={attendancePhotoSource(photoRecord)} style={{width:"100%",height:"80%"}} resizeMode="contain" onError={()=>setError("Could not load attendance photo. Check connection and retry.")} />}</View></Modal>
       <View style={s.heading}>
         <Text style={s.headingText}>
           {role === "guard" ? "My duty" : "Site operations"}
@@ -275,7 +289,7 @@ export default function OperationsPanel({
       {loading ? <ActivityIndicator color="#2563EB" /> : null}
       {role === "guard" && section === "shifts" && <View style={s.card}>
         <Text style={s.title}>Attendance & GPS</Text>
-        <Text accessibilityLiveRegion="polite" style={s.value}>{gpsState || "Check GPS before recording attendance"}</Text>
+        <Text accessibilityLiveRegion="polite" style={s.value}>{gpsState || "Photo + GPS required for Time In / Time Out"}</Text>
         {gps && <Text style={s.caption}>{gps.latitude.toFixed(6)}, {gps.longitude.toFixed(6)} · Last GPS check</Text>}
         <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Please wait…" : "Check GPS"}</Text></Pressable>
         {!loading && !rows.length && <Text style={s.caption}>No assigned shifts. Your supervisor must create your duty schedule before you can time in.</Text>}
@@ -473,6 +487,7 @@ export default function OperationsPanel({
                   </Text>
                 </View>
               ))}
+            {section === "attendance" && row.data.photo_id && <Pressable accessibilityRole="button" style={s.button} onPress={()=>setPhotoRecord(row.id)}><Text style={s.white}>View attendance photo</Text></Pressable>}
             {role === "guard" &&
               section === "shifts" &&
               row.data.status !== "Cancelled" && (
