@@ -1,8 +1,15 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, useRef, type FormEvent } from "react"
 import { io } from "socket.io-client"
 import "./connected.css"
 const api = import.meta.env.VITE_API_URL || "http://localhost:3001"
 type User = { id: string; name: string; role: string }
+type AuditEvent = {
+  id: string
+  action: string
+  details: Record<string, unknown>
+  created_at: string
+  actor_name: string
+}
 type Incident = {
   id: string
   title: string
@@ -24,9 +31,24 @@ export default function ConnectedApp() {
     [busy, setBusy] = useState(false)
   const [reports, setReports] = useState<Incident[]>([]),
     [users, setUsers] = useState<User[]>([]),
-    [audit, setAudit] = useState<any[]>([]),
+    [audit, setAudit] = useState<AuditEvent[]>([]),
     [photo, setPhoto] = useState<string | null>(null),
     [live, setLive] = useState(false)
+  const activeSession = useRef(session)
+  activeSession.current = session
+  function clearSession(message = "") {
+    activeSession.current = null
+    setSession(null)
+    setReports([])
+    setUsers([])
+    setAudit([])
+    setPhoto(null)
+    setLive(false)
+    setError(message)
+  }
+  function isCurrent(token: string) {
+    return activeSession.current?.token === token
+  }
   useEffect(() => {
     if (!session) return
     let active = true
@@ -38,17 +60,21 @@ export default function ConnectedApp() {
           signal: controller.signal,
         })
         if (res.status === 401) {
-          setSession(null)
-          throw Error("Session expired. Sign in again.")
+          if (active && isCurrent(session!.token)) {
+            clearSession("Session expired. Sign in again.")
+          }
+          return
         }
         if (!res.ok) throw Error("Unable to load reports")
         const rows = await res.json()
-        if (active) {
+        if (active && isCurrent(session!.token)) {
           setReports(rows)
           setError("")
         }
       } catch (e) {
-        if (active) setError((e as Error).message)
+        if (active && isCurrent(session!.token)) {
+          setError((e as Error).message)
+        }
       }
     }
     void refresh()
@@ -59,7 +85,7 @@ export default function ConnectedApp() {
       })
         .then((r) => (r.ok ? r.json() : []))
         .then((v) => {
-          if (active) setUsers(v)
+          if (active && isCurrent(session!.token)) setUsers(v)
         })
         .catch(() => {})
     const socket = io(api, { auth: { token: session.token } })
@@ -102,6 +128,8 @@ export default function ConnectedApp() {
       if (!res.ok) throw Error(data.error)
       if (!["admin", "supervisor"].includes(data.user.role))
         throw Error("Guards should use the mobile app.")
+      clearSession()
+      activeSession.current = data
       setSession(data)
       setPassword("")
     } catch (e) {
@@ -111,20 +139,24 @@ export default function ConnectedApp() {
     }
   }
   async function request(url: string, options: RequestInit = {}) {
+    const token = session!.token
     const res = await fetch(api + url, {
       ...options,
       headers: {
-        Authorization: "Bearer " + session!.token,
+        Authorization: "Bearer " + token,
         ...options.headers,
       },
     })
+    if (!isCurrent(token)) throw Error("Session changed")
     if (!res.ok) {
-      if (res.status === 401) setSession(null)
-      throw Error("Request failed (" + res.status + ")")
+      if (res.status === 401) clearSession("Session expired. Sign in again.")
+      const data = await res.json().catch(() => ({}))
+      throw Error(data.error || "Request failed (" + res.status + ")")
     }
     return res
   }
   async function update(id: string, changes: object) {
+    const token = session!.token
     setBusy(true)
     try {
       await request("/incidents/" + id, {
@@ -133,21 +165,30 @@ export default function ConnectedApp() {
         body: JSON.stringify(changes),
       })
       const res = await request("/incidents")
-      setReports(await res.json())
-      setError("")
+      const rows = await res.json()
+      if (isCurrent(token)) {
+        setReports(rows)
+        setError("")
+      }
     } catch (e) {
-      setError((e as Error).message)
+      if (isCurrent(token)) setError((e as Error).message)
     } finally {
       setBusy(false)
     }
   }
   async function inspect(i: Incident, kind: "photo" | "audit") {
+    const token = session!.token
     try {
       const res = await request("/incidents/" + i.id + "/" + kind)
-      if (kind === "audit") setAudit(await res.json())
-      else setPhoto(URL.createObjectURL(await res.blob()))
+      if (kind === "audit") {
+        const rows = await res.json()
+        if (isCurrent(token)) setAudit(rows)
+      } else {
+        const blob = await res.blob()
+        if (isCurrent(token)) setPhoto(URL.createObjectURL(blob))
+      }
     } catch (e) {
-      setError((e as Error).message)
+      if (isCurrent(token)) setError((e as Error).message)
     }
   }
   return (
@@ -164,13 +205,7 @@ export default function ConnectedApp() {
         </p>
         {session && (
           <button
-            onClick={() => {
-              setSession(null)
-              setReports([])
-              setAudit([])
-              setPhoto(null)
-              setUsers([])
-            }}
+            onClick={() => clearSession()}
           >
             Sign out
           </button>
@@ -204,9 +239,7 @@ export default function ConnectedApp() {
             />
           </label>
           <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-          <p>
-            API: {api}. Demo accounts are created by the local seed command.
-          </p>
+          <p>Use the account provided by your administrator.</p>
         </form>
       ) : (
         <>
@@ -229,6 +262,7 @@ export default function ConnectedApp() {
                     <label>
                       Status
                       <select
+                        aria-label="Status"
                         disabled={busy}
                         value={i.status}
                         onChange={(e) =>
@@ -248,6 +282,7 @@ export default function ConnectedApp() {
                     <label>
                       Assign report
                       <select
+                        aria-label="Assign report"
                         disabled={busy}
                         value={i.assignee_id || ""}
                         onChange={(e) =>

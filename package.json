@@ -6,6 +6,7 @@
     "build": "npm --prefix web run build",
     "preview": "npm --prefix web run preview",
     "test": "npm --prefix backend test",
-    "setup": "npm --prefix web ci && npm --prefix backend ci && npm --prefix mobile ci"
+    "setup": "npm --prefix web ci && npm --prefix backend ci && npm --prefix mobile ci",
+    "test:browser": "node backend/test/browser.mjs"
   }
 }

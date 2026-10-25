@@ -83,12 +83,13 @@ Report creation/update and audit writes are transactional. Photos are decoded an
 
 ```sh
 npm test
+npm run test:browser
 npm run build
 cd web && npx tsc --noEmit
 cd ../mobile && npm run typecheck
 ```
 
-The integration test uses PGlite (embedded PostgreSQL engine), real HTTP, JWT auth, real image decoding and Socket.IO against the shared API. It checks mobile-shaped multipart submission → web read, web update → guard read, reconnect recovery, site/ownership restrictions, protected photos/audits, unauthorized modifications, invalid status/assignee/image and persisted audit events. This does not replace testing on an actual Android device and a separately hosted PostgreSQL service. See `VERIFICATION.md` for execution results.
+The integration test uses PGlite (embedded PostgreSQL engine), real HTTP, JWT auth, real image decoding and Socket.IO against the shared API. It checks mobile-shaped multipart submission → web read, web update → guard read, reconnect recovery, site/ownership restrictions, protected photos/audits, unauthorized modifications, invalid status/assignee/image and persisted audit events. The browser test starts isolated Vite/API processes and requires Chromium (`cd web && npx playwright install chromium`). Set `CHROMIUM_EXECUTABLE_PATH` if using an existing Chromium binary. It also verifies expired-session cleanup and delayed-response isolation after account switching. This does not replace testing on an actual Android device and a separately hosted PostgreSQL service. See `VERIFICATION.md` for execution results.
 
 ## AWS hosting preparation (no deployment performed)
 

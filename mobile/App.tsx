@@ -39,13 +39,24 @@ export default function App() {
     [live, setLive] = useState(false)
   const currentToken = useRef(token)
   currentToken.current = token
-  async function logout() {
+  async function logout(message = "") {
     currentToken.current = null
     setToken(null)
     setReports([])
     setSites([])
     setSite("")
-    await SecureStore.deleteItemAsync("bcc-token")
+    setTitle("")
+    setDescription("")
+    setLocation("")
+    setPhoto(null)
+    setPassword("")
+    setLive(false)
+    setError(message)
+    try {
+      await SecureStore.deleteItemAsync("bcc-token")
+    } catch {
+      setError("Could not remove saved login. Clear this app's storage before sharing the device.")
+    }
   }
   useEffect(() => {
     SecureStore.getItemAsync("bcc-token")
@@ -59,8 +70,9 @@ export default function App() {
       ...options,
       headers: { Authorization: "Bearer " + token, ...options.headers },
     })
+    if (currentToken.current !== token) throw Error("Session changed")
     if (res.status === 401) {
-      await logout()
+      await logout("Session expired. Sign in again.")
       throw Error("Session expired. Sign in again.")
     }
     if (!res.ok) {
@@ -82,7 +94,7 @@ export default function App() {
       setSite((v) => v || s[0]?.id || "")
       setError("")
     } catch (e) {
-      setError((e as Error).message)
+      if (currentToken.current === token) setError((e as Error).message)
     }
   }
   useEffect(() => {
@@ -119,6 +131,7 @@ export default function App() {
       if (!res.ok) throw Error(d.error)
       if (d.user.role !== "guard") throw Error("Use a Guard account")
       await SecureStore.setItemAsync("bcc-token", d.token)
+      currentToken.current = d.token
       setToken(d.token)
       setPassword("")
       setError("")
@@ -164,13 +177,14 @@ export default function App() {
         type: photo.mimeType || "image/jpeg",
       } as any)
       await request("/incidents", { method: "POST", body: form })
+      if (currentToken.current !== token) return
       setTitle("")
       setDescription("")
       setLocation("")
       setPhoto(null)
       await refresh()
     } catch (e) {
-      setError((e as Error).message)
+      if (currentToken.current === token) setError((e as Error).message)
     } finally {
       setBusy(false)
     }
