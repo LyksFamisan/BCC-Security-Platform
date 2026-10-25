@@ -19,6 +19,7 @@ import {
 } from "react-native"
 import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
+import {ThemeProvider,ThemeToggle,TechBackground,useTheme,useThemedStyles} from "./Theme"
 import OperationsPanel from "./OperationsPanel"
 import { io } from "socket.io-client"
 const APP_ROLE = "guard"
@@ -37,7 +38,10 @@ type Report = {
   root_cause: string
   version: number
 }
-export default function App() {
+export default function Root() {return <ThemeProvider><App/></ThemeProvider>}
+function App() {
+  const styles=useThemedStyles(baseStyles)
+  const {dark}=useTheme()
   const [token, setToken] = useState<string | null>(null),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -294,12 +298,14 @@ export default function App() {
   }
   return (
     <SafeAreaView style={styles.safe}>
+      <TechBackground/>
       <Modal
         visible={!!selectedReport}
         animationType="slide"
         onRequestClose={() => setSelectedReport(null)}
       >
         <SafeAreaView style={styles.safe}>
+          <TechBackground/>
           <ScrollView contentContainerStyle={styles.page}>
             <Pressable
               accessibilityRole="button"
@@ -374,7 +380,7 @@ export default function App() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <StatusBar barStyle="dark-content" backgroundColor="#EFF6FF" />
+      <StatusBar barStyle={dark?"light-content":"dark-content"} backgroundColor={dark?"#07172B":"#EFF6FF"} />
       {!ready ? (
         <View style={styles.loading}>
           <ActivityIndicator color="#2563EB" />
@@ -401,6 +407,7 @@ export default function App() {
               ) : undefined
             }
           >
+            <View style={{alignItems:"flex-end"}}><ThemeToggle/></View>
             <View style={styles.brandRow}>
               <View style={styles.brandMark}>
                 <Image
@@ -465,7 +472,7 @@ export default function App() {
                         </Text>
                       </Pressable>
                     </View>
-                    <TextInput
+                    <TextInput keyboardAppearance={dark?"dark":"light"}
                       accessibilityLabel="Password"
                       placeholder="Enter your password"
                       placeholderTextColor="#8A9CA4"
@@ -716,7 +723,7 @@ export default function App() {
                       )}
                     </View>
                     {tab === "reports" && (
-                      <TextInput
+                      <TextInput keyboardAppearance={dark?"dark":"light"}
                         accessibilityLabel="Search reports"
                         placeholder="Search reports"
                         value={search}
@@ -856,6 +863,7 @@ function Action({
   busy?: boolean
   disabled?: boolean
 }) {
+  const styles=useThemedStyles(baseStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -894,10 +902,12 @@ function Field({
   email?: boolean
   maxLength?: number
 }) {
+  const styles=useThemedStyles(baseStyles)
+  const {dark}=useTheme()
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
+      <TextInput keyboardAppearance={dark?"dark":"light"}
         accessibilityLabel={label}
         value={value}
         onChangeText={onChangeText}
@@ -915,6 +925,7 @@ function Field({
   )
 }
 function Stat({ number, label }: { number: number; label: string }) {
+  const styles=useThemedStyles(baseStyles)
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{number}</Text>
@@ -922,7 +933,7 @@ function Stat({ number, label }: { number: number; label: string }) {
     </View>
   )
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#EFF6FF",

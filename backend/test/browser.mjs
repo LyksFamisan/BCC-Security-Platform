@@ -107,12 +107,31 @@ try {
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
   await page.goto("http://127.0.0.1:9843")
+  await page.getByRole("switch",{name:"Dark mode",exact:true}).click()
+  await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
+  await page.screenshot({path:"/tmp/bcc-theme-dark-login.png",fullPage:true})
+  await page.reload()
+  await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
+  assert.equal(await page.getByRole("switch",{name:"Dark mode",exact:true}).getAttribute("aria-checked"),"true","Theme survives refresh")
+  await page.setViewportSize({width:390,height:844})
+  await page.screenshot({path:"/tmp/bcc-theme-dark-phone.png",fullPage:true})
+  await page.getByRole("switch",{name:"Dark mode",exact:true}).click()
+  await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="light")
+  await page.reload()
+  await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="light")
+  await page.screenshot({path:"/tmp/bcc-theme-light-phone.png",fullPage:true})
+  await page.setViewportSize({width:1280,height:800})
+
   await page
     .getByLabel("Email", { exact: true })
     .fill("operations@demo.invalid")
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Sign in", exact: true }).click()
   await page.getByRole("button", { name: "Sign out", exact: true }).waitFor()
+  await page.getByRole("switch",{name:"Dark mode",exact:true}).click()
+  await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
+  await page.getByRole("button",{name:"Sign out",exact:true}).waitFor()
+  await page.screenshot({path:"/tmp/bcc-theme-dark-workspace.png",fullPage:true})
   // Exercise the actual roster form and persisted record, not just the API.
   await page.getByRole("button", { name: "Duty roster", exact: true }).click()
   await page.getByRole("button", { name: "+ Add record", exact: true }).click()
@@ -289,7 +308,7 @@ try {
   assert.equal(await page.getByText(/sample data|simulated login|pending backend setup/i).count(),0)
   assert.deepEqual(errors, [])
   console.log(
-    "PASS: roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; production login without demo banners.",
+    "PASS: light/dark switching, persisted preference and session preservation; roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; production login without demo banners.",
   )
 } finally {
   await browser?.close()

@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native"
 import * as Location from "expo-location"
+import {useThemedStyles,useTheme} from "./Theme"
 import DateTimePicker from "@react-native-community/datetimepicker"
 type Row = {
   id: string
@@ -49,6 +50,8 @@ export default function OperationsPanel({
   role: string
   request: (url: string, options?: RequestInit) => Promise<any>
 }) {
+  const s=useThemedStyles(baseStyles)
+  const {dark}=useTheme()
   const [section, setSection] = useState("shifts"),
     [catalog, setCatalog] = useState<Module[]>([]),
     [rows, setRows] = useState<Row[]>([]),
@@ -360,7 +363,7 @@ export default function OperationsPanel({
                         }}
                         style={s.input}
                       >
-                        <Text>
+                        <Text style={s.value}>
                           {draft[k]
                             ? new Date(draft[k]).toLocaleString()
                             : "Choose date"}
@@ -377,7 +380,7 @@ export default function OperationsPanel({
                       )}
                     </>
                   ) : (
-                    <TextInput
+                    <TextInput keyboardAppearance={dark?"dark":"light"}
                       accessibilityLabel={title(k)}
                       value={String(draft[k] ?? "")}
                       onChangeText={(v) => setDraft({ ...draft, [k]: v })}
@@ -394,7 +397,7 @@ export default function OperationsPanel({
               )
             })}
           {dateField && (
-            <DateTimePicker
+            <DateTimePicker themeVariant={dark?"dark":"light"}
               value={new Date(draft[dateField] || Date.now())}
               mode={dateMode}
               onChange={(event, value) => {
@@ -554,6 +557,7 @@ function ChoiceField({
   value: string
   onChange: (v: string) => void
 }) {
+  const s=useThemedStyles(baseStyles)
   return (
     <View style={s.field}>
       {label && <Text style={s.label}>{label}</Text>}
@@ -577,7 +581,7 @@ function ChoiceField({
     </View>
   )
 }
-const s = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   wrap: { gap: 16 },
   heading: {
     flexDirection: "row",
