@@ -1,10 +1,14 @@
 {
-  "installCommand": "npm --prefix web ci",
+  "installCommand": "npm --prefix web ci && npm --prefix backend ci --omit=dev",
   "buildCommand": "npm run build",
   "outputDirectory": "web/dist",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api(?:/|$)).*)",
       "destination": "/index.html"
     }
   ],
@@ -13,5 +17,14 @@
       "feat/connected-security-apps": false,
       "feat/tor-operational-workflows": false
     }
-  }
+  },
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "includeFiles": "backend/src/**"
+    }
+  },
+  "regions": [
+    "sin1"
+  ]
 }

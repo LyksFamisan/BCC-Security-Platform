@@ -7,8 +7,8 @@ import bcrypt from "bcryptjs"
 import multer from "multer"
 import sharp from "sharp"
 import { z } from "zod"
-import { randomUUID } from "node:crypto"
-import { mkdir, writeFile, unlink, readFile } from "node:fs/promises"
+import { randomUUID, createHash, timingSafeEqual } from "node:crypto"
+import { fileStore } from "./file-store.js"
 import path from "node:path"
 import { encodePhoto, decodePhoto, encryptionKey } from "./photo-storage.js"
 import { mountOperations } from "./operations.js"
@@ -17,7 +17,7 @@ export function createApp(pool, secret, notify = () => {}) {
   encryptionKey()
   const app = express(),
     origins = (process.env.WEB_ORIGINS || "http://localhost:8443").split(",")
-  const uploads = path.resolve(process.env.UPLOAD_DIR || "uploads")
+  const files = fileStore(pool)
   if (process.env.TRUST_PROXY_HOPS)
     app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS))
   app.use((req, res, next) => {
@@ -34,6 +34,16 @@ export function createApp(pool, secret, notify = () => {}) {
   app.get("/health", async (req, res) => {
     await pool.query("SELECT 1")
     res.json({ ok: true })
+  })
+  app.post('/auth/setup',rateLimit({windowMs:900000,limit:10}),async(req,res)=>{
+    const parsed=z.object({token:z.string().min(32).max(200),name:z.string().trim().min(1).max(150),email:z.email(),password:z.string().min(12).max(128)}).strict().safeParse(req.body)
+    if(!parsed.success)return res.status(400).json({error:'Enter your name, email and a password with at least 12 characters'})
+    const expected=process.env.SETUP_TOKEN||'',provided=parsed.data.token
+    if(!expected||Buffer.byteLength(provided)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(provided),Buffer.from(expected)))return res.status(403).json({error:'Activation link is invalid'})
+    const hash=await bcrypt.hash(parsed.data.password,12),c=await pool.connect()
+    try{await c.query('BEGIN');await c.query('SELECT pg_advisory_xact_lock(472902)');if((await c.query('SELECT 1 FROM users LIMIT 1')).rows.length){await c.query('ROLLBACK');return res.status(409).json({error:'Account activation is complete. Sign in instead.'})}
+      const id=randomUUID();await c.query("INSERT INTO users(id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'admin')",[id,parsed.data.name,parsed.data.email.toLowerCase(),hash]);await c.query("INSERT INTO operation_audit(actor_id,action) VALUES($1,'ACTIVATE_ADMINISTRATOR')",[id]);await c.query('COMMIT');res.status(201).json({ok:true})
+    }catch(e){await c.query('ROLLBACK');throw e}finally{c.release()}
   })
   async function identity(token) {
     const claims = jwt.verify(token, secret, {
@@ -79,6 +89,9 @@ export function createApp(pool, secret, notify = () => {}) {
         .safeParse(req.body)
       if (!parsed.success)
         return res.status(400).json({ error: "Email and password required" })
+      const attemptKey=createHash('sha256').update(parsed.data.email.toLowerCase()).digest('hex'),window=new Date(Math.floor(Date.now()/900000)*900000).toISOString()
+      const attempts=(await pool.query('INSERT INTO login_attempts(key,window_start) VALUES($1,$2) ON CONFLICT(key,window_start) DO UPDATE SET attempts=login_attempts.attempts+1 RETURNING attempts',[attemptKey,window])).rows[0].attempts
+      if(attempts>20)return res.status(429).json({error:'Too many sign-in attempts. Try again later.'})
       const { rows } = await pool.query("SELECT * FROM users WHERE email=$1", [
         parsed.data.email.toLowerCase(),
       ])
@@ -206,7 +219,7 @@ export function createApp(pool, secret, notify = () => {}) {
   )
   app.get("/incidents/:id/photo", incident, async (req, res) => {
     if (!req.incident.photo_key) return res.sendStatus(404)
-    const data = await readFile(path.join(uploads, req.incident.photo_key))
+    const data = await files.read("evidence/"+req.incident.photo_key)
     res
       .set({
         "Content-Type": "image/jpeg",
@@ -216,7 +229,7 @@ export function createApp(pool, secret, notify = () => {}) {
   })
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5 },
+    limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES||5*1024*1024), files: 1, fields: 5 },
     fileFilter(req, file, cb) {
       cb(
         null,
@@ -280,10 +293,7 @@ export function createApp(pool, secret, notify = () => {}) {
       }
       const id = randomUUID(),
         key = randomUUID() + ".jpg"
-      await mkdir(uploads, { recursive: true })
-      await writeFile(path.join(uploads, key), encodePhoto(image), {
-        mode: 0o600,
-      })
+      await files.write("evidence/"+key, encodePhoto(image))
       const c = await pool.connect()
       let row
       try {
@@ -320,7 +330,7 @@ export function createApp(pool, secret, notify = () => {}) {
         await c.query("COMMIT")
       } catch (e) {
         await c.query("ROLLBACK")
-        await unlink(path.join(uploads, key)).catch(() => {})
+        await files.remove("evidence/"+key).catch(() => {})
         throw e
       } finally {
         c.release()

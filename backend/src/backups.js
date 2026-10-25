@@ -6,6 +6,7 @@ import {
 } from "node:crypto"
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises"
 import path from "node:path"
+import {fileStore} from "./file-store.js"
 const tables = [
   "sites",
   "users",
@@ -84,9 +85,7 @@ export async function snapshot(pool) {
       if (!incident.photo_key) continue
       if (!/^[\da-f-]{36}\.jpg$/.test(incident.photo_key))
         throw Error("Unsafe evidence filename")
-      const data = await readFile(
-        path.resolve(process.env.UPLOAD_DIR || "uploads", incident.photo_key),
-      )
+      const data = await fileStore(pool).read("evidence/"+incident.photo_key)
       total += data.length
       if (total > 70 * 1024 * 1024)
         throw Object.assign(
@@ -105,27 +104,11 @@ export async function snapshot(pool) {
   }
 }
 export async function createBackup(pool) {
-  const bytes = pack(await snapshot(pool)),
-    id = randomUUID(),
-    dir = path.resolve(process.env.BACKUP_DIR || "backups")
-  await mkdir(dir, { recursive: true, mode: 0o700 })
-  await writeFile(path.join(dir, id + ".bccbackup"), bytes, {
-    mode: 0o600,
-    flag: "wx",
-  })
-  return { id, created_at: new Date().toISOString(), bytes: bytes.length }
+ const bytes=pack(await snapshot(pool)), id=randomUUID();
+ await fileStore(pool).write('backups/'+id+'.bccbackup',bytes)
+ return {id,created_at:new Date().toISOString(),bytes:bytes.length}
 }
-export async function listBackups() {
-  const dir = path.resolve(process.env.BACKUP_DIR || "backups")
-  try {
-    return (await readdir(dir))
-      .filter((n) => /^[\da-f-]{36}\.bccbackup$/.test(n))
-      .map((n) => ({ id: n.slice(0, -10) }))
-  } catch (e) {
-    if (e.code === "ENOENT") return []
-    throw e
-  }
-}
+export async function listBackups(pool) {return fileStore(pool).listBackups()}
 // Restore is deliberately CLI-only and refuses a database with any operational/user data.
 // Run migrations against an isolated empty database before calling this function.
 export async function restoreSnapshot(pool, result) {

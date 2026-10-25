@@ -3,7 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { createBackup, listBackups } from "./backups.js"
-import { readFile } from "node:fs/promises"
+import {fileStore} from "./file-store.js"
 import path from "node:path"
 import { encryptionKey } from "./photo-storage.js"
 
@@ -1250,9 +1250,7 @@ export function mountOperations(app, pool, notify) {
       uptime_seconds: Math.floor(process.uptime()),
       node: process.version,
       transport: req.secure ? "https" : "http",
-      photo_storage: process.env.UPLOAD_DIR
-        ? "configured local directory"
-        : "default local directory",
+      photo_storage: process.env.FILE_STORAGE==="postgres"?"private database storage":"private local directory",
       photo_encryption: encryptionKey()
         ? "AES-256-GCM for new uploads"
         : "not configured",
@@ -1297,7 +1295,7 @@ export function mountOperations(app, pool, notify) {
   })
   app.get("/system/backups", async (req, res) => {
     role(req, ["admin"])
-    res.json(await listBackups())
+    res.json(await listBackups(pool))
   })
   app.post("/system/backups", async (req, res) => {
     role(req, ["admin"])
@@ -1312,12 +1310,7 @@ export function mountOperations(app, pool, notify) {
     valid(uuid, req.params.id)
     let bytes
     try {
-      bytes = await readFile(
-        path.resolve(
-          process.env.BACKUP_DIR || "backups",
-          req.params.id + ".bccbackup",
-        ),
-      )
+      bytes = await fileStore(pool).read("backups/"+req.params.id+".bccbackup")
     } catch (e) {
       if (e.code === "ENOENT") problem(404, "Backup not found")
       throw e

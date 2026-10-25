@@ -23,7 +23,7 @@ import OperationsPanel from "./OperationsPanel"
 import { io } from "socket.io-client"
 const APP_ROLE = "guard"
 const SESSION_KEY = "bcc-guard-token"
-const api = process.env.EXPO_PUBLIC_API_URL
+const api = process.env.EXPO_PUBLIC_API_URL || "https://bcc-security-platform.vercel.app/api"
 type Report = {
   id: string
   title: string
@@ -137,6 +137,7 @@ export default function App() {
       }
       setRole(identity.role)
       setReports(r)
+      setLive(true)
       setSites(s)
       setSite((v) => v || s[0]?.id || "")
       setError("")
@@ -147,20 +148,20 @@ export default function App() {
   useEffect(() => {
     if (!token || !api) return
     void refresh()
-    const socket = io(api, { auth: { token } })
-    socket.on("connect", () => {
+    const socket = process.env.EXPO_PUBLIC_REALTIME_TRANSPORT === "socket" ? io(api, { auth: { token } }) : null
+    socket?.on("connect", () => {
       setLive(true)
       void refresh()
     })
-    socket.on("incidents:changed", () => void refresh())
-    socket.on("disconnect", () => setLive(false))
-    socket.on("connect_error", () => setLive(false))
+    socket?.on("incidents:changed", () => void refresh())
+    socket?.on("disconnect", () => setLive(false))
+    socket?.on("connect_error", () => setLive(false))
     const timer = setInterval(refresh, 15000)
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "active") void refresh()
     })
     return () => {
-      socket.disconnect()
+      socket?.disconnect()
       clearInterval(timer)
       sub.remove()
     }
@@ -210,8 +211,8 @@ export default function App() {
         quality: 0.8,
       })
       if (!result.canceled) {
-        if ((result.assets[0].fileSize || 0) > 5 * 1024 * 1024)
-          throw Error("Choose a photo under 5 MB")
+        if ((result.assets[0].fileSize || 0) > 3 * 1024 * 1024)
+          throw Error("Choose a photo under 3 MB")
         setPhoto(result.assets[0])
       }
     } catch (e) {
@@ -496,7 +497,7 @@ export default function App() {
                           ]}
                         />
                         <Text style={styles.connectionText}>
-                          {live ? "Live" : "Reconnecting"}
+                          {live ? "Online" : "Connecting"}
                         </Text>
                       </View>
                     </View>
@@ -673,7 +674,7 @@ export default function App() {
                           <Text style={styles.uploadIcon}>＋</Text>
                           <Text style={styles.quickTitle}>Add a photo</Text>
                           <Text style={styles.small}>
-                            JPEG, PNG or WebP · Up to 5 MB
+                            JPEG, PNG or WebP · Up to 3 MB
                           </Text>
                         </>
                       )}

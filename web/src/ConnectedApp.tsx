@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, type FormEvent } from "react"
 import { io } from "socket.io-client"
 import "./connected.css"
+import AccountActivation from "./AccountActivation"
 import OperationsWorkspace from "./OperationsWorkspace"
-const api = import.meta.env.VITE_API_URL || "http://localhost:3001"
+const api = import.meta.env.VITE_API_URL || "/api"
 type User = { id: string; name: string; role: string }
 type AuditEvent = {
   id: string
@@ -42,6 +43,7 @@ export default function ConnectedApp() {
     [audit, setAudit] = useState<AuditEvent[]>([]),
     [photo, setPhoto] = useState<string | null>(null),
     [live, setLive] = useState(false)
+  const [activationToken,setActivationToken]=useState(()=>new URLSearchParams(window.location.hash.slice(1)).get("activate")||"")
   const [view, setView] = useState<"workspace" | "incidents">("workspace")
   const activeSession = useRef(session)
   activeSession.current = session
@@ -78,6 +80,7 @@ export default function ConnectedApp() {
         const rows = await res.json()
         if (active && isCurrent(session!.token)) {
           setReports(rows)
+          setLive(true)
           setError("")
         }
       } catch (e) {
@@ -98,21 +101,21 @@ export default function ConnectedApp() {
           if (active && isCurrent(session!.token)) setUsers(v)
         })
         .catch(() => {})
-    const socket = io(api, { auth: { token: session.token } })
-    socket.on("connect", () => {
+    const socket = import.meta.env.VITE_REALTIME_TRANSPORT==="poll" ? null : io(api, { auth: { token: session.token } })
+    socket?.on("connect", () => {
       setLive(true)
       void refresh()
     })
-    socket.on("disconnect", () => setLive(false))
-    socket.on("connect_error", () => setLive(false))
-    socket.on("incidents:changed", () => void refresh())
-    const timer = setInterval(refresh, 15000)
+    socket?.on("disconnect", () => setLive(false))
+    socket?.on("connect_error", () => setLive(false))
+    socket?.on("incidents:changed", () => void refresh())
+    const timer = setInterval(refresh, 10000)
     window.addEventListener("online", refresh)
     window.addEventListener("focus", refresh)
     return () => {
       active = false
       controller.abort()
-      socket.disconnect()
+      socket?.disconnect()
       clearInterval(timer)
       window.removeEventListener("online", refresh)
       window.removeEventListener("focus", refresh)
@@ -201,17 +204,17 @@ export default function ConnectedApp() {
       if (isCurrent(token)) setError((e as Error).message)
     }
   }
+  if(activationToken)return <AccountActivation api={api} token={activationToken} onComplete={()=>setActivationToken("")} />
   return (
-    <div className="connected">
+    <div className={"connected"+(!session?" auth-screen":"")}>
       <header>
-        <p>BCC / CAT • CONNECTED OPERATIONS</p>
+        <div className="auth-brand"><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></div>
         <h1>Security Services Platform</h1>
         <p>
           {session
-            ? `${session.user.name} · ${session.user.role} · ${
-                live ? "Live updates connected" : "Polling / reconnecting"
-              }`
-            : "Sign in with your server-issued SSD, Supervisor or System Administrator account."}
+            ? `${session.user.name} · ${{admin:"System Administrator",operations:"Operations Management",supervisor:"Supervisor"}[session.user.role]||session.user.role}`
+            : ""}
+
         </p>
         {session && (
           <button
@@ -252,7 +255,7 @@ export default function ConnectedApp() {
             />
           </label>
           <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-          <p>Use the account provided by your administrator.</p>
+
         </form>
       ) : session.user.role === "admin" || view === "workspace" ? (
         <OperationsWorkspace
@@ -265,10 +268,7 @@ export default function ConnectedApp() {
         <>
           <button onClick={() => setView("workspace")}>← Operations</button>
           <h2>Incident center</h2>
-          <p>
-            {reports.length} accessible reports · updates also refresh every 15
-            seconds.
-          </p>
+          <p>{reports.length} reports</p>
           <section className="report-grid">
             {reports.map((i) => (
               <article key={i.id}>
@@ -407,9 +407,7 @@ export default function ConnectedApp() {
                         />
                       </label>
                     ))}
-                    <small>
-                      The server accepts only assignees belonging to this site.
-                    </small>
+
                   </>
                 )}
                 <div>
@@ -426,7 +424,7 @@ export default function ConnectedApp() {
             ))}
           </section>
           {reports.length === 0 && (
-            <p>No accessible reports. Submit one from the Guard mobile app.</p>
+            <p>No reports yet.</p>
           )}
           {photo && (
             <section>

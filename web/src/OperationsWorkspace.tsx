@@ -793,10 +793,7 @@ export default function OperationsWorkspace({
                 >
                   Import events
                 </button>
-                <p>
-                  Uses the authenticated import contract. Configure the source
-                  in System Administration before importing.
-                </p>
+
               </>
             )}
           </section>
@@ -910,7 +907,7 @@ export default function OperationsWorkspace({
                     </label>
                   ))}
                 </fieldset>
-                <p>Saving revokes existing sessions for this account.</p>
+
                 <button disabled={busy}>Save user</button>
                 <button type="button" onClick={() => setAccountDraft(null)}>
                   Cancel
@@ -1067,10 +1064,7 @@ export default function OperationsWorkspace({
               Require approval before resolution
             </label>
             <button disabled={busy}>Save workflow</button>
-            <p>
-              SLA changes apply to newly submitted or reclassified incidents.
-              Default values require BCC confirmation.
-            </p>
+
           </form>
         )}
         {section === "audit" && (
@@ -1107,7 +1101,7 @@ export default function OperationsWorkspace({
               )
             }}
           >
-            <h3>Timekeeping adapter</h3>
+            <h3>Timekeeping integration</h3>
             <label>
               Source name
               <input
@@ -1132,12 +1126,7 @@ export default function OperationsWorkspace({
               Enable authenticated attendance imports
             </label>
             <button disabled={busy}>Save integration</button>
-            <p>
-              POST /integrations/attendance accepts external_id, shift_id, event
-              (in/out) and recorded_at. Existing provider mapping and
-              credentials must be supplied before a vendor connection can go
-              live. No arbitrary external URL is fetched by this adapter.
-            </p>
+
           </form>
         )}
         {section === "backups" && (
@@ -1150,11 +1139,7 @@ export default function OperationsWorkspace({
             >
               Create backup
             </button>
-            <p>
-              Requires the server backup encryption key. Restore runs separately
-              into an empty database; production records cannot be overwritten
-              from this screen.
-            </p>
+
             {backups.map((b) => (
               <div key={b.id}>
                 <code>{b.id}</code>

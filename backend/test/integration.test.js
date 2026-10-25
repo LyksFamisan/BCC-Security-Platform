@@ -28,6 +28,7 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       "utf8",
     ),
   )
+await db.exec(await readFile(new URL("../migrations/004_hosted_storage.sql",import.meta.url),"utf8"))
   const pool = {
     query: (sql, args) => db.query(sql, args),
     connect: async () => ({

@@ -30,6 +30,7 @@ await db.exec(
     "utf8",
   ),
 )
+await db.exec(await readFile(new URL("../migrations/004_hosted_storage.sql",import.meta.url),"utf8"))
 const pool = {
   query: (q, a) => db.query(q, a),
   connect: async () => ({ query: (q, a) => db.query(q, a), release() {} }),
@@ -285,17 +286,10 @@ try {
   await page.screenshot({ path: "/tmp/bcc-admin-verified.png", fullPage: true })
   await page.getByRole("button", { name: "Sign out", exact: true }).click()
   await page.getByLabel("Email", { exact: true }).waitFor()
-  await page
-    .getByRole("button", {
-      name: "View preserved prototype (sample data only)",
-    })
-    .click()
-  await page
-    .getByRole("button", { name: "Open connected incident platform" })
-    .waitFor()
+  assert.equal(await page.getByText(/sample data|simulated login|pending backend setup/i).count(),0)
   assert.deepEqual(errors, [])
   console.log(
-    "PASS: roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; preserved prototype switch.",
+    "PASS: roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; production login without demo banners.",
   )
 } finally {
   await browser?.close()

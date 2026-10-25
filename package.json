@@ -8,5 +8,6 @@
     "test": "npm --prefix backend test",
     "setup": "npm --prefix web ci && npm --prefix backend ci && npm --prefix mobile ci && npm --prefix mobile-supervisor ci",
     "test:browser": "node backend/test/browser.mjs"
-  }
+  },
+  "type": "module"
 }
