@@ -26,6 +26,7 @@ export default function GuardPortal() {
   const [description, setDescription] = useState("")
   const [location, setLocation] = useState("")
   const [photo, setPhoto] = useState<File | null>(null)
+  const [attendancePhoto, setAttendancePhoto] = useState<File | null>(null)
 
   const request = useCallback(async (path: string, options: RequestInit = {}, token = session?.token) => {
     if (!token) throw Error("Please sign in.")
@@ -93,11 +94,14 @@ export default function GuardPortal() {
   async function markAttendance(event: "in" | "out", shiftId: string) {
     setBusy(true); setError(""); setNotice("")
     try {
+      if (!attendancePhoto) throw Error("Take a camera photo before time in or time out.")
       const gps = await getPosition()
-      await request("/attendance", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shift_id: shiftId, event, latitude: gps.latitude, longitude: gps.longitude, accuracy: gps.accuracy }),
-      })
+      const form = new FormData()
+      form.append("shift_id", shiftId); form.append("event", event)
+      form.append("latitude", String(gps.latitude)); form.append("longitude", String(gps.longitude))
+      form.append("accuracy", String(gps.accuracy)); form.append("photo", attendancePhoto)
+      await request("/attendance", { method: "POST", body: form })
+      setAttendancePhoto(null)
       setNotice(event === "in" ? "Check-in recorded successfully." : "Check-out recorded successfully.")
       await refresh()
     } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
@@ -159,7 +163,7 @@ export default function GuardPortal() {
               const events = attendance.filter(a => a.data.shift_id === shift.id)
               const checkedIn = events.some(a => a.data.event === "in")
               const checkedOut = events.some(a => a.data.event === "out")
-              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small><button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Check Out with GPS" : "Check In with GPS"}</button></article>
+              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small><label>Attendance camera photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={e => setAttendancePhoto(e.target.files?.[0] || null)} /></label><button className="guard-primary" disabled={busy || !attendancePhoto || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Check Out with GPS" : "Check In with GPS"}</button></article>
             })}
             <h2>Live GPS Check-in</h2><section className="guard-card"><p>Share your current location with operations. GPS permission and internet connectivity are required.</p><label>Assigned site<select value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="guard-secondary" disabled={busy || !siteId} onClick={() => void updatePosition()}>Send Current Location</button></section>
           </>}
