@@ -90,7 +90,7 @@ function AttendancePhotoGallery({
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: L.muted, marginTop: 2 }}>{item.time || 'Recorded'}</div>
             {item.savedLocation && <div style={{ fontFamily: 'JetBrains Mono', fontSize: 8, color: '#7C3AED', lineHeight: 1.45, marginTop: 5 }}>LAT {item.savedLocation.latitude.toFixed(4)}<br />LON {item.savedLocation.longitude.toFixed(4)}<br />{item.savedLocation.source === 'live' ? 'LIVE GPS' : 'ASSIGNED SITE'}</div>}
             <div className="flex gap-1" style={{ marginTop: 6 }}>
-              <button type="button" onClick={() => setViewingPhoto({ label: item.label, photo: item.photo })} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
+              <button type="button" onClick={() => setViewingPhoto({ label: item.label, photo: item.photo! })} style={{ flex: 1, border: `1px solid ${L.cardBorder}`, background: 'transparent', color: L.body, borderRadius: 5, padding: '4px 3px', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>View</button>
               <a href={item.photo} download={`security-personnel-${item.mode}.jpg`} aria-label={`Download ${item.label}`} style={{ flex: 1, textAlign: 'center', borderRadius: 5, padding: '4px 3px', background: '#8B5CF6', color: '#fff', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Download</a>
             </div>
           </div>
