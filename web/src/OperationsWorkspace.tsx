@@ -317,10 +317,6 @@ export default function OperationsWorkspace({
   return (
     <div className="ops-shell">
       <aside className="ops-sidebar">
-        <div className="ops-brand">
-          <img src="/assets/BCC_logo.jpg" alt="BCC" />
-          <img src="/assets/CAT_logo.jpg" alt="CAT" />
-        </div>
         <p>
           {role === "admin"
             ? "System administration"
@@ -346,7 +342,6 @@ export default function OperationsWorkspace({
       <main className="ops-main">
         <div className="ops-heading">
           <div>
-            <small>BCC / CAT</small>
             <h2>{module?.label || nav.find((n) => n[0] === section)?.[1]}</h2>
           </div>
           <button onClick={() => setRevision((n) => n + 1)} disabled={busy}>
