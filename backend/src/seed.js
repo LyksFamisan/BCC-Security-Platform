@@ -10,7 +10,7 @@ try {
   for (let n = 1; n <= 2; n++)
     await c.query("INSERT INTO sites VALUES($1,$2) ON CONFLICT DO NOTHING", [
       `10000000-0000-4000-8000-00000000000${n}`,
-      `Demo Site ${n}`,
+      ["Demo Makati Office", "Demo BGC Commercial Site"][n - 1],
     ])
   for (const [n, role] of [
     "operations",
@@ -29,6 +29,17 @@ try {
       "INSERT INTO user_sites VALUES($1,$2) ON CONFLICT DO NOTHING",
       [id, `10000000-0000-4000-8000-00000000000${n === 3 ? 2 : 1}`],
     )
+  }
+  // Extra fictional assigned sites for demonstrations. No real geofence coordinates are invented.
+  for (const [n, name] of [[3, "Demo Ortigas Business Center"], [4, "Demo Quezon City Warehouse"]]) {
+    const siteId = "10000000-0000-4000-8000-00000000000" + n
+    await c.query("INSERT INTO sites(id,name) VALUES($1,$2) ON CONFLICT DO NOTHING", [siteId, name])
+  }
+  for (const [userNo, siteNo] of [[1,2],[1,3],[2,2],[2,3],[3,3],[4,4]]) {
+    await c.query("INSERT INTO user_sites(user_id,site_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [
+      "20000000-0000-4000-8000-00000000000" + userNo,
+      "10000000-0000-4000-8000-00000000000" + siteNo,
+    ])
   }
   // Fictional sample records only; explicit seeding is never run at API startup.
   const now = Date.now(),
