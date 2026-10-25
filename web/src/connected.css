@@ -20,3 +20,20 @@
 .auth-screen .login-brand-heading strong{font:inherit;color:#eb7410}
 .auth-screen .login-brand-heading{font-style:italic}.auth-screen .login-brand-heading strong{font-style:italic}
 @media(max-width:800px){.auth-screen .login-brand-art{justify-content:center;flex-wrap:wrap;text-align:center;margin:auto}.auth-screen .login-brand-heading{font-size:clamp(23px,6vw,34px)}}
+
+
+/* Screenshot-inspired login: dark blue hero, orange italic heading, centered glass form. */
+.connected.auth-screen{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;gap:28px;min-height:100svh;padding:clamp(22px,3vw,42px);background:linear-gradient(110deg,rgba(9,24,51,.68),rgba(22,40,82,.62)),url('/assets/security-team-bg.webp') center / cover fixed;color:#f3f6ff}
+.connected.auth-screen>header{width:100%;max-width:1320px;align-self:auto}
+.auth-screen .login-brand-art{max-width:none;width:100%;min-height:clamp(170px,20vw,265px);justify-content:center;background:linear-gradient(95deg,rgba(3,24,62,.87),rgba(4,42,98,.78)),url('/assets/bg.jpg') center / cover;border:1px solid rgba(155,193,243,.3);border-radius:24px;box-shadow:0 18px 40px #0003;color:#ff8b16}
+.auth-screen .login-brand-logos img{width:clamp(68px,10vw,142px);height:clamp(68px,10vw,142px);border-radius:18px}
+.auth-screen .login-brand-heading{font-size:clamp(26px,4.2vw,65px);font-style:italic;font-weight:850;color:#ff8a12;text-shadow:2px 4px 3px #061326,0 0 12px #ff87001f}
+.auth-screen .login-brand-heading strong{font-style:italic;color:#ff8a12}
+.connected.auth-screen .login{max-width:530px;background:rgba(24,39,74,.79);border:1px solid rgba(193,212,249,.4);box-shadow:0 22px 60px #020b2470;backdrop-filter:blur(18px);color:#f6f8ff}
+.auth-screen .login h2,.auth-screen .login label{color:#f6f8ff}
+.auth-screen .login input{background:rgba(255,255,255,.11);border-color:#b6c6e280;color:#fff}
+.auth-screen .login input::placeholder{color:#d2daea}
+.connected.auth-screen .login button[type="submit"]{background:linear-gradient(105deg,#e86416,#c9470f);border-color:#ff8d33;color:#fff}
+.connected.auth-screen .login button[type="submit"]:hover{background:linear-gradient(105deg,#fa7c24,#db5512)}
+.auth-screen .security-visual{display:none}
+@media(max-width:800px){.connected.auth-screen{padding:18px;gap:22px}.auth-screen .login-brand-art{min-height:0;padding:20px 14px}.auth-screen .login-brand-logos img{width:72px;height:72px}.auth-screen .login-brand-heading{font-size:clamp(24px,5.5vw,37px)}}
