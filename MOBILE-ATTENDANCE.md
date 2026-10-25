@@ -9,3 +9,9 @@ Phone: enable Location/GPS and precise foreground location permission. The app w
 Update your local checkout from GitHub, then run `npm ci` and `npx expo start --clear` inside `mobile` (Guard) or `mobile-supervisor` (Supervisor). Scan the newly generated QR code using a compatible Expo Go installation. An installed standalone app requires a new native build to receive code changes.
 
 Verified: five simulated native-location adapter tests (`node --test mobile/test/gps.test.cjs`), TypeScript checks, Android JS exports and backend attendance/geofence tests. Physical phone GPS and actual client site boundaries still require device acceptance testing.
+
+## Web Guard Portal
+
+Open `https://bcc-security-platform.vercel.app/guard` in the phone browser. Sign in with a Guard account. Duty contains Time In with GPS / Time Out with GPS, Check GPS and Send Current Location. Browser and phone location permissions must be enabled. Each attendance action gets a fresh high-accuracy location and uses the same server geofence validation and database as the native app. The portal refuses accuracy worse than 100 metres; the server can require tighter accuracy. Cancelled shifts cannot record attendance.
+
+The web portal attendance flow is verified with browser geolocation fixtures against an isolated database; this does not replace physical-phone acceptance testing.
