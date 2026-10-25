@@ -1,9 +1,9 @@
-# Blue / orange / violet visual update
+# Security team background and readability update
 
-Project asset: `web/public/assets/security-guard-bg.webp`.
+Project asset: `web/public/assets/security-team-bg.webp`.
 
-The background was generated with the built-in image-generation tool, then encoded as WebP for the application. It depicts a fictional security guard, not a BCC employee. The original BCC/CAT logos remain unchanged. The website uses a blue base, violet navigation accents and orange primary actions. Dark and light modes remain available; forms and records retain solid, readable surfaces.
+Generated using the built-in image-generation tool. The six guards are fictional. Original BCC/CAT logos are preserved. A compact aligned brand lockup and solid panels preserve readable text in both themes.
 
 ## Final image prompt
 
-Use case: photorealistic-natural. Asset type: wide background photograph for a professional security services web application. Create a cinematic, realistic commercial photograph of a professional Filipino security guard in a crisp navy uniform, modest non-branded cap, plain shoulder patches and radio earpiece, standing attentively at a modern corporate building at dusk. Waist-up composition, guard positioned on the LEFT third of the frame, right half spacious with softly blurred glass architecture and no distracting objects, suitable behind a login form. Deep navy blue lighting, subtle violet reflections, restrained warm orange edge light, premium polished security-technology atmosphere, respectful and credible, natural human face and hands. Landscape wide 16:9 composition. No guns or visible weapons. No company names, no readable badges, no text, no logos, no watermark. This is a background asset only, no UI, no cards, no buttons.
+Use case: photorealistic-natural. Asset type: wide website sign-in background photograph. A professional team of six fictional Filipino security guards, men and women in neat navy security uniforms, standing together outside a modern corporate building at dusk. Wide environmental photograph, full-body people in the left half, each person small in frame, entire group occupies about 45 percent of width and 48 percent of image height, with lots of architecture and breathing room above. Right half quiet architectural negative space for login form. Natural confident poses, realistic faces, navy blue scene with subtle violet architectural lights and warm orange dusk accents. No weapons, no text, no logos, no watermark. Landscape 16:9 composition. Do not create a close-up portrait.

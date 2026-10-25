@@ -302,6 +302,25 @@ try {
       .evaluate((e) => e.getBoundingClientRect().left >= 0),
     "Mobile workspace must not be clipped on the left",
   )
+  await page.getByRole("button", { name: "Workflow & SLA", exact: true }).click()
+  await page.getByRole("heading", { name: "Resolution SLA", exact: true }).waitFor()
+  for (const theme of ["dark", "light"]) {
+    if (await page.evaluate(() => document.documentElement.dataset.bccTheme) !== theme)
+      await page.getByRole("switch", { name: "Dark mode", exact: true }).click()
+    const ratio = await page.locator(".ops-panel").first().evaluate(panel => {
+      const luminance = color => {
+        const rgb = color.match(/[\d.]+/g).slice(0,3).map(v => { const n=Number(v)/255; return n<=.04045?n/12.92:((n+.055)/1.055)**2.4 })
+        return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722
+      }
+      const bg=luminance(getComputedStyle(panel).backgroundColor)
+      return Math.min(...[...panel.querySelectorAll("h3,label")].map(e => {
+        const fg=luminance(getComputedStyle(e).color)
+        return (Math.max(bg,fg)+.05)/(Math.min(bg,fg)+.05)
+      }))
+    })
+    assert(ratio>=4.5, `${theme} workflow labels need readable contrast: ${ratio}`)
+    await page.screenshot({ path: `/tmp/bcc-workflow-${theme}.png`, fullPage: true })
+  }
   await page.screenshot({ path: "/tmp/bcc-admin-verified.png", fullPage: true })
   await page.getByRole("button", { name: "Sign out", exact: true }).click()
   await page.getByLabel("Email", { exact: true }).waitFor()
