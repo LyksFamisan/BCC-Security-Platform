@@ -70,3 +70,9 @@ html[data-bcc-theme=dark] .connected.auth-screen .login label{color:#f0f3fb}
 .connected.auth-screen .login .password-eye:hover{background:#ffffff18;box-shadow:none}
 html[data-bcc-theme=light] .connected.auth-screen .login .password-eye{color:#365071}
 .connected.auth-screen .login .password-eye:focus-visible{outline:2px solid #b99af3;outline-offset:1px}
+
+/* Supplied gold CAT branding replaces the former login logo/title lockup. */
+.connected.auth-screen>header{display:block;width:min(860px,100%);max-width:860px}
+.connected.auth-screen>header h1.login-brand-art{max-width:none;margin:0;font-size:0;line-height:0}
+.login-brand-art img{display:block;width:100%;height:auto;border-radius:14px;box-shadow:0 12px 38px #0003}
+@media(max-width:800px){.connected.auth-screen>header{width:100%;max-width:620px}.login-brand-art img{border-radius:10px}}
