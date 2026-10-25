@@ -187,6 +187,15 @@ try {
     path: "/tmp/bcc-roster-verified.png",
     fullPage: true,
   })
+  const offlineId="30000000-0000-4000-8000-000000000007"
+  await db.query("INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'offline_attendance',$2,$3,$3,$4)",[offlineId,site,"20000000-0000-4000-8000-000000000002",JSON.stringify({title:"Offline Time in",event:"in",status:"Pending review",captured_at:new Date().toISOString(),latitude:14.55,longitude:121.02,accuracy:5,review_notes:""})])
+  await page.getByRole("button",{name:"Offline attendance review",exact:true}).click()
+  await page.getByRole("heading",{name:"Offline Time in",exact:true}).waitFor()
+  await page.getByLabel("Review notes for Demo guard",{exact:true}).fill("Evidence checked in isolated browser verification")
+  await page.getByRole("button",{name:"Approve capture",exact:true}).click()
+  await page.getByText("Approved",{exact:true}).waitFor()
+  assert.equal((await db.query("SELECT data FROM operational_records WHERE id=$1",[offlineId])).rows[0].data.status,"Approved")
+  await page.screenshot({path:"/tmp/bcc-offline-review-verified.png",fullPage:true})
   await page
     .getByRole("button", { name: "Incident center ↗", exact: true })
     .click()

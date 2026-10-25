@@ -12,6 +12,7 @@ import {
   Platform,
   Linking,
 } from "react-native"
+import {captureId,type Capture} from "./offlineStore"
 import * as ImagePicker from "expo-image-picker"
 import {getDutyPosition, geofenceStatus, nextAttendanceEvent, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
@@ -50,9 +51,11 @@ const jsonOptions = (data: object, method = "POST") => ({
 export default function OperationsPanel({
   role,
   request,
-  attendancePhotoSource,
+  attendancePhotoSource,queueAttendance,queuedAttendance,
 }: {
   role: string
+  queueAttendance:(row:Capture)=>Promise<void>
+  queuedAttendance:Capture[]
   attendancePhotoSource: (id:string)=>{uri:string;headers:Record<string,string>}
   request: (url: string, options?: RequestInit) => Promise<any>
 }) {
@@ -63,6 +66,7 @@ export default function OperationsPanel({
     [catalog, setCatalog] = useState<Module[]>([]),
     [rows, setRows] = useState<Row[]>([]),
     [attendance, setAttendance] = useState<Row[]>([]),
+    [offlineRecords,setOfflineRecords]=useState<Row[]>([]),
     [notifications, setNotifications] = useState<any[]>([]),
     [sites, setSites] = useState<Choice[]>([]),
     [people, setPeople] = useState<Choice[]>([]),
@@ -88,12 +92,13 @@ export default function OperationsPanel({
     let active = true
     async function load() {
       try {
-        const [c, s, r, a, n] = await Promise.all([
+        const [c, s, r, a, n, o] = await Promise.all([
           request("/operations/catalog"),
           request("/sites"),
           request("/operations/" + section),
           request("/operations/attendance"),
           request("/notifications"),
+          request("/operations/offline_attendance"),
         ])
         if (!active) return
         setCatalog(c)
@@ -101,6 +106,7 @@ export default function OperationsPanel({
         setRows(r)
         setAttendance(a)
         setNotifications(n)
+        setOfflineRecords(o)
         if (role === "supervisor") {
           const [p, eq, i] = await Promise.all([
             request("/users"),
@@ -142,7 +148,7 @@ export default function OperationsPanel({
       const result = await fn()
       if(!mounted.current) return
       setRev((v) => v + 1)
-      setNotice(result?.gps_checked ? "GPS checked. Time In/Time Out will capture a fresh location." : result?.data?.event ? `Time ${result.data.event} recorded · ${new Date(result.data.recorded_at).toLocaleString()}` : result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
+      setNotice(result?.saved_offline ? "Offline capture saved · Pending supervisor review" : result?.gps_checked ? "GPS checked. Time In/Time Out will capture a fresh location." : result?.data?.event ? `Time ${result.data.event} recorded · ${new Date(result.data.recorded_at).toLocaleString()}` : result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
       setDraft(null)
     } catch (e) {
       setError((e as Error).message)
@@ -164,8 +170,9 @@ export default function OperationsPanel({
       throw error
     }
   }
-  async function punch(shift: Row, event: string) {
+  async function punch(shift: Row, event: string, offlineCapture=false) {
     await run(async () => {
+      if(event==="in" && (Date.now()<+new Date(shift.data.start)-30*60000 || Date.now()>+new Date(shift.data.end)))throw Error("Time In opens 30 minutes before the assigned shift until its end.")
       const initial=await position()
       const boundary=sites.find(s=>s.id===shift.site_id)
       if(!boundary) throw Error("Assigned site unavailable. Refresh and retry.")
@@ -180,11 +187,20 @@ export default function OperationsPanel({
       const image=result.assets[0]
       if((image.fileSize || 0)>3*1024*1024) throw Error("Attendance photo must be under 3 MB. Retake the photo.")
       const coords = await position()
+      const capture:Capture={id:captureId(),type:"attendance",shift_id:shift.id,event:event as "in"|"out",captured_at:new Date().toISOString(),...coords,photo:{uri:image.uri,name:image.fileName || "attendance.jpg",type:image.mimeType || "image/jpeg"}}
+      if(offlineCapture){await queueAttendance(capture);return {saved_offline:true}}
       const form=new FormData()
-      for(const [key,value] of Object.entries({shift_id:shift.id,event,...coords})) form.append(key,String(value))
-      form.append("photo",{uri:image.uri,name:image.fileName || "attendance.jpg",type:image.mimeType || "image/jpeg"} as any)
-      return request("/attendance",{method:"POST",body:form})
+      for(const [key,value] of Object.entries({id:capture.id,shift_id:shift.id,event,...coords})) form.append(key,String(value))
+      form.append("photo",capture.photo as any)
+      try{return await request("/attendance",{method:"POST",body:form})}
+      catch(e){if(!(e as any).network)throw e;await queueAttendance(capture);return {saved_offline:true}}
+
     })
+  }
+  const timeInAvailable=(row:Row)=>Date.now()>=+new Date(row.data.start)-30*60000 && Date.now()<=+new Date(row.data.end)
+  function offlineEvent(shiftId:string):"in"|"out" {
+    const captures=[...attendance.filter(r=>r.data.shift_id===shiftId).map(r=>r.data),...offlineRecords.filter(r=>r.data.shift_id===shiftId&&r.data.status!=="Rejected").map(r=>r.data),...queuedAttendance.filter(r=>r.shift_id===shiftId)].sort((a,b)=>+new Date(b.captured_at || b.recorded_at)- +new Date(a.captured_at || a.recorded_at))
+    return captures[0]?.event==="in"?"out":"in"
   }
   function start(row?: Row) {
     if (!module) return
@@ -240,6 +256,7 @@ export default function OperationsPanel({
       ? [
           ["shifts", "Attendance"],
           ["attendance", "History"],
+          ["offline_attendance", "Offline reviews"],
           ["assignments", "Equipment"],
           ["training", "Training"],
           ["certifications", "Licenses"],
@@ -304,7 +321,7 @@ export default function OperationsPanel({
           <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Getting location…" : "Check GPS & geofence"}</Text></Pressable>
           <Pressable accessibilityRole="button" style={{padding:10,alignItems:"center"}} onPress={()=>{void (Platform.OS === "android" ? Linking.sendIntent("android.settings.LOCATION_SOURCE_SETTINGS") : Linking.openSettings()).catch(()=>setError("Open phone settings and enable Location/GPS and precise location permission."))}}><Text style={{color:"#e1ebfb",fontSize:13,fontWeight:"600"}}>Open Location settings</Text></Pressable>
         </View>
-        {sites.map(site=>{const fence=gps?geofenceStatus(gps,site):null;return <View style={[s.card,{borderLeftWidth:4,borderLeftColor:fence?.status==="Inside"?"#188565":fence?.status==="Outside"?"#d44435":"#7656cf"}]} key={"fence-"+site.id}><Text style={s.title}>{site.name}</Text><Text style={s.caption}>Geofence · {site.radius_m || "—"} m radius</Text><Text style={s.value}>{fence ? fence.status+(fence.distance!=null?` · ${fence.distance} m from centre`:"") : site.latitude==null || site.longitude==null ? "Boundary not configured" : "Check GPS to verify your location"}</Text></View>})}
+        {sites.map(site=>{const fence=gps?geofenceStatus(gps,site):null;return <View style={[s.card,{borderLeftWidth:4,borderLeftColor:fence?.status==="Inside"?"#188565":fence?.status==="Outside"?"#d44435":"#7656cf"}]} key={"fence-"+site.id}><Text style={s.title}>{site.name}</Text><Text style={s.caption}>Geofence · {site.radius_m || "—"} m radius</Text>{site.latitude!=null&&site.longitude!=null&&<Pressable accessibilityRole="button" onPress={()=>void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${site.latitude},${site.longitude}`).catch(()=>setError("Could not open map"))}><Text style={s.link}>Open site map</Text></Pressable>}<Text style={s.value}>{fence ? fence.status+(fence.distance!=null?` · ${fence.distance} m from centre`:"") : site.latitude==null || site.longitude==null ? "Boundary not configured" : "Check GPS to verify your location"}</Text></View>})}
         {!loading && !rows.length && <View style={s.card}><Text style={s.caption}>No assigned shifts. Your supervisor must create your duty schedule before you can time in.</Text></View>}
       </>}
 
@@ -484,7 +501,7 @@ export default function OperationsPanel({
                   section,
               )}
             </Text>
-            {section === "shifts" && <><Text style={s.value}>{row.data.post}</Text><Text style={s.caption}>{new Date(row.data.start).toLocaleString()} → {new Date(row.data.end).toLocaleString()}</Text></>}
+            {section === "shifts" && <><Text style={s.value}>{row.data.post}</Text>{!!row.data.instructions&&<Text style={s.value}>{row.data.instructions}</Text>}<Text style={s.caption}>{new Date(row.data.start).toLocaleString()} → {new Date(row.data.end).toLocaleString()}</Text></>}
             {Object.entries(section === "shifts" ? {} : row.data)
               .filter(([k]) => !k.endsWith("_id") && k !== "title")
               .map(([k, v]) => (
@@ -501,13 +518,15 @@ export default function OperationsPanel({
                   </Text>
                 </View>
               ))}
-            {section === "attendance" && row.data.photo_id && <Pressable accessibilityRole="button" style={s.button} onPress={()=>setPhotoRecord(row.id)}><Text style={s.white}>View attendance photo</Text></Pressable>}
+            {["attendance","offline_attendance"].includes(section) && row.data.photo_id && <Pressable accessibilityRole="button" style={s.button} onPress={()=>setPhotoRecord(row.id)}><Text style={s.white}>View attendance photo</Text></Pressable>}
             {role === "guard" &&
               section === "shifts" &&
               row.data.status !== "Cancelled" && (
                 <View style={{gap:10}}>
+                  {queuedAttendance.some(q=>q.shift_id===row.id) && <Text style={s.caption}>Saved capture awaiting sync/review. Check Offline reviews before recording again.</Text>}
                   <Text style={s.caption}>{nextAttendanceEvent(attendance,row.id)==="out" ? "On duty · next: Time Out" : "Ready · next: Time In"}</Text>
-                  <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void punch(row,nextAttendanceEvent(attendance,row.id))} style={[s.button,busy && s.disabled]}><Text style={s.white}>{busy ? "Please wait…" : nextAttendanceEvent(attendance,row.id)==="out" ? "Time Out · Camera + GPS" : "Time In · Camera + GPS"}</Text></Pressable>
+                  <Pressable accessibilityRole="button" disabled={busy || (nextAttendanceEvent(attendance,row.id)==="in" && !timeInAvailable(row))} onPress={()=>void punch(row,nextAttendanceEvent(attendance,row.id))} style={[s.button,busy && s.disabled]}><Text style={s.white}>{busy ? "Please wait…" : nextAttendanceEvent(attendance,row.id)==="out" ? "Time Out · Camera + GPS" : !timeInAvailable(row) ? (+new Date(row.data.end)<Date.now()?"Shift ended":"Scheduled · Time In opens before duty") : "Time In · Camera + GPS"}</Text></Pressable>
+                  <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void punch(row,offlineEvent(row.id),true)} style={s.mini}><Text style={s.link}>Save offline Time {offlineEvent(row.id)} · selfie + GPS</Text></Pressable>
                 </View>
               )}
             {role === "guard" &&

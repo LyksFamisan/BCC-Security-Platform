@@ -65,6 +65,7 @@ export default function OperationsWorkspace({
   request: Request
   onIncidents: () => void
 }) {
+  const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({})
   const [attendancePhotoUrl,setAttendancePhotoUrl]=useState<string|null>(null)
   useEffect(()=>()=>{if(attendancePhotoUrl)URL.revokeObjectURL(attendancePhotoUrl)},[attendancePhotoUrl])
   const [catalog, setCatalog] = useState<Module[]>([]),
@@ -667,7 +668,9 @@ export default function OperationsWorkspace({
                         </div>
                       ))}
                     </dl>
-                    {section === "attendance" && !!row.data.photo_id && <button onClick={()=>void (async()=>{try{const response=await request("/attendance/"+row.id+"/photo");if(!response.ok)throw Error("Could not load attendance photo");setAttendancePhotoUrl(URL.createObjectURL(await response.blob()))}catch(e){setError((e as Error).message)}})()}>View attendance photo</button>}
+                    {["attendance","offline_attendance"].includes(section) && !!row.data.photo_id && <button onClick={()=>void (async()=>{try{const response=await request("/attendance/"+row.id+"/photo");if(!response.ok)throw Error("Could not load attendance photo");setAttendancePhotoUrl(URL.createObjectURL(await response.blob()))}catch(e){setError((e as Error).message)}})()}>View attendance photo</button>}
+                    {section === "offline_attendance" && row.data.status === "Pending review" && ["supervisor","operations"].includes(role) && <div className="ops-form"><p>Verify the device time, GPS and photo. Reviewed captures remain separate from verified attendance and billing.</p><label>Review notes<textarea aria-label={"Review notes for "+row.subject_name} maxLength={2000} value={reviewNotes[row.id] || ""} onChange={e=>setReviewNotes({...reviewNotes,[row.id]:e.target.value})}/></label>{["Approved","Rejected"].map(status=><button key={status} disabled={busy || (reviewNotes[row.id] || "").trim().length<3} onClick={()=>void mutate(async()=>{const response=await request("/offline-attendance/"+row.id+"/review",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status,notes:reviewNotes[row.id],version:row.version})});if(!response.ok)throw Error((await response.json()).error || "Review failed")})}>{status === "Approved" ? "Approve capture" : "Reject capture"}</button>)}</div>}
+
                     {module?.writable && (
                       <button onClick={() => edit(row)}>Edit</button>
                     )}

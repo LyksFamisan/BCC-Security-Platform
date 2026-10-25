@@ -1,3 +1,4 @@
+import {mountMobileSync} from "./mobile-sync.js"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
@@ -17,6 +18,7 @@ const optionalDate = date.nullable().default(null)
 const uuid = z.uuid()
 const assetStates = ["Available", "In Service", "Maintenance", "Retired"]
 export const resources = {
+  offline_attendance: {label:"Offline attendance review",group:"Manpower",write:[],own:true,subject:true,schema:z.object({}).strict()},
   shifts: {
     label: "Duty roster",
     group: "Manpower",
@@ -29,6 +31,7 @@ export const resources = {
         start: date,
         end: date,
         post: text,
+        instructions: z.string().trim().max(4000).optional(),
         status: z.enum(["Scheduled", "Cancelled"]).default("Scheduled"),
       })
       .strict(),
@@ -173,6 +176,7 @@ export const resources = {
 }
 const attendanceSchema = z
   .object({
+    id:uuid.optional(),
     shift_id: uuid,
     event: z.enum(["in", "out"]),
     latitude: z.number().min(-90).max(90),
@@ -369,6 +373,7 @@ export function mountOperations(app, pool, notify) {
         problem(409, "Return issued equipment before retirement")
     }
   }
+  mountMobileSync(app,pool,{transaction,siteAccess,audit,notify})
   app.get("/operations/catalog", (req, res) => {
     role(req, ["guard", "supervisor", "operations"])
     res.json(
@@ -509,11 +514,11 @@ export function mountOperations(app, pool, notify) {
     notify({ site_id: row.site_id, reporter_id: req.user.id })
     res.json(row)
   })
-  const attendanceUpload = multer({storage:multer.memoryStorage(),limits:{fileSize:Math.min(Number(process.env.MAX_UPLOAD_BYTES || 3*1024*1024),3*1024*1024),files:1,fields:5},fileFilter:(req,file,cb)=>cb(null,["image/jpeg","image/png","image/webp"].includes(file.mimetype))})
+  const attendanceUpload = multer({storage:multer.memoryStorage(),limits:{fileSize:Math.min(Number(process.env.MAX_UPLOAD_BYTES || 3*1024*1024),3*1024*1024),files:1,fields:6},fileFilter:(req,file,cb)=>cb(null,["image/jpeg","image/png","image/webp"].includes(file.mimetype))})
   app.get("/attendance/:id/photo", async (req,res) => {
     role(req,["guard","supervisor","operations"])
     const id=valid(uuid,req.params.id)
-    const row=(await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind IN ('attendance','attendance_punch')",[id])).rows[0]
+    const row=(await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind IN ('attendance','attendance_punch','offline_attendance')",[id])).rows[0]
     if(!row) problem(404,"Attendance not found")
     await siteAccess(req.user,row.site_id)
     if(req.user.role === "guard" && row.subject_id !== req.user.id) problem(403,"Own attendance only")
@@ -539,6 +544,7 @@ export function mountOperations(app, pool, notify) {
       await c.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
         req.user.id,
       ])
+      if(d.id){const old=(await c.query("SELECT * FROM operational_records WHERE id=$1",[d.id])).rows[0];if(old){if(old.kind!=="attendance_punch" || old.subject_id!==req.user.id || old.data.shift_id!==d.shift_id || old.data.event!==d.event)problem(409,"Capture ID already used");await siteAccess(req.user,old.site_id,c);return old}}
       const shift = (
         await c.query(
           "SELECT * FROM operational_records WHERE id=$1 AND kind='shifts' AND subject_id=$2",
@@ -601,7 +607,7 @@ export function mountOperations(app, pool, notify) {
       const r = (
         await c.query(
           "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'attendance_punch',$2,$3,$3,$4) RETURNING *",
-          [randomUUID(), shift.site_id, req.user.id, JSON.stringify(data)],
+          [d.id || randomUUID(), shift.site_id, req.user.id, JSON.stringify(data)],
         )
       ).rows[0]
       await audit(
@@ -689,6 +695,7 @@ export function mountOperations(app, pool, notify) {
     ).rows
     return { records, incidents, sites }
   }
+  const startReminder=(start,now)=>+new Date(start)>=now && +new Date(start)<=now+30*60000
   function alertsFor(data, user) {
     const now = Date.now(),
       alerts = []
@@ -707,8 +714,12 @@ export function mountOperations(app, pool, notify) {
       if (point.data.geofence_status === "Outside" && age >= 0 && age < 15 * 60000 && onDuty)
         add("geofence:" + point.id, `Outside site boundary: ${point.subject_name || "Guard"} · ${point.site_name}`, point.site_id, point.subject_id)
     }
+    for(const r of data.records.offline_attendance) if(r.data.status === "Pending review") add("offline:"+r.id,"Offline attendance needs review: "+(r.subject_name || "Your capture"),r.site_id,r.subject_id)
     for (const shift of data.records.shifts) {
       if (shift.data.status === "Cancelled") continue
+      if(+new Date(shift.data.end)<now-86400000)continue
+      add("shift:"+shift.id+":"+shift.version,`Duty assignment: ${shift.site_name} · ${shift.data.post} · ${new Date(shift.data.start).toLocaleString("en-PH",{timeZone:"Asia/Manila"})}`,shift.site_id,shift.subject_id)
+      if(startReminder(shift.data.start,now)) add("reminder:"+shift.id,"Shift starts within 30 minutes: "+shift.data.post,shift.site_id,shift.subject_id)
       const start = +new Date(shift.data.start),
         end = +new Date(shift.data.end)
       if (
@@ -770,6 +781,7 @@ export function mountOperations(app, pool, notify) {
           d.site_id,
           d.subject_id || d.created_by,
         )
+    for(const i of data.incidents) add("incident:"+i.id+":"+i.version,`Incident update: ${i.title} · ${i.status}`,i.site_id,i.reporter_id)
     for (const i of data.incidents)
       if (i.status !== "Resolved" && i.due_at && +new Date(i.due_at) < now)
         add(
@@ -1134,7 +1146,7 @@ export function mountOperations(app, pool, notify) {
       table=[["shift_id","cycle","site","guard","post","time_in_utc","time_out_utc","recorded_hours","review_status","in_latitude","in_longitude","out_latitude","out_longitude","in_photo_record","out_photo_record"],...Array.from(groups.values()).map(g=>{
         const a=g.in?.data,b=g.out?.data,shift=shifts.find(s=>s.id === g.row.data.shift_id)
         const hours=a&&b ? (+new Date(b.recorded_at)- +new Date(a.recorded_at))/3600000 : null
-        return [g.row.data.shift_id,g.row.data.cycle || 1,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
+        return [g.row.data.shift_id,g.row.data.cycle || 1,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),g.row.data.demo ? "DEMO - exclude from actual billing" : hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
       })]
     }
     const csv = table.map((r) => r.map(quote).join(","))
