@@ -210,7 +210,7 @@ export default function ConnectedApp() {
     <div className={"connected"+(!session?" auth-screen":"")}>
       <header>
         <div className="auth-brand"><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></div>
-        <h1>Security Services Platform</h1>
+        <h1>CAT Security Services Platform</h1>
         <p>
           {session
             ? `${session.user.name} · ${{admin:"System Administrator",operations:"Operations Management",supervisor:"Supervisor"}[session.user.role]||session.user.role}`
