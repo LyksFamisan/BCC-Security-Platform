@@ -82,7 +82,7 @@ export async function snapshot(pool) {
       result.tables[table] = (await c.query(`SELECT * FROM ${table}`)).rows
     let total = 0
     const photoKeys=new Set(result.tables.incidents.map(i=>i.photo_key).filter(Boolean))
-    for(const record of result.tables.operational_records) if(record.kind === "attendance" && record.data?.photo_id) photoKeys.add(record.data.photo_id+".jpg")
+    for(const record of result.tables.operational_records) if(["attendance","attendance_punch"].includes(record.kind) && record.data?.photo_id) photoKeys.add(record.data.photo_id+".jpg")
     for (const photoKey of photoKeys) {
       if (!/^[\da-f-]{36}\.jpg$/.test(photoKey)) throw Error("Unsafe evidence filename")
       const data = await fileStore(pool).read("evidence/"+photoKey)

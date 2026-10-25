@@ -278,10 +278,11 @@ export function mountOperations(app, pool, notify) {
   }
   async function list(user, kind, c = pool) {
     const v = visibility(user, kind)
+    const attendanceKind=kind === "attendance"
     return (
       await c.query(
-        `SELECT r.*,s.name AS site_name,u.name AS subject_name FROM operational_records r JOIN sites s ON s.id=r.site_id LEFT JOIN users u ON u.id=r.subject_id WHERE ${v.sql} AND r.kind=$${v.args.length + 1} ORDER BY r.created_at DESC`,
-        [...v.args, kind],
+        `SELECT r.*,s.name AS site_name,u.name AS subject_name FROM operational_records r JOIN sites s ON s.id=r.site_id LEFT JOIN users u ON u.id=r.subject_id WHERE ${v.sql} AND ${attendanceKind ? "r.kind IN ('attendance','attendance_punch')" : "r.kind=$"+(v.args.length+1)} ORDER BY r.created_at DESC`,
+        attendanceKind ? v.args : [...v.args, kind],
       )
     ).rows
   }
@@ -295,7 +296,7 @@ export function mountOperations(app, pool, notify) {
   async function validateLinks(kind, data, site, user, subject, id, c) {
     if (kind === "shifts") {
       const attended = await c.query(
-        "SELECT id FROM operational_records WHERE kind='attendance' AND data->>'shift_id'=$1",
+        "SELECT id FROM operational_records WHERE kind IN ('attendance','attendance_punch') AND data->>'shift_id'=$1",
         [id],
       )
       if (attended.rows.length)
@@ -512,7 +513,7 @@ export function mountOperations(app, pool, notify) {
   app.get("/attendance/:id/photo", async (req,res) => {
     role(req,["guard","supervisor","operations"])
     const id=valid(uuid,req.params.id)
-    const row=(await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind='attendance'",[id])).rows[0]
+    const row=(await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind IN ('attendance','attendance_punch')",[id])).rows[0]
     if(!row) problem(404,"Attendance not found")
     await siteAccess(req.user,row.site_id)
     if(req.user.role === "guard" && row.subject_id !== req.user.id) problem(403,"Own attendance only")
@@ -558,13 +559,14 @@ export function mountOperations(app, pool, notify) {
           "Check-in is available 30 minutes before the shift until its end",
         )
       const history = await c.query(
-        "SELECT data FROM operational_records WHERE kind='attendance' AND subject_id=$1 AND data->>'shift_id'=$2",
+        "SELECT data FROM operational_records WHERE kind IN ('attendance','attendance_punch') AND subject_id=$1 AND data->>'shift_id'=$2",
         [req.user.id, shift.id],
       )
-      if (history.rows.some((r) => r.data.event === d.event))
-        problem(409, "This attendance event is already recorded")
-      if (d.event === "out" && !history.rows.some((r) => r.data.event === "in"))
-        problem(409, "Check in before checking out")
+      const lastCycle=history.rows.reduce((n,r)=>Math.max(n,Number(r.data.cycle || 1)),0)
+      const current=history.rows.filter(r=>Number(r.data.cycle || 1) === lastCycle)
+      const open=current.some(r=>r.data.event === "in") && !current.some(r=>r.data.event === "out")
+      if(d.event !== (open ? "out" : "in")) problem(409,open ? "Time Out is required before another Time In" : "Time In is required before Time Out")
+      const cycle=open ? lastCycle : lastCycle+1
       const settings = (
         await c.query("SELECT * FROM site_settings WHERE site_id=$1", [
           shift.site_id,
@@ -587,15 +589,18 @@ export function mountOperations(app, pool, notify) {
       if (distance > settings.radius_m)
         problem(403, "You are outside the assigned site geofence")
       const recorded_at=new Date().toISOString(), photo_id=randomUUID()
+      const siteName=(await c.query("SELECT name FROM sites WHERE id=$1",[shift.site_id])).rows[0]?.name || "Assigned site"
+      const location_label=siteName+" · "+shift.data.post
+      const xml=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]))
       const width=(await sharp(source).metadata()).width
-      const stamp=`<svg width="${width}" height="112"><rect width="100%" height="100%" fill="#071a2c"/><g fill="white" font-family="sans-serif" font-size="18"><text x="16" y="28">${d.event === "in" ? "TIME IN" : "TIME OUT"} · ${new Date(recorded_at).toLocaleString("en-PH",{timeZone:"Asia/Manila",hour12:false})} (Asia/Manila)</text><text x="16" y="58">GPS ${d.latitude.toFixed(6)}, ${d.longitude.toFixed(6)} · accuracy ±${Math.round(d.accuracy)} m</text><text x="16" y="88">Inside site geofence · ${Math.round(distance)} m from centre · radius ${settings.radius_m} m</text></g></svg>`
-      const image=await sharp(source).extend({bottom:112,background:"#071a2c"}).composite([{input:Buffer.from(stamp),gravity:"south"}]).jpeg({quality:85}).toBuffer()
+      const stamp=`<svg width="${width}" height="144"><rect width="100%" height="100%" fill="#071a2c"/><g fill="white" font-family="sans-serif" font-size="18"><text x="16" y="28">${d.event === "in" ? "TIME IN" : "TIME OUT"} · ${new Date(recorded_at).toLocaleString("en-PH",{timeZone:"Asia/Manila",hour12:false})} (Asia/Manila)</text><text x="16" y="58">GPS ${d.latitude.toFixed(6)}, ${d.longitude.toFixed(6)} · accuracy ±${Math.round(d.accuracy)} m</text><text x="16" y="88">${xml(location_label.slice(0,90))}</text><text x="16" y="120">Inside site geofence · ${Math.round(distance)} m from centre · radius ${settings.radius_m} m</text></g></svg>`
+      const image=await sharp(source).extend({bottom:144,background:"#071a2c"}).composite([{input:Buffer.from(stamp),gravity:"south"}]).jpeg({quality:85}).toBuffer()
       storedPhoto="evidence/"+photo_id+".jpg"
       await fileStore(c).write(storedPhoto,encodePhoto(image))
-      const data = {...d,recorded_at,distance_m:Math.round(distance),radius_m:settings.radius_m,geofence_status:"Inside",photo_id}
+      const data = {...d,cycle,location_label,recorded_at,distance_m:Math.round(distance),radius_m:settings.radius_m,geofence_status:"Inside",photo_id}
       const r = (
         await c.query(
-          "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'attendance',$2,$3,$3,$4) RETURNING *",
+          "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'attendance_punch',$2,$3,$3,$4) RETURNING *",
           [randomUUID(), shift.site_id, req.user.id, JSON.stringify(data)],
         )
       ).rows[0]
@@ -698,7 +703,7 @@ export function mountOperations(app, pool, notify) {
     }
     for (const point of latestLocations.values()) {
       const age = now - +new Date(point.data.recorded_at)
-      const onDuty = data.records.shifts.some(s => s.subject_id === point.subject_id && s.site_id === point.site_id && s.data.status !== "Cancelled" && +new Date(s.data.start) <= now && +new Date(s.data.end) > now && !data.records.attendance.some(a => a.data.shift_id === s.id && a.data.event === "out"))
+      const onDuty = data.records.shifts.some(s => s.subject_id === point.subject_id && s.site_id === point.site_id && s.data.status !== "Cancelled" && +new Date(s.data.start) <= now && +new Date(s.data.end) > now && data.records.attendance.some(a=>a.data.shift_id===s.id && a.data.event==="in" && !data.records.attendance.some(o=>o.data.shift_id===s.id && Number(o.data.cycle||1)===Number(a.data.cycle||1) && o.data.event==="out")))
       if (point.data.geofence_status === "Outside" && age >= 0 && age < 15 * 60000 && onDuty)
         add("geofence:" + point.id, `Outside site boundary: ${point.subject_name || "Guard"} · ${point.site_name}`, point.site_id, point.subject_id)
     }
@@ -858,7 +863,7 @@ export function mountOperations(app, pool, notify) {
         ])
         const old = (
           await c.query(
-            "SELECT data FROM operational_records WHERE kind='attendance' AND data->>'external_id'=$1",
+            "SELECT data FROM operational_records WHERE kind IN ('attendance','attendance_punch') AND data->>'external_id'=$1",
             [event.external_id],
           )
         ).rows[0]
@@ -886,7 +891,7 @@ export function mountOperations(app, pool, notify) {
           problem(400, "Imported check-in must match the shift window")
         const history = (
           await c.query(
-            "SELECT data FROM operational_records WHERE kind='attendance' AND data->>'shift_id'=$1",
+            "SELECT data FROM operational_records WHERE kind IN ('attendance','attendance_punch') AND data->>'shift_id'=$1",
             [shift.id],
           )
         ).rows
@@ -965,7 +970,7 @@ export function mountOperations(app, pool, notify) {
             a.data.event === "in" &&
             !data.records.attendance.some(
               (o) =>
-                o.data.shift_id === a.data.shift_id && o.data.event === "out",
+                o.data.shift_id === a.data.shift_id && o.subject_id === a.subject_id && Number(o.data.cycle || 1) === Number(a.data.cycle || 1) && o.data.event === "out",
             ),
         )
         .map((a) => a.subject_id),
@@ -1037,7 +1042,7 @@ export function mountOperations(app, pool, notify) {
                 const start = data.records.attendance.find(
                   (i) =>
                     i.data.event === "in" &&
-                    i.data.shift_id === a.data.shift_id,
+                    i.data.shift_id === a.data.shift_id && i.subject_id === a.subject_id && Number(i.data.cycle || 1) === Number(a.data.cycle || 1),
                 )
                 return (
                   sum +
@@ -1120,16 +1125,16 @@ export function mountOperations(app, pool, notify) {
       const shifts=await list(req.user,"shifts")
       const groups=new Map()
       for(const row of rows) {
-        const key=row.subject_id+":"+row.data.shift_id
+        const key=row.subject_id+":"+row.data.shift_id+":"+(row.data.cycle || 1)
         if(!groups.has(key)) groups.set(key,{row})
         const g=groups.get(key)
         if(row.data.event === "in") g.in=row
         if(row.data.event === "out") g.out=row
       }
-      table=[["shift_id","site","guard","post","time_in_utc","time_out_utc","recorded_hours","review_status","in_latitude","in_longitude","out_latitude","out_longitude","in_photo_record","out_photo_record"],...Array.from(groups.values()).map(g=>{
+      table=[["shift_id","cycle","site","guard","post","time_in_utc","time_out_utc","recorded_hours","review_status","in_latitude","in_longitude","out_latitude","out_longitude","in_photo_record","out_photo_record"],...Array.from(groups.values()).map(g=>{
         const a=g.in?.data,b=g.out?.data,shift=shifts.find(s=>s.id === g.row.data.shift_id)
         const hours=a&&b ? (+new Date(b.recorded_at)- +new Date(a.recorded_at))/3600000 : null
-        return [g.row.data.shift_id,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
+        return [g.row.data.shift_id,g.row.data.cycle || 1,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
       })]
     }
     const csv = table.map((r) => r.map(quote).join(","))

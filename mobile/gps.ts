@@ -30,3 +30,18 @@ export async function getDutyPosition(): Promise<GpsPosition> {
     }).then(value=>{subscription=value;if(finished)value.remove()}).catch(error=>finish(Error(error instanceof Error ? error.message : "GPS unavailable. Check location permissions and retry.")))
   })
 }
+
+export function geofenceStatus(position:GpsPosition,site:{latitude?:number|null;longitude?:number|null;radius_m?:number|null}) {
+  if(site.latitude==null || site.longitude==null || !site.radius_m) return {status:"Not configured",distance:null,radius:site.radius_m ?? null}
+  const rad=(v:number)=>v*Math.PI/180
+  const dlat=rad(position.latitude-site.latitude),dlng=rad(position.longitude-site.longitude)
+  const a=Math.sin(dlat/2)**2+Math.cos(rad(site.latitude))*Math.cos(rad(position.latitude))*Math.sin(dlng/2)**2
+  const distance=6371000*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)))
+  const status=position.accuracy>Math.min(site.radius_m,100)?"Uncertain":distance+position.accuracy<=site.radius_m?"Inside":distance-position.accuracy>site.radius_m?"Outside":"Uncertain"
+  return {status,distance:Math.round(distance),radius:site.radius_m}
+}
+export function nextAttendanceEvent(rows:{data:Record<string,any>}[],shiftId:string):"in"|"out" {
+  const events=rows.filter(row=>row.data.shift_id===shiftId), cycle=events.reduce((n,row)=>Math.max(n,Number(row.data.cycle || 1)),0)
+  const current=events.filter(row=>Number(row.data.cycle || 1)===cycle)
+  return current.some(row=>row.data.event === "in") && !current.some(row=>row.data.event === "out") ? "out" : "in"
+}

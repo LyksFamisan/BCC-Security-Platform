@@ -417,15 +417,8 @@ function App() {
                   resizeMode="contain"
                 />
               </View>
-              <View style={styles.flex}>
-                <Text style={styles.brand}>BCC Guard</Text>
-              </View>
-              <Image
-                source={require("./assets/CAT_logo.jpg")}
-                accessibilityLabel="CAT"
-                style={{ width: 36, height: 36 }}
-                resizeMode="contain"
-              />
+              <Image source={require("./assets/CAT_logo.jpg")} accessibilityLabel="CAT" style={{width:40,height:40,borderRadius:8}} resizeMode="contain" />
+              <View style={styles.flex}><Text style={styles.brand}>CAT Security Services</Text><Text style={styles.brandSub}>Guard Portal</Text></View>
               {token && (
                 <Pressable
                   accessibilityRole="button"
@@ -944,7 +937,7 @@ const baseStyles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 24, gap: 16 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   brandRow: {
-    backgroundColor: "#172343",
+    backgroundColor: "#10253d",
     borderLeftWidth: 3,
     borderLeftColor: "#F08A3E",
     borderRadius: 18,
@@ -965,7 +958,7 @@ const baseStyles = StyleSheet.create({
   },
   brandLetter: { fontSize: 26, fontWeight: "900", color: "#EFF6FF" },
   brand: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
     color: "#EFF6FF",
     letterSpacing: -0.4,

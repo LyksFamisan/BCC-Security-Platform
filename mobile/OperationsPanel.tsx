@@ -10,9 +10,10 @@ import {
   ActivityIndicator,
   Switch,
   Platform,
+  Linking,
 } from "react-native"
 import * as ImagePicker from "expo-image-picker"
-import {getDutyPosition, type GpsPosition} from "./gps"
+import {getDutyPosition, geofenceStatus, nextAttendanceEvent, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
 import DateTimePicker from "@react-native-community/datetimepicker"
 type Row = {
@@ -38,7 +39,7 @@ type Module = {
   requires_subject: boolean
   schema: { properties: Record<string, Field>; required?: string[] }
 }
-type Choice = { id: string; name: string }
+type Choice = { id: string; name: string; latitude?:number|null; longitude?:number|null; radius_m?:number|null }
 const title = (k: string) =>
   k.replaceAll("_", " ").replace(/^./, (s) => s.toUpperCase())
 const jsonOptions = (data: object, method = "POST") => ({
@@ -165,6 +166,13 @@ export default function OperationsPanel({
   }
   async function punch(shift: Row, event: string) {
     await run(async () => {
+      const initial=await position()
+      const boundary=sites.find(s=>s.id===shift.site_id)
+      if(!boundary) throw Error("Assigned site unavailable. Refresh and retry.")
+      const fence=geofenceStatus(initial,boundary)
+      if(fence.status === "Not configured") throw Error("Site geofence not configured. Ask your administrator to set the actual site location.")
+      if(fence.status === "Outside") throw Error("You are outside your assigned site geofence.")
+      if(fence.status === "Uncertain") throw Error("GPS cannot confirm the site boundary. Move outdoors or closer to the site centre and retry.")
       const permission=await ImagePicker.requestCameraPermissionsAsync()
       if(!permission.granted) throw Error("Camera permission is required for an attendance photo.")
       const result=await ImagePicker.launchCameraAsync({mediaTypes:["images"],cameraType:ImagePicker.CameraType.front,quality:0.7,allowsEditing:false})
@@ -287,13 +295,18 @@ export default function OperationsPanel({
         </Text>
       ) : null}
       {loading ? <ActivityIndicator color="#2563EB" /> : null}
-      {role === "guard" && section === "shifts" && <View style={s.card}>
-        <Text style={s.title}>Attendance & GPS</Text>
-        <Text accessibilityLiveRegion="polite" style={s.value}>{gpsState || "Photo + GPS required for Time In / Time Out"}</Text>
-        {gps && <Text style={s.caption}>{gps.latitude.toFixed(6)}, {gps.longitude.toFixed(6)} · Last GPS check</Text>}
-        <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Please wait…" : "Check GPS"}</Text></Pressable>
-        {!loading && !rows.length && <Text style={s.caption}>No assigned shifts. Your supervisor must create your duty schedule before you can time in.</Text>}
-      </View>}
+      {role === "guard" && section === "shifts" && <>
+        <View style={{backgroundColor:"#10253d",borderRadius:22,padding:22,gap:14,borderTopWidth:3,borderTopColor:"#ee8b42"}}>
+          <Text style={{color:"#ffa765",fontSize:11,fontWeight:"800",letterSpacing:2}}>CAT FIELD ATTENDANCE</Text>
+          <Text style={{color:"#fff",fontSize:26,fontWeight:"800"}}>Your shift, verified.</Text>
+          <Text accessibilityLiveRegion="polite" style={{color:"#c8d8ec",fontSize:14}}>{gpsState || "Enable Location · Capture photo · Record attendance"}</Text>
+          {gps && <Text style={{color:"#c8d8ec",fontSize:12}}>{gps.latitude.toFixed(6)}, {gps.longitude.toFixed(6)} · ±{Math.round(gps.accuracy)} m</Text>}
+          <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Getting location…" : "Check GPS & geofence"}</Text></Pressable>
+          <Pressable accessibilityRole="button" style={{padding:10,alignItems:"center"}} onPress={()=>{void (Platform.OS === "android" ? Linking.sendIntent("android.settings.LOCATION_SOURCE_SETTINGS") : Linking.openSettings()).catch(()=>setError("Open phone settings and enable Location/GPS and precise location permission."))}}><Text style={{color:"#e1ebfb",fontSize:13,fontWeight:"600"}}>Open Location settings</Text></Pressable>
+        </View>
+        {sites.map(site=>{const fence=gps?geofenceStatus(gps,site):null;return <View style={[s.card,{borderLeftWidth:4,borderLeftColor:fence?.status==="Inside"?"#188565":fence?.status==="Outside"?"#d44435":"#7656cf"}]} key={"fence-"+site.id}><Text style={s.title}>{site.name}</Text><Text style={s.caption}>Geofence · {site.radius_m || "—"} m radius</Text><Text style={s.value}>{fence ? fence.status+(fence.distance!=null?` · ${fence.distance} m from centre`:"") : site.latitude==null || site.longitude==null ? "Boundary not configured" : "Check GPS to verify your location"}</Text></View>})}
+        {!loading && !rows.length && <View style={s.card}><Text style={s.caption}>No assigned shifts. Your supervisor must create your duty schedule before you can time in.</Text></View>}
+      </>}
 
       {role === "guard" &&
         section === "shifts" &&
@@ -471,7 +484,8 @@ export default function OperationsPanel({
                   section,
               )}
             </Text>
-            {Object.entries(row.data)
+            {section === "shifts" && <><Text style={s.value}>{row.data.post}</Text><Text style={s.caption}>{new Date(row.data.start).toLocaleString()} → {new Date(row.data.end).toLocaleString()}</Text></>}
+            {Object.entries(section === "shifts" ? {} : row.data)
               .filter(([k]) => !k.endsWith("_id") && k !== "title")
               .map(([k, v]) => (
                 <View key={k} style={s.detail}>
@@ -491,27 +505,9 @@ export default function OperationsPanel({
             {role === "guard" &&
               section === "shifts" &&
               row.data.status !== "Cancelled" && (
-                <View style={s.tabs}>
-                  {["in", "out"].map((event) => {
-                    const checkedIn = attendance.some(a => a.data.shift_id === row.id && a.data.event === "in")
-                    const recorded = attendance.some(
-                      (a) =>
-                        a.data.shift_id === row.id && a.data.event === event,
-                    )
-                    return (
-                      <Pressable
-                        key={event}
-                        accessibilityRole="button"
-                        disabled={busy || recorded || (event === "out" && !checkedIn)}
-                        onPress={() => void punch(row, event)}
-                        style={[s.button, (busy || recorded || (event === "out" && !checkedIn)) && s.disabled]}
-                      >
-                        <Text style={s.white}>
-                          {recorded ? (event === "in" ? "Timed in ✓" : "Timed out ✓") : (event === "in" ? "Time In" : "Time Out")}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
+                <View style={{gap:10}}>
+                  <Text style={s.caption}>{nextAttendanceEvent(attendance,row.id)==="out" ? "On duty · next: Time Out" : "Ready · next: Time In"}</Text>
+                  <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void punch(row,nextAttendanceEvent(attendance,row.id))} style={[s.button,busy && s.disabled]}><Text style={s.white}>{busy ? "Please wait…" : nextAttendanceEvent(attendance,row.id)==="out" ? "Time Out · Camera + GPS" : "Time In · Camera + GPS"}</Text></Pressable>
                 </View>
               )}
             {role === "guard" &&

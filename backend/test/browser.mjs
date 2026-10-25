@@ -31,6 +31,7 @@ await db.exec(
   ),
 )
 await db.exec(await readFile(new URL("../migrations/004_hosted_storage.sql",import.meta.url),"utf8"))
+await db.exec(await readFile(new URL("../migrations/005_attendance_cycles.sql",import.meta.url),"utf8"))
 const pool = {
   query: (q, a) => db.query(q, a),
   connect: async () => ({ query: (q, a) => db.query(q, a), release() {} }),
@@ -390,9 +391,11 @@ try {
   await page.getByRole("button",{name:"Use photo",exact:true}).click()
   await duty.getByRole("button",{name:"Time Out with GPS",exact:true}).click()
   await page.getByText("Check-out recorded successfully.",{exact:true}).waitFor()
+  await duty.getByRole("button",{name:"Time In with GPS",exact:true}).waitFor()
+  assert.equal(await duty.getByRole("button",{name:"Time In with GPS",exact:true}).isEnabled(),true,"Next action returns to Time In after checkout")
   await page.getByRole("button",{name:"Send Current Location",exact:true}).click()
   await page.getByText("Location recorded. Geofence: Inside",{exact:true}).waitFor()
-  assert.equal((await db.query("SELECT id FROM operational_records WHERE kind='attendance' AND data->>'shift_id'=$1",["30000000-0000-4000-8000-000000000009"])).rows.length,2)
+  assert.equal((await db.query("SELECT id FROM operational_records WHERE kind IN ('attendance','attendance_punch') AND data->>'shift_id'=$1",["30000000-0000-4000-8000-000000000009"])).rows.length,2)
   await page.getByRole("button",{name:"View attendance photo",exact:true}).first().click()
   await page.getByRole("img",{name:"Attendance evidence with server timestamp and GPS"}).waitFor()
   await page.waitForFunction(()=>{const image=document.querySelector('.attendance-photo-dialog img');return image && image.complete && image.naturalWidth>0})

@@ -156,8 +156,8 @@ export function createApp(pool, secret, notify = () => {}) {
     if (req.user.role === "admin") return res.json([])
     const { rows } = await pool.query(
       req.user.role === "operations"
-        ? "SELECT * FROM sites ORDER BY name"
-        : "SELECT s.* FROM sites s JOIN user_sites us ON us.site_id=s.id WHERE us.user_id=$1 ORDER BY s.name",
+        ? "SELECT s.*,ss.latitude,ss.longitude,ss.radius_m FROM sites s LEFT JOIN site_settings ss ON ss.site_id=s.id ORDER BY s.name"
+        : "SELECT s.*,ss.latitude,ss.longitude,ss.radius_m FROM sites s JOIN user_sites us ON us.site_id=s.id LEFT JOIN site_settings ss ON ss.site_id=s.id WHERE us.user_id=$1 ORDER BY s.name",
       req.user.role === "operations" ? [] : [req.user.id],
     )
     res.json(rows)
