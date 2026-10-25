@@ -136,6 +136,29 @@ try {
       },
     ],
   ]
+  // Additional fictional records for the operations and supervisor dashboards.
+  const secondSite = "10000000-0000-4000-8000-000000000002"
+  const thirdSite = "10000000-0000-4000-8000-000000000003"
+  const fourthSite = "10000000-0000-4000-8000-000000000004"
+  const secondGuard = "20000000-0000-4000-8000-000000000004"
+  for (const [id, siteId, subjectId, post] of [
+    ["30000000-0000-4000-8000-000000000011", secondSite, guard, "Lobby reception"],
+    ["30000000-0000-4000-8000-000000000012", fourthSite, secondGuard, "Warehouse entrance"],
+  ]) {
+    await c.query(
+      "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'shifts',$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",
+      [id, siteId, subjectId, actor, JSON.stringify({ title: "Demo security duty", post, start: at(-1), end: at(7), status: "Scheduled" })],
+    )
+  }
+  for (const [id, siteId, subjectId, title] of [
+    ["30000000-0000-4000-8000-000000000013", thirdSite, guard, "Demo fire safety orientation"],
+    ["30000000-0000-4000-8000-000000000014", fourthSite, secondGuard, "Demo emergency response training"],
+  ]) {
+    await c.query(
+      "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'training',$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",
+      [id, siteId, subjectId, actor, JSON.stringify({ title, completed_at: at(-48), expires_at: null, notes: "Fictional demo record" })],
+    )
+  }
   for (const [id, kind, subject, data] of examples)
     await c.query(
       "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO NOTHING",
