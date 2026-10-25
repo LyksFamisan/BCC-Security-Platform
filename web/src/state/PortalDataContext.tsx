@@ -85,12 +85,13 @@ const PortalDataContext = createContext<PortalDataContextValue | null>(null)
 
 const defaultDuty: DutyRecord = { checkedIn: false, checkInTime: '', checkOutTime: '' }
 const defaultManagedUsers: ManagedUser[] = [
-  { id: 'USR-001', name: 'Gen. R. Santos', email: 'rsantos@bcccat.com', role: 'Executive', status: 'Active', lastLogin: '2h ago' },
-  { id: 'USR-002', name: 'Maj. D. Cruz', email: 'dcruz@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '5h ago' },
-  { id: 'USR-003', name: 'Cpt. L. Reyes', email: 'lreyes@bcccat.com', role: 'Incident Manager', status: 'Active', lastLogin: '1d ago' },
-  { id: 'USR-004', name: 'Pfc. J. Dela Cruz', email: 'jdelacruz@bcccat.com', role: 'Guard', status: 'Active', lastLogin: '30m ago' },
-  { id: 'USR-005', name: 'Pfc. M. Santos', email: 'msantos@bcccat.com', role: 'Guard', status: 'Inactive', lastLogin: '14d ago' },
-  { id: 'USR-006', name: 'Lt. R. Garcia', email: 'rgarcia@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '3h ago' },
+  { id: 'USR-001', name: 'Gen. R. Santos', email: 'rsantos@bcccat.com', role: 'Operations Management (SSD)', status: 'Active', lastLogin: '2h ago' },
+  { id: 'USR-002', name: 'Maj. D. Cruz', email: 'dcruz@bcccat.com', role: 'Supervisor / Site In-Charge', status: 'Active', lastLogin: '5h ago' },
+  { id: 'USR-003', name: 'Cpt. L. Reyes', email: 'lreyes@bcccat.com', role: 'Operations Management (SSD)', status: 'Active', lastLogin: '1d ago' },
+  { id: 'USR-004', name: 'Pfc. J. Dela Cruz', email: 'jdelacruz@bcccat.com', role: 'Security Personnel (Guards)', status: 'Active', lastLogin: '30m ago' },
+  { id: 'USR-005', name: 'Pfc. M. Santos', email: 'msantos@bcccat.com', role: 'Security Personnel (Guards)', status: 'Inactive', lastLogin: '14d ago' },
+  { id: 'USR-007', name: 'Demo System Administrator', email: 'bcc@gmail.com', role: 'System Administrator', status: 'Active', lastLogin: 'Not yet' },
+  { id: 'USR-006', name: 'Lt. R. Garcia', email: 'rgarcia@bcccat.com', role: 'Supervisor / Site In-Charge', status: 'Active', lastLogin: '3h ago' },
 ]
 const defaultApprovalRequests: ApprovalRequest[] = [
   { id: 'REQ-1042', requester: 'Pfc. M. Santos', type: 'New guard account', detail: 'Guard access for NCR-02 deployment', status: 'Pending' },
@@ -125,7 +126,7 @@ function readStoredData(): SharedPortalData & { updatedAt: string | null } {
       checkInPhotoAt: storedDuty.checkInPhoto && !storedDuty.checkInPhotoAt ? now : storedDuty.checkInPhotoAt,
       checkOutPhotoAt: storedDuty.checkOutPhoto && !storedDuty.checkOutPhotoAt ? now : storedDuty.checkOutPhotoAt,
     }
-    return { activities: parsed.activities ?? [], sessions: parsed.sessions ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, managedUsers: parsed.managedUsers ?? defaultManagedUsers, approvalRequests: parsed.approvalRequests ?? defaultApprovalRequests, updatedAt: parsed.updatedAt ?? null }
+    return { activities: parsed.activities ?? [], sessions: parsed.sessions ?? [], duty: pruneDutyPhotos(dutyWithTimestamps), incidentReports: parsed.incidentReports ?? 0, incidentHistory: parsed.incidentHistory ?? [], equipmentFaults: parsed.equipmentFaults ?? 0, managedUsers: (parsed.managedUsers ?? defaultManagedUsers).map((user: ManagedUser) => ({ ...user, role: ({ Executive: 'Operations Management (SSD)', 'Operations Staff': 'Supervisor / Site In-Charge', 'Incident Manager': 'Operations Management (SSD)', Guard: 'Security Personnel (Guards)', Administrator: 'System Administrator' } as Record<string, string>)[user.role] ?? user.role })), approvalRequests: parsed.approvalRequests ?? defaultApprovalRequests, updatedAt: parsed.updatedAt ?? null }
   } catch {
     return { activities: [], sessions: [], duty: defaultDuty, incidentReports: 0, incidentHistory: [], equipmentFaults: 0, managedUsers: defaultManagedUsers, approvalRequests: defaultApprovalRequests, updatedAt: null }
   }

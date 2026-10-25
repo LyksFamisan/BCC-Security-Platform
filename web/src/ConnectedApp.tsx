@@ -77,8 +77,9 @@ export default function ConnectedApp() {
         }
       }
     }
+    if (session.user.role === "admin") return
     void refresh()
-    if (session.user.role === "admin")
+    if (["operations", "supervisor"].includes(session.user.role))
       fetch(api + "/users", {
         headers: { Authorization: "Bearer " + session.token },
         signal: controller.signal,
@@ -126,7 +127,7 @@ export default function ConnectedApp() {
       })
       const data = await res.json()
       if (!res.ok) throw Error(data.error)
-      if (!["admin", "supervisor"].includes(data.user.role))
+      if (!["admin", "operations", "supervisor"].includes(data.user.role))
         throw Error("Guards should use the mobile app.")
       clearSession()
       activeSession.current = data
@@ -201,7 +202,7 @@ export default function ConnectedApp() {
             ? `${session.user.name} · ${session.user.role} · ${
                 live ? "Live updates connected" : "Polling / reconnecting"
               }`
-            : "Sign in with your server-issued Admin or Supervisor account."}
+            : "Sign in with your server-issued SSD, Supervisor or System Administrator account."}
         </p>
         {session && (
           <button
@@ -241,6 +242,8 @@ export default function ConnectedApp() {
           <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
           <p>Use the account provided by your administrator.</p>
         </form>
+      ) : session.user.role === "admin" ? (
+        <section><h2>System Administrator</h2><p>Technical administration only. Operational incidents and photos are restricted.</p><p>Use the demo administration portal for the configuration preview. Server-side user management and system integrations require their own implementation.</p></section>
       ) : (
         <>
           <p>
@@ -257,7 +260,7 @@ export default function ConnectedApp() {
                 <p>{i.description}</p>
                 <p>Location: {i.location}</p>
                 <strong>{i.status}</strong>
-                {session.user.role === "admin" && (
+                {["operations", "supervisor"].includes(session.user.role) && (
                   <>
                     <label>
                       Status

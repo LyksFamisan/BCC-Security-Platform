@@ -17,7 +17,7 @@ const L = {
 
 type Tab = 'inventory' | 'maintenance' | 'controls' | 'reports'
 
-const firearms = [
+const allFirearms = [
   { id: 'FN-0021', model: 'Beretta M9', serial: 'BM9-PH-204471', caliber: '9mm', assignee: 'Santos, Ricardo P.', site: 'BGC Financial Tower', status: 'serviceable', lastPM: '2026-06-15', nextPM: '2026-12-15' },
   { id: 'FN-0029', model: 'Glock 17', serial: 'GL17-PH-118823', caliber: '9mm', assignee: 'Unassigned', site: 'Armory NCR', status: 'due-pm', lastPM: '2025-12-01', nextPM: '2026-06-01' },
   { id: 'FN-0047', model: 'Mossberg 500', serial: 'M500-PH-003347', caliber: '12GA', assignee: 'Dela Cruz, Ana M.', site: 'NAIA Terminal 3', status: 'serviceable', lastPM: '2026-07-20', nextPM: '2027-01-20' },
@@ -25,7 +25,7 @@ const firearms = [
   { id: 'FN-0082', model: 'M16A1', serial: 'M16-PH-001188', caliber: '5.56mm', assignee: 'Bautista, Jose L.', site: 'Clark Freeport', status: 'serviceable', lastPM: '2026-08-01', nextPM: '2027-02-01' },
 ]
 
-const radios = [
+const allRadios = [
   { id: 'RD-0114', model: 'Motorola DP4400e', serial: 'MDP-PH-884421', assignee: 'Santos, Ricardo P.', site: 'BGC Tower', status: 'serviceable', battery: 87 },
   { id: 'RD-0128', model: 'Kenwood TK-3402', serial: 'KTK-PH-221347', assignee: 'Reyes, Manuel F.', site: 'Makati Mall', status: 'lost', battery: 0 },
   { id: 'RD-0133', model: 'Motorola DP4400e', serial: 'MDP-PH-884455', assignee: 'Dela Cruz, Ana M.', site: 'NAIA T3', status: 'serviceable', battery: 62 },
@@ -80,7 +80,9 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'reports', label: 'Utilization Reports' },
 ]
 
-export default function EquipmentModule({ canEdit = false, canReport = false }: { canEdit?: boolean; canReport?: boolean }) {
+export default function EquipmentModule({ assignedOnly = false, canEdit = false, canReport = false }: { assignedOnly?: boolean; canEdit?: boolean; canReport?: boolean }) {
+  const radios = assignedOnly ? allRadios.filter(item => item.site.startsWith('BGC')) : allRadios
+  const firearms = assignedOnly ? allFirearms.filter(item => item.site.startsWith('BGC')) : allFirearms
   const { addActivity, recordEquipmentFault, equipmentFaults, activities, isLive } = usePortalData()
   const [tab, setTab] = useState<Tab>('inventory')
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<string[]>([])
@@ -309,12 +311,12 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
                       <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: L.heading }}>{alert.title}</div>
                       <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, marginTop: 3 }}>{alert.detail}</div>
                     </div>
-                    <button type="button" disabled={acknowledged || !canEdit} onClick={() => setAcknowledgedAlerts(current => [...current, alert.id])} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: acknowledged || !canEdit ? L.subtle : alert.color, background: 'transparent', border: `1px solid ${acknowledged || !canEdit ? L.cardBorder : alert.color}`, borderRadius: 6, padding: '5px 9px', cursor: acknowledged || !canEdit ? 'not-allowed' : 'pointer' }}>{acknowledged ? 'Acknowledged' : canEdit ? 'Acknowledge' : 'Admin action'}</button>
+                    <button type="button" disabled={acknowledged || !canEdit} onClick={() => setAcknowledgedAlerts(current => [...current, alert.id])} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: acknowledged || !canEdit ? L.subtle : alert.color, background: 'transparent', border: `1px solid ${acknowledged || !canEdit ? L.cardBorder : alert.color}`, borderRadius: 6, padding: '5px 9px', cursor: acknowledged || !canEdit ? 'not-allowed' : 'pointer' }}>{acknowledged ? 'Acknowledged' : canEdit ? 'Acknowledge' : 'SSD action'}</button>
                   </div>
                 )
               })}
               <div className="px-5 py-4">
-                {!canReport && <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, background: 'rgba(25,118,185,0.06)', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 12px', textAlign: 'center' }}>Fault and defect updates are managed by Administrator Portal.</div>}
+                {!canReport && <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, background: 'rgba(25,118,185,0.06)', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '9px 12px', textAlign: 'center' }}>Fault and defect updates are managed by Operations Management (SSD) Portal.</div>}
                 {canReport && (faultSubmitted ? (
                   <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 7, padding: '10px 14px', textAlign: 'center' }}>Fault report submitted to Equipment Control.</div>
                 ) : faultFormOpen ? (

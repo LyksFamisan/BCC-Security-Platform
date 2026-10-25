@@ -91,13 +91,15 @@ const allNav: NavItem[] = [
 ]
 
 const roleLabel: Record<UserRole, string> = {
-  guard: 'Security Personnel',
-  operations: 'Operations Staff',
-  admin: 'Administrator',
+  guard: 'Security Personnel (Guards)',
+  supervisor: 'Supervisor / Site In-Charge',
+  operations: 'Operations Management (SSD)',
+  admin: 'System Administrator',
 }
 
 const roleColor: Record<UserRole, string> = {
   guard: '#8B5CF6',
+  supervisor: '#1976b9',
   operations: '#F06522',
   admin: '#dc2626',
 }
@@ -156,7 +158,7 @@ export default function Sidebar({
         <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color, letterSpacing: '0.04em' }}>{roleLabel[role]}</span>
       </div>
 
-      {(incidentReports > 0 || equipmentFaults > 0) && role !== 'guard' && <div className="sidebar-updates" style={{ margin: '6px 12px 0', background: darkMode ? 'rgba(240,101,34,0.10)' : 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.28)', borderRadius: 8, padding: '7px 10px' }}>
+      {(incidentReports > 0 || equipmentFaults > 0) && (role === 'operations' || role === 'supervisor') && <div className="sidebar-updates" style={{ margin: '6px 12px 0', background: darkMode ? 'rgba(240,101,34,0.10)' : 'rgba(240,101,34,0.08)', border: '1px solid rgba(240,101,34,0.28)', borderRadius: 8, padding: '7px 10px' }}>
         <div className="flex items-center justify-between" style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: '#F06522' }}><span>PERSONNEL UPDATES</span><span style={{ color: isLive ? '#16a34a' : '#dc2626' }}>{isLive ? 'LIVE' : 'OFFLINE'}</span></div>
         <div style={{ fontFamily: 'Inter', fontSize: 10, color: darkMode ? '#fff' : '#52718b', marginTop: 4 }}>{incidentReports} incident · {equipmentFaults} equipment</div>
         {latestPersonnelUpdate && <div style={{ fontFamily: 'Inter', fontSize: 9, color: darkMode ? '#cbd5e1' : '#6b7280', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{latestPersonnelUpdate.message}</div>}
@@ -247,8 +249,8 @@ export default function Sidebar({
           <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#e0f2fe' }}>GS</span>
         </div>
         <div>
-          <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Gen. R. Santos</div>
-          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#94a3b8' }}>Chief of Operations</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{roleLabel[role]}</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 10, color: '#94a3b8' }}>Demo account</div>
         </div>
       </div>
     </aside>

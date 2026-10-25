@@ -7,7 +7,7 @@ export function createService(pool, secret) {
     throw Error("Set a random JWT_SECRET of at least 32 characters")
   let io
   const app = createApp(pool, secret, (row) => {
-    io.to("admin")
+    io.to("operations")
       .to("user:" + row.reporter_id)
       .to("site:" + row.site_id)
       .emit("incidents:changed")
@@ -35,7 +35,7 @@ export function createService(pool, secret) {
     )
     socket.on("disconnect", () => clearTimeout(timer))
     socket.join("user:" + u.id)
-    if (u.role === "admin") socket.join("admin")
+    if (u.role === "operations") socket.join("operations")
     if (u.role === "supervisor") {
       try {
         const { rows } = await pool.query(

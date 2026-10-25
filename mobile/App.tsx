@@ -37,11 +37,13 @@ export default function App() {
     [location, setLocation] = useState(""),
     [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null),
     [live, setLive] = useState(false)
+  const [role, setRole] = useState<string | null>(null)
   const currentToken = useRef(token)
   currentToken.current = token
   async function logout(message = "") {
     currentToken.current = null
     setToken(null)
+    setRole(null)
     setReports([])
     setSites([])
     setSite("")
@@ -84,11 +86,14 @@ export default function App() {
   async function refresh() {
     if (!token) return
     try {
-      const [r, s] = await Promise.all([
+      const [r, s, identity] = await Promise.all([
         request("/incidents"),
         request("/sites"),
+        request("/auth/me"),
       ])
       if (currentToken.current !== token) return
+      if (!["guard", "supervisor"].includes(identity.role)) { await logout("Use a Guard or Supervisor account"); return }
+      setRole(identity.role)
       setReports(r)
       setSites(s)
       setSite((v) => v || s[0]?.id || "")
@@ -129,7 +134,8 @@ export default function App() {
       })
       const d = await res.json()
       if (!res.ok) throw Error(d.error)
-      if (d.user.role !== "guard") throw Error("Use a Guard account")
+      if (!["guard", "supervisor"].includes(d.user.role)) throw Error("Use a Guard or Supervisor account")
+      setRole(d.user.role)
       await SecureStore.setItemAsync("bcc-token", d.token)
       currentToken.current = d.token
       setToken(d.token)
@@ -203,7 +209,7 @@ export default function App() {
           <RefreshControl refreshing={busy} onRefresh={() => void refresh()} />
         }
       >
-        <Text style={styles.heading}>BCC Guard</Text>
+        <Text style={styles.heading}>BCC Security · {role === "supervisor" ? "Supervisor" : "Guard"}</Text>
         <Text>
           {token
             ? live
@@ -282,7 +288,7 @@ export default function App() {
               title={busy ? "Submitting…" : "Submit incident"}
               onPress={() => void submit()}
             />
-            <Text style={styles.heading}>My reports</Text>
+            <Text style={styles.heading}>{role === "supervisor" ? "Assigned-site reports" : "My reports"}</Text>
             {reports.length === 0 && (
               <Text>No reports yet. Pull to refresh.</Text>
             )}
@@ -292,6 +298,12 @@ export default function App() {
                 <Text>{r.status}</Text>
                 <Text>{r.description}</Text>
                 <Text>{r.location}</Text>
+                {role === "supervisor" && ["Under Review", "In Progress", "Resolved"].filter(status => status !== r.status).map(status => <Button key={status} title={status} disabled={busy} onPress={async () => {
+                  setBusy(true)
+                  try { await request("/incidents/" + r.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); await refresh() }
+                  catch (e) { setError((e as Error).message) }
+                  finally { setBusy(false) }
+                }} />)}
               </View>
             ))}
           </>

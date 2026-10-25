@@ -78,19 +78,21 @@ export function createApp(pool, secret, notify = () => {}) {
       res.status(401).json({ error: "Session expired. Sign in again." })
     }
   })
+  app.get("/auth/me", (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role }))
   app.get("/sites", async (req, res) => {
+    if (req.user.role === "admin") return res.json([])
     const { rows } = await pool.query(
-      req.user.role === "admin"
+      req.user.role === "operations"
         ? "SELECT * FROM sites ORDER BY name"
         : "SELECT s.* FROM sites s JOIN user_sites us ON us.site_id=s.id WHERE us.user_id=$1 ORDER BY s.name",
-      req.user.role === "admin" ? [] : [req.user.id],
+      req.user.role === "operations" ? [] : [req.user.id],
     )
     res.json(rows)
   })
   app.get("/users", async (req, res) => {
-    if (req.user.role !== "admin") return res.sendStatus(403)
+    if (!["admin", "operations", "supervisor"].includes(req.user.role)) return res.sendStatus(403)
     res.json(
-      (await pool.query("SELECT id,name,role FROM users ORDER BY name")).rows,
+      (await pool.query(req.user.role === "supervisor" ? "SELECT DISTINCT u.id,u.name,u.role FROM users u JOIN user_sites us ON us.user_id=u.id JOIN user_sites mine ON mine.site_id=us.site_id WHERE mine.user_id=$1 ORDER BY u.name" : "SELECT id,name,role FROM users ORDER BY name", req.user.role === "supervisor" ? [req.user.id] : [])).rows,
     )
   })
   app.get("/incidents", async (req, res) => {
@@ -145,7 +147,10 @@ export function createApp(pool, secret, notify = () => {}) {
       )
     },
   })
-  app.post("/incidents", upload.single("photo"), async (req, res) => {
+  app.post("/incidents", (req, res, next) => {
+    if (!["guard", "supervisor", "operations"].includes(req.user.role)) return res.sendStatus(403)
+    next()
+  }, upload.single("photo"), async (req, res) => {
     const parsed = z
       .object({
         title: z.string().trim().min(3).max(160),
@@ -163,7 +168,7 @@ export function createApp(pool, secret, notify = () => {}) {
         })
     const d = parsed.data
     if (
-      req.user.role !== "admin" &&
+      req.user.role !== "operations" &&
       !(
         await pool.query(
           "SELECT 1 FROM user_sites WHERE user_id=$1 AND site_id=$2",
@@ -224,7 +229,7 @@ export function createApp(pool, secret, notify = () => {}) {
     res.status(201).json(row)
   })
   app.patch("/incidents/:id", incident, async (req, res) => {
-    if (req.user.role !== "admin") return res.sendStatus(403)
+    if (!["operations", "supervisor"].includes(req.user.role)) return res.sendStatus(403)
     const parsed = z
       .object({
         status: z.enum(statuses).optional(),

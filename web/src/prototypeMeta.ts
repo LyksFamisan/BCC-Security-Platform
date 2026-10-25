@@ -15,12 +15,6 @@ export const moduleMeta: Record<Module, { section: string; title: string }> = {
 export const roleModules: Record<UserRole, Module[]> = {
   guard: ["guard"],
   operations: ["dashboard", "manpower", "equipment", "incidents", "tactical"],
-  admin: [
-    "dashboard",
-    "manpower",
-    "equipment",
-    "incidents",
-    "tactical",
-    "admin",
-  ],
+  supervisor: ["dashboard", "manpower", "equipment", "incidents"],
+  admin: ["admin"],
 }

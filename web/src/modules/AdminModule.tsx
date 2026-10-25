@@ -1,3 +1,5 @@
+import { roleDefinitions } from '../rolePolicy'
+import AccessMatrix from '../components/AccessMatrix'
 import { useState } from 'react'
 import { usePortalData } from '../state/PortalDataContext'
 import { downloadPdf } from '../utils/download'
@@ -19,24 +21,7 @@ const L = {
 
 type AdminTab = 'users' | 'approvals' | 'roles' | 'workflows' | 'system'
 
-type AdminUser = { id: string; name: string; email: string; role: string; status: 'Active' | 'Inactive'; lastLogin: string }
-
-const initialUsers: AdminUser[] = [
-  { id: 'USR-001', name: 'Gen. R. Santos', email: 'rsantos@bcccat.com', role: 'Executive', status: 'Active', lastLogin: '2h ago' },
-  { id: 'USR-002', name: 'Maj. D. Cruz', email: 'dcruz@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '5h ago' },
-  { id: 'USR-003', name: 'Cpt. L. Reyes', email: 'lreyes@bcccat.com', role: 'Incident Manager', status: 'Active', lastLogin: '1d ago' },
-  { id: 'USR-004', name: 'Pfc. J. Dela Cruz', email: 'jdelacruz@bcccat.com', role: 'Guard', status: 'Active', lastLogin: '30m ago' },
-  { id: 'USR-005', name: 'Pfc. M. Santos', email: 'msantos@bcccat.com', role: 'Guard', status: 'Inactive', lastLogin: '14d ago' },
-  { id: 'USR-006', name: 'Lt. R. Garcia', email: 'rgarcia@bcccat.com', role: 'Operations Staff', status: 'Active', lastLogin: '3h ago' },
-]
-
-const roles = [
-  { name: 'Administrator', users: 1, color: '#dc2626', permissions: ['All Modules', 'User Management', 'System Config', 'Audit Logs'] },
-  { name: 'Executive', users: 3, color: '#7c3aed', permissions: ['Dashboard', 'KPI Reports', 'SLA Monitoring', 'Analytics'] },
-  { name: 'Operations Staff', users: 8, color: ACC, permissions: ['Operational Dashboard', 'AO / DDO Monitoring', 'GPS & Attendance View', 'Reports'] },
-  { name: 'Incident Manager', users: 5, color: '#d97706', permissions: ['Incident Register', 'Case Management', 'Approvals', 'Evidence'] },
-  { name: 'Guard', users: 48, color: '#16a34a', permissions: ['My Dashboard', 'Check-In/Out', 'GPS Tracking', 'File Incident'] },
-]
+const roles = Object.values(roleDefinitions).map(role => ({ name: role.label, color: role.color, permissions: role.access }))
 
 const workflows = [
   { name: 'Incident Escalation', trigger: 'New incident filed', steps: 4, status: 'Active' },
@@ -63,12 +48,12 @@ const initialApprovalRequests = [
 ]
 
 export default function AdminModule() {
-  const { activities, sessions, clearActivities, isLive, lastUpdated, duty, incidentReports, incidentHistory, equipmentFaults, addActivity, managedUsers: adminUsers, approvalRequests, createManagedUser, updateManagedUser, resolveApprovalRequest } = usePortalData()
+  const { sessions, addActivity, managedUsers: adminUsers, approvalRequests, createManagedUser, updateManagedUser, resolveApprovalRequest } = usePortalData()
   const [tab, setTab] = useState<AdminTab>('users')
   const [search, setSearch] = useState('')
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Guard' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Security Personnel (Guards)' })
   const [feedback, setFeedback] = useState('')
 
   const filteredUsers = adminUsers.filter(u =>
@@ -99,9 +84,7 @@ export default function AdminModule() {
     },
   ]
 
-  const roleColor: Record<string, string> = {
-    'Executive': '#7c3aed', 'Operations Staff': ACC, 'Incident Manager': '#d97706', 'Guard': '#16a34a', 'Administrator': '#dc2626',
-  }
+  const roleColor = Object.fromEntries(Object.values(roleDefinitions).map(role => [role.label, role.color]))
 
   const downloadUsers = () => {
     downloadPdf('bcc-cat-users.pdf', 'Administrator User Directory', ['ID', 'Name', 'Email', 'Role', 'Status', 'Last Login'], adminUsers.map(user => [user.id, user.name, user.email, user.role, user.status, user.lastLogin]))
@@ -111,9 +94,9 @@ export default function AdminModule() {
   const addUser = (event: React.FormEvent) => {
     event.preventDefault()
     createManagedUser({ ...newUser, status: 'Active' })
-    setNewUser({ name: '', email: '', role: 'Guard' })
+    setNewUser({ name: '', email: '', role: 'Security Personnel (Guards)' })
     setShowAddUser(false)
-    addActivity('Administrator', 'USER_CREATED', `${newUser.name} added as ${newUser.role}`)
+    addActivity('System Administrator', 'USER_CREATED', `${newUser.name} added as ${newUser.role}`)
     setFeedback(`${newUser.name} was added with ${newUser.role} access.`)
   }
 
@@ -124,7 +107,7 @@ export default function AdminModule() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, color: L.heading, margin: 0 }}>System Administration</h2>
-          <p style={{ fontFamily: 'Inter', fontSize: 13, color: L.muted, margin: '4px 0 0' }}>Manage users, roles, workflows, and system configuration</p>
+          <p style={{ fontFamily: 'Inter', fontSize: 13, color: L.muted, margin: '4px 0 0' }}>Manage accounts, roles, integrations, audit logs, backups, and security configuration</p>
         </div>
         <div className="flex items-center gap-3">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.3)', borderRadius: 7, padding: '5px 12px' }}>
@@ -135,39 +118,10 @@ export default function AdminModule() {
       </div>
       {feedback && <div style={{ background: 'rgba(25,118,185,0.10)', border: '1px solid rgba(25,118,185,0.25)', color: '#1976b9', borderRadius: 7, padding: '9px 12px', fontFamily: 'Inter', fontSize: 12 }}>{feedback}</div>}
 
-      <div style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 10, padding: '14px 18px', boxShadow: L.shadow }}>
-        <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
-          <div>
-            <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>Connected Portal Activity</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>Shared Security Personnel and Operations Portal events · {isLive ? 'Live' : 'Offline'} · {incidentHistory.length} incident records</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: L.subtle }}>{lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Waiting'}</span>
-            <button type="button" onClick={clearActivities} style={{ fontFamily: 'Inter', fontSize: 11, color: L.muted, background: 'transparent', border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer' }}>Clear Feed</button>
-          </div>
-        </div>
-        {activities.length === 0 ? <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.subtle }}>No portal activity yet.</div> : activities.slice(0, 5).map(activity => (
-          <div key={activity.id} className="flex items-center gap-3" style={{ borderTop: `1px solid ${L.divider}`, padding: '8px 0' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: ACC, minWidth: 108 }}>{activity.source}</span>
-            <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.body, flex: 1 }}>{activity.message}</span>
-            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: L.subtle }}>{new Date(activity.createdAt).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {[
-          { label: 'GUARD DUTY STATUS', value: duty.checkedIn ? 'ON DUTY' : 'OFF DUTY', color: duty.checkedIn ? '#16a34a' : '#d97706' },
-          { label: 'LAST CHECK IN', value: duty.checkInTime || 'Not recorded', color: '#1976b9' },
-          { label: 'INCIDENT REPORTS', value: String(incidentReports), color: '#dc2626' },
-          { label: 'EQUIPMENT FAULTS', value: String(equipmentFaults), color: '#d97706' },
-        ].map(item => <div key={item.label} style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 9, padding: '12px 14px', boxShadow: L.shadow }}><div style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, color: L.muted, letterSpacing: '0.06em' }}>{item.label}</div><div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 17, color: item.color, marginTop: 6 }}>{item.value}</div></div>)}
-      </div>
-
       {/* Stat bar */}
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
-          { label: 'Total Users', value: '65', sub: '5 roles', color: ACC },
+          { label: 'Total Users', value: String(adminUsers.length), sub: '4 roles', color: ACC },
           { label: 'Active Sessions', value: String(sessions.length), sub: 'shared portal logins', color: '#16a34a' },
           { label: 'Active Workflows', value: '4', sub: '1 draft', color: '#7c3aed' },
           { label: 'System Health', value: '99.9%', sub: 'uptime', color: '#16a34a' },
@@ -214,7 +168,7 @@ export default function AdminModule() {
           {showAddUser && <form onSubmit={addUser} className="flex items-center gap-2" style={{ padding: '12px 20px', borderBottom: `1px solid ${L.divider}`, background: 'rgba(240,101,34,0.04)' }}>
             <input required value={newUser.name} onChange={event => setNewUser(current => ({ ...current, name: event.target.value }))} placeholder="Full name" style={{ flex: 1, background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
             <input required type="email" value={newUser.email} onChange={event => setNewUser(current => ({ ...current, email: event.target.value }))} placeholder="Email" style={{ flex: 1, background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
-            <select value={newUser.role} onChange={event => setNewUser(current => ({ ...current, role: event.target.value }))} style={{ background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select>
+            <select value={newUser.role} onChange={event => setNewUser(current => ({ ...current, role: event.target.value }))} style={{ background: '#fff', border: `1px solid ${L.cardBorder}`, borderRadius: 7, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>{Object.values(roleDefinitions).map(role => <option key={role.label}>{role.label}</option>)}</select>
             <button type="submit" style={{ background: '#16a34a', border: 'none', borderRadius: 7, padding: '8px 12px', color: '#fff', fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Create</button>
           </form>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr 100px 100px 80px', gap: 0, padding: '10px 20px', borderBottom: `1px solid ${L.divider}`, background: L.cardAlt }}>
@@ -232,7 +186,7 @@ export default function AdminModule() {
                 <div style={{ fontFamily: 'Inter', fontSize: 11, color: L.subtle }}>{u.id}</div>
               </div>
               {editingUser === u.id ? <input value={u.email} onChange={event => updateManagedUser(u.id, { email: event.target.value })} style={{ width: '100%', border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }} /> : <span style={{ fontFamily: 'Inter', fontSize: 13, color: L.body }}>{u.email}</span>}
-              {editingUser === u.id ? <select value={u.role} onChange={event => updateManagedUser(u.id, { role: event.target.value })} style={{ border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }}><option>Guard</option><option>Operations Staff</option><option>Incident Manager</option><option>Executive</option><option>Administrator</option></select> : <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>}
+              {editingUser === u.id ? <select value={u.role} onChange={event => updateManagedUser(u.id, { role: event.target.value })} style={{ border: `1px solid ${ACC}`, borderRadius: 5, padding: '5px 7px', fontFamily: 'Inter', fontSize: 12, color: L.heading }}>{Object.values(roleDefinitions).map(role => <option key={role.label}>{role.label}</option>)}</select> : <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: roleColor[u.role] || ACC }}>{u.role}</span>}
               <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: u.status === 'Active' ? '#16a34a' : L.muted, background: u.status === 'Active' ? 'rgba(22,163,74,0.1)' : 'rgba(107,114,128,0.1)', borderRadius: 20, padding: '3px 10px', display: 'inline-block' }}>{u.status}</span>
               <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: L.subtle }}>{u.lastLogin}</span>
               <div className="flex gap-2">
@@ -257,8 +211,8 @@ export default function AdminModule() {
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.body, marginTop: 4 }}>{request.requester} · {request.detail}</div>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Approved'); addActivity('Administrator', 'REQUEST_APPROVED', `${request.id} approved`); setFeedback(`${request.id} approved.`) }} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Approve</button>
-                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Rejected'); addActivity('Administrator', 'REQUEST_REJECTED', `${request.id} rejected`); setFeedback(`${request.id} rejected.`) }} style={{ background: 'transparent', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Reject</button>
+                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Approved'); addActivity('System Administrator', 'REQUEST_APPROVED', `${request.id} approved`); setFeedback(`${request.id} approved.`) }} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Approve</button>
+                <button type="button" onClick={() => { resolveApprovalRequest(request.id, 'Rejected'); addActivity('System Administrator', 'REQUEST_REJECTED', `${request.id} rejected`); setFeedback(`${request.id} rejected.`) }} style={{ background: 'transparent', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 11px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Reject</button>
               </div>
             </div>
           ))}
@@ -267,7 +221,7 @@ export default function AdminModule() {
 
       {/* ── Roles Tab ── */}
       {tab === 'roles' && (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+        <div><AccessMatrix /><div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
           {roles.map(r => (
             <div key={r.name} style={{ background: L.card, border: `1px solid ${L.cardBorder}`, borderRadius: 12, padding: '22px', boxShadow: L.shadow }}>
               <div className="flex items-center justify-between mb-4">
@@ -275,7 +229,7 @@ export default function AdminModule() {
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: r.color }} />
                   <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: L.heading }}>{r.name}</span>
                 </div>
-                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: r.color, fontWeight: 600 }}>{r.users} users</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: r.color, fontWeight: 600 }}>{adminUsers.filter(user => user.role === r.name).length} users</span>
               </div>
               <div className="flex flex-col gap-2">
                 {r.permissions.map(p => (
@@ -290,7 +244,7 @@ export default function AdminModule() {
               </button>
             </div>
           ))}
-        </div>
+        </div></div>
       )}
 
       {/* ── Workflows Tab ── */}

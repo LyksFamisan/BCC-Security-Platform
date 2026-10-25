@@ -1,6 +1,6 @@
 # BCC Security Services Platform
 
-Connected incident MVP: React/Vite web for Admin and Supervisor, Expo React Native Android app for Guards, Express API and shared PostgreSQL. Existing manpower, equipment, tactical, duty and administration screens remain available through **View preserved prototype**. Those screens use simulated login and browser-local data; they are explicitly not connected or production features. The connected incident app is the default.
+Connected incident MVP: React/Vite web for SSD, Supervisor and System Administrator, Expo React Native Android app for Guards and Supervisors, Express API and shared PostgreSQL. Existing manpower, equipment, tactical, duty and administration screens remain available through **View preserved prototype**. Those screens use simulated login and browser-local data; they are explicitly not connected or production features. The connected incident app is the default.
 
 ## Structure
 
@@ -43,8 +43,9 @@ Seed accounts (all use your chosen `DEMO_PASSWORD`):
 
 | Email | Role | Access |
 |---|---|---|
-| admin@demo.invalid | Admin | All incidents; update status and assign |
-| supervisor@demo.invalid | Supervisor | Reports at Demo Site 1 |
+| operations@demo.invalid | Operations Management (SSD) | All incidents; update status and assign |
+| admin@demo.invalid | System Administrator | Technical role; no incident or evidence access |
+| supervisor@demo.invalid | Supervisor | Review and update reports at Demo Site 1 |
 | guard@demo.invalid | Guard | Own reports; submit at Demo Site 1 |
 | guard2@demo.invalid | Guard | Own reports; submit at Demo Site 2 |
 
@@ -105,3 +106,16 @@ Use separate resources/names for this demo. AWS charges depend on provisioned re
 Before real use: security review, production identity/user lifecycle, revocation, retention policies, upload malware scanning where needed, backups/restore tests, monitoring, and device/release QA. Existing prototype data remains local and is not migrated automatically.
 
 References: [Amplify monorepo configuration](https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html), [Expo image picker](https://docs.expo.dev/versions/v54.0.0/sdk/imagepicker/).
+
+## Phase 1 role design (October 25, 2026)
+
+- Security Personnel (Guards), `guard`: mobile, own reports and assigned records.
+- Supervisor / Site In-Charge, `supervisor`: web and mobile, assigned sites and clients.
+- Operations Management (SSD), `operations`: web, all operational sites and clients.
+- System Administrator, `admin`: web, technical administration only. No incident/photo access.
+
+The deployed frontend remains a sample-data demo without `VITE_API_URL`. Portal navigation starts with four role choices. Demo emails: `security@gmail.com`, `supervisor@demo.invalid`, `ar@gmail.com` (SSD), `bcc@gmail.com` (System Administrator). Use any non-empty demo password; this is simulated login, not authentication. Never enter real credentials.
+
+System Administration → Roles & Permissions contains the supplied 52-feature permission design. A matrix entry is a permission specification, not confirmation that a production module or integration has been implemented. Existing screens and records are illustrative. Supervisor demo assignment is BGC Financial Tower. Confirm training/certification ownership, equipment maintenance and final incident approvals with BCC.
+
+Apply backend migration `002_four_roles.sql` before using the new API. It preserves existing operational administrators by changing them to SSD (`operations`); provision technical administrators separately. Seed includes all four roles. Existing JWTs are resolved against the current database role. Supervisor incident updates are restricted to assigned sites; technical admins cannot list incidents or access their evidence. API and mobile changes require their own backend release and mobile build; a Vercel frontend release does not publish them.

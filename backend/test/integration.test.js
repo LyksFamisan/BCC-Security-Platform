@@ -16,6 +16,7 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       "utf8",
     ),
   )
+  await db.exec(await readFile(new URL("../migrations/002_four_roles.sql", import.meta.url), "utf8"))
   const pool = {
     query: (sql, args) => db.query(sql, args),
     connect: async () => ({
@@ -44,10 +45,11 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       hash = await bcrypt.hash(password, 4),
       tokens = {}
     for (const [n, role] of [
-      "admin",
+      "operations",
       "supervisor",
       "guard",
       "guard",
+      "admin",
     ].entries()) {
       const id = `20000000-0000-4000-8000-00000000000${n + 1}`,
         email = `user${n}@demo.invalid`
@@ -158,7 +160,16 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
         body: JSON.stringify(data),
       })
     assert.equal((await update(2, { status: "Resolved" })).status, 403)
-    assert.equal((await update(1, { status: "Resolved" })).status, 403)
+    assert.equal((await update(1, { status: "Under Review" })).status, 200)
+    assert.equal((await update(4, { status: "Resolved" })).status, 404)
+    assert.deepEqual(await (await get("/incidents", 4)).json(), [])
+    assert.equal((await get("/incidents/" + report.id + "/photo", 4)).status, 404)
+    const otherSite = await fetch(base + "/incidents", { method: "POST", headers: { Authorization: "Bearer " + tokens[3] }, body: form(site2) })
+    assert.equal(otherSite.status, 201)
+    const otherReport = await otherSite.json()
+    assert.equal((await fetch(base + "/incidents/" + otherReport.id, { method: "PATCH", headers: { Authorization: "Bearer " + tokens[1], "Content-Type": "application/json" }, body: JSON.stringify({ status: "Resolved" }) })).status, 404)
+    assert.equal((await (await get("/incidents", 1)).json()).length, 1)
+    assert.equal((await (await get("/incidents", 0)).json()).length, 2)
     assert.equal((await update(0, { status: "Closed" })).status, 400)
     assert.equal(
       (await update(0, { assignee_id: "20000000-0000-4000-8000-000000000004" }))
@@ -184,7 +195,7 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
     ).json()
     assert.deepEqual(
       audit.map((a) => a.action),
-      ["SUBMITTED", "UPDATED"],
+      ["SUBMITTED", "UPDATED", "UPDATED"],
     )
     assert.equal(
       (

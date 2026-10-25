@@ -430,7 +430,7 @@ export default function TacticalModule({ canEdit = false }: { canEdit?: boolean 
                     <button type="button" onClick={refreshTelemetry} style={{ fontFamily: 'Inter', fontSize: 11, color: '#7dd3fc', background: 'transparent', border: '1px solid rgba(125,211,252,0.3)', borderRadius: 5, padding: '5px 7px', cursor: 'pointer' }}>Refresh</button>
                   </div>
                 </div>
-                  <button type="button" disabled={!canEdit} onClick={() => acknowledgeAlarm(a)} style={{ marginTop: 10, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: canEdit ? a.statusColor : '#94a3b8', background: 'transparent', border: `1px solid ${canEdit ? a.statusColor : '#475569'}`, borderRadius: 5, padding: '4px 8px', cursor: canEdit ? 'pointer' : 'not-allowed' }}>{canEdit ? 'Acknowledge Alarm' : 'Admin action'}</button>
+                  <button type="button" disabled={!canEdit} onClick={() => acknowledgeAlarm(a)} style={{ marginTop: 10, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, color: canEdit ? a.statusColor : '#94a3b8', background: 'transparent', border: `1px solid ${canEdit ? a.statusColor : '#475569'}`, borderRadius: 5, padding: '4px 8px', cursor: canEdit ? 'pointer' : 'not-allowed' }}>{canEdit ? 'Acknowledge Alarm' : 'SSD action'}</button>
               </div>
               )
             })}

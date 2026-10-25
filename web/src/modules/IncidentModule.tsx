@@ -4,7 +4,7 @@ import { downloadPdf } from '../utils/download'
 
 type Tab = 'list' | 'detail' | 'workflow' | 'analytics'
 
-const incidents = [
+const allIncidents = [
   { id: 'INC-2026-0847', title: 'Armed Robbery Attempt — BGC Gate 5', type: 'Armed Robbery', severity: 'P1', site: 'BGC Financial Tower', client: 'Aegis Holdings', reportedBy: 'SG Santos, Ricardo P.', reportedAt: '2026-09-20 03:42', status: 'open', assignedTo: 'Det. Commander Cruz, A.', description: 'Unknown male attempted armed robbery at Gate 5 during early morning hours. Guard Santos raised alarm; suspect fled. CCTV footage secured.', rootCause: 'Pending investigation', action: 'Coordinating with PNP BGC; reviewing CCTV. Increased post frequency at Gate 5.', severityLabel: 'Priority 1 — Immediate' },
   { id: 'INC-2026-0846', title: 'Unscheduled Firearms Vault Lockout', type: 'Equipment', severity: 'P1', site: 'Manila Port Terminal 3', client: 'National Transit', reportedBy: 'SGL Fernandez, M.', reportedAt: '2026-09-20 08:14', status: 'escalated', assignedTo: 'OPS Manager Villanueva, K.', description: 'Firearms vault engaged automatic lockout protocol after failed biometric attempts. 3 guards unable to draw assigned firearms before shift.', rootCause: 'Biometric reader malfunction — sensor humidity damage.', action: 'Armorer dispatched. Temporary manual override authorized by OIC. Sensor replacement ordered.', severityLabel: 'Priority 1 — Immediate' },
   { id: 'INC-2026-0844', title: 'Understaffing — Makati Central Mall', type: 'Personnel', severity: 'P2', site: 'Makati Central Mall', client: 'Filinvest Group', reportedBy: 'Det. Commander Reyes, L.', reportedAt: '2026-09-20 06:00', status: 'escalated', assignedTo: 'OPS Manager Villanueva, K.', description: '4 guards failed to report for duty. Emergency manpower request submitted to NCR reserve pool.', rootCause: 'Under investigation — alleged illness, one confirmed AWL.', action: 'Relief guards deployed from NCR reserve. HR notified. AWL guard placed on preventive suspension.', severityLabel: 'Priority 2 — High' },
@@ -65,8 +65,10 @@ const L = {
   filterIdleBorder: 'rgba(148,163,184,0.14)',
 }
 
-export default function IncidentModule({ canEdit = false, canReport = false }: { canEdit?: boolean; canReport?: boolean }) {
-  const { addActivity, recordIncident, incidentHistory, isLive } = usePortalData()
+export default function IncidentModule({ assignedOnly = false, canEdit = false, canReport = false }: { assignedOnly?: boolean; canEdit?: boolean; canReport?: boolean }) {
+  const incidents = assignedOnly ? allIncidents.filter(item => item.site.startsWith('BGC')) : allIncidents
+  const { addActivity, recordIncident, incidentHistory: allHistory, isLive } = usePortalData()
+  const incidentHistory = assignedOnly ? allHistory.filter(record => record.location.includes('BGC')) : allHistory
   const [tab, setTab] = useState<Tab>('list')
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState<string | null>(null)
@@ -297,7 +299,7 @@ export default function IncidentModule({ canEdit = false, canReport = false }: {
                 </div>
                 <div style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: 700, color: L.heading, marginBottom: 7 }}>{step.title}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted, lineHeight: 1.5, minHeight: 38 }}>{step.detail}</div>
-                <button type="button" disabled={step.done || !canEdit} onClick={() => { setWorkflowState(current => ({ ...current, [step.key]: true })); addActivity('Incident Manager', 'WORKFLOW', `${step.action} completed for ${(selectedInc ?? incidents[0]).id}`) }} style={{ width: '100%', marginTop: 16, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: step.done || !canEdit ? (step.done ? '#16a34a' : L.muted) : '#fff', background: step.done ? 'rgba(34,197,94,0.08)' : canEdit ? '#1976b9' : 'rgba(107,114,128,0.1)', border: step.done ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', borderRadius: 7, padding: '9px 10px', cursor: step.done || !canEdit ? 'not-allowed' : 'pointer' }}>{step.done ? 'Completed' : canEdit ? step.action : 'Admin action'}</button>
+                <button type="button" disabled={step.done || !canEdit} onClick={() => { setWorkflowState(current => ({ ...current, [step.key]: true })); addActivity('Incident Manager', 'WORKFLOW', `${step.action} completed for ${(selectedInc ?? incidents[0]).id}`) }} style={{ width: '100%', marginTop: 16, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: step.done || !canEdit ? (step.done ? '#16a34a' : L.muted) : '#fff', background: step.done ? 'rgba(34,197,94,0.08)' : canEdit ? '#1976b9' : 'rgba(107,114,128,0.1)', border: step.done ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', borderRadius: 7, padding: '9px 10px', cursor: step.done || !canEdit ? 'not-allowed' : 'pointer' }}>{step.done ? 'Completed' : canEdit ? step.action : 'SSD action'}</button>
               </div>
             ))}
           </div>
@@ -305,7 +307,7 @@ export default function IncidentModule({ canEdit = false, canReport = false }: {
           <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div style={{ background: '#ffffff', border: `1px solid ${L.cardBorder}`, borderRadius: 12, padding: '20px 22px', boxShadow: '0 14px 30px rgba(54,126,171,0.10)' }}>
               <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: L.heading, marginBottom: 14 }}>Case Classification</div>
-              {[['Severity', (selectedInc ?? incidents[0]).severityLabel], ['Incident Type', (selectedInc ?? incidents[0]).type], ['Assigned Investigator', (selectedInc ?? incidents[0]).assignedTo], ['Approval Route', 'Operations Manager → Executive Review']].map(([label, value]) => (
+              {[['Severity', (selectedInc ?? incidents[0]).severityLabel], ['Incident Type', (selectedInc ?? incidents[0]).type], ['Assigned Investigator', (selectedInc ?? incidents[0]).assignedTo], ['Approval Route', 'Supervisor → Operations Management (SSD)']].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between" style={{ borderBottom: `1px solid ${L.divider}`, padding: '10px 0' }}>
                   <span style={{ fontFamily: 'Inter', fontSize: 12, color: L.muted }}>{label}</span>
                   <span style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: L.heading, textAlign: 'right' }}>{value}</span>

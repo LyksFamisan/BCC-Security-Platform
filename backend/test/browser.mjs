@@ -18,6 +18,7 @@ await db.exec(
     "utf8",
   ),
 )
+await db.exec(await readFile(new URL("../migrations/002_four_roles.sql", import.meta.url), "utf8"))
 const pool = {
   query: (q, a) => db.query(q, a),
   connect: async () => ({ query: (q, a) => db.query(q, a), release() {} }),
@@ -37,7 +38,7 @@ try {
   const site = "10000000-0000-4000-8000-000000000001",
     password = "browser-test-only"
   await db.query("INSERT INTO sites VALUES($1,$2)", [site, "Demo site"])
-  for (const [n, role] of ["admin", "guard", "supervisor"].entries()) {
+  for (const [n, role] of ["operations", "guard", "supervisor"].entries()) {
     const id = `20000000-0000-4000-8000-00000000000${n + 1}`
     await db.query("INSERT INTO users VALUES($1,$2,$3,$4,$5)", [
       id,
@@ -89,7 +90,7 @@ try {
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
   await page.goto("http://127.0.0.1:9843")
-  await page.getByLabel("Email", { exact: true }).fill("admin@demo.invalid")
+  await page.getByLabel("Email", { exact: true }).fill("operations@demo.invalid")
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Sign in", exact: true }).click()
   await page.getByRole("button", { name: "Sign out", exact: true }).waitFor()

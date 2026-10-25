@@ -12,11 +12,11 @@ try {
       `10000000-0000-4000-8000-00000000000${n}`,
       `Demo Site ${n}`,
     ])
-  for (const [n, role] of ["admin", "supervisor", "guard", "guard"].entries()) {
+  for (const [n, role] of ["operations", "supervisor", "guard", "guard", "admin"].entries()) {
     const id = `20000000-0000-4000-8000-00000000000${n + 1}`,
       email = n === 3 ? "guard2@demo.invalid" : `${role}@demo.invalid`
     await c.query(
-      "INSERT INTO users VALUES($1,$2,$3,$4,$5) ON CONFLICT(email) DO UPDATE SET password_hash=EXCLUDED.password_hash",
+      "INSERT INTO users VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,password_hash=EXCLUDED.password_hash,role=EXCLUDED.role",
       [id, `Demo ${role} ${n + 1}`, email, hash, role],
     )
     await c.query(

@@ -19,7 +19,7 @@ const L = {
 
 type Tab = 'roster' | 'deployment' | 'monitoring' | 'attendance' | 'training'
 
-const guards = [
+const allGuards = [
   { id: 'SG-00147', name: 'Santos, Ricardo P.', rank: 'Security Guard I', detachment: 'NCR-01', site: 'BGC Financial Tower', shift: 'Day', status: 'on-duty', license: 'SOSIA-2026-0447', licenseExp: '2027-03-15', cert: ['GSTP', 'BSTT'] },
   { id: 'SG-00283', name: 'Reyes, Manuel F.', rank: 'Security Guard II', detachment: 'NCR-02', site: 'Makati Central Mall', shift: 'Day', status: 'absent', license: 'SOSIA-2025-1122', licenseExp: '2026-11-08', cert: ['GSTP'] },
   { id: 'SG-00391', name: 'Dela Cruz, Ana M.', rank: 'Senior Security Guard', detachment: 'NCR-01', site: 'NAIA Terminal 3', shift: 'Night', status: 'on-duty', license: 'SOSIA-2025-0883', licenseExp: '2026-10-03', cert: ['GSTP', 'BSTT', 'FIRST AID'] },
@@ -30,7 +30,7 @@ const guards = [
   { id: 'SG-00834', name: 'Lopez, Fernando A.', rank: 'Security Guard III', detachment: 'R11-01', site: 'Subic Logistics', shift: 'Night', status: 'on-duty', license: 'SOSIA-2026-0128', licenseExp: '2027-02-09', cert: ['GSTP', 'BSTT'] },
 ]
 
-const ddo = [
+const allDdo = [
   { post: 'Post 1 – Main Lobby', site: 'BGC Financial Tower', assignee: 'Santos, Ricardo P.', shift: 'Day', timeIn: '06:02', status: 'active' },
   { post: 'Post 3 – Parking Deck B', site: 'Makati Central Mall', assignee: 'VACANT', shift: 'Day', timeIn: '–', status: 'vacant' },
   { post: 'Post 1 – Departure Hall', site: 'NAIA Terminal 3', assignee: 'Dela Cruz, Ana M.', shift: 'Night', timeIn: '18:05', status: 'active' },
@@ -69,7 +69,9 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'training', label: 'Training & Certifications' },
 ]
 
-export default function ManpowerModule({ canEdit = false }: { canEdit?: boolean }) {
+export default function ManpowerModule({ assignedOnly = false, canEdit = false }: { assignedOnly?: boolean; canEdit?: boolean }) {
+  const ddo = assignedOnly ? allDdo.filter(item => item.site.startsWith('BGC')) : allDdo
+  const guards = assignedOnly ? allGuards.filter(item => item.site.startsWith('BGC')) : allGuards
   const { activities, sessions, duty, incidentReports, equipmentFaults, isLive, lastUpdated, addActivity } = usePortalData()
   const [tab, setTab] = useState<Tab>('roster')
   const [search, setSearch] = useState('')

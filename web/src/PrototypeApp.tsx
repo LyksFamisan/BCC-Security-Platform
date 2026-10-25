@@ -16,8 +16,9 @@ import {moduleMeta,roleModules,type Module} from './prototypeMeta';
 
 const roleDefaultModule: Record<UserRole, Module> = {
   guard: 'guard',
-  operations: 'manpower',
-  admin: 'dashboard',
+  supervisor: 'manpower',
+  operations: 'dashboard',
+  admin: 'admin',
 }
 
 type Screen = 'splash' | 'portal' | 'app'
@@ -40,7 +41,7 @@ function AppContent() {
         onToggleTheme={() => setDarkMode(value => !value)}
         onBackHome={() => setScreen('splash')}
         onLogin={(r, email) => {
-          const source = r === 'guard' ? 'Security Personnel' : r === 'operations' ? 'Detachment Staff' : 'Administrator'
+          const source = r === 'guard' ? 'Security Personnel' : r === 'supervisor' ? 'Supervisor / Site In-Charge' : r === 'operations' ? 'Operations Management (SSD)' : 'System Administrator'
           recordLogin(source, email, r)
           addActivity(source, 'LOGIN', `${source} portal login completed`)
           setRole(r)
@@ -67,12 +68,17 @@ function AppContent() {
       <TopBar darkMode={darkMode} onToggleTheme={() => setDarkMode(value => !value)} section={meta.section} title={meta.title} onLogout={() => { setRole(null); setScreen('splash') }} />
       <div className="app-content flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
         <Sidebar darkMode={darkMode} active={safeActive} onChange={setActive} role={role} allowed={allowed} />
-        <main className={`app-main flex-1 overflow-auto ${darkMode ? 'theme-dark' : 'theme-light'}`} style={{ background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.88), rgba(20, 13, 48, 0.82)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(239,249,255,0.90) 0%, rgba(220,241,252,0.78) 100%)' }}>
-          {safeActive === 'dashboard' && <DashboardModule canEdit={role === 'admin' || role === 'operations'} onNavigate={setActive} />}
-          {safeActive === 'manpower' && <ManpowerModule canEdit={role === 'admin'} />}
-          {safeActive === 'equipment' && <EquipmentModule canEdit={role === 'admin'} canReport={role === 'admin' || role === 'operations'} />}
-          {safeActive === 'incidents' && <IncidentModule canEdit={role === 'admin' || role === 'operations'} canReport={role === 'admin' || role === 'operations'} />}
-          {safeActive === 'tactical' && <TacticalModule canEdit={role === 'admin' || role === 'operations'} />}
+        <main key={role} className={`app-main flex-1 overflow-auto ${darkMode ? 'theme-dark' : 'theme-light'}`} style={{ background: darkMode ? "linear-gradient(180deg, rgba(7, 10, 24, 0.88), rgba(20, 13, 48, 0.82)), url('/assets/bg.jpg') center / cover fixed" : 'linear-gradient(180deg, rgba(239,249,255,0.90) 0%, rgba(220,241,252,0.78) 100%)' }}>
+          <div style={{ padding: '10px 24px', color: darkMode ? '#dbeafe' : '#16476d', fontSize: 13 }}>
+            <strong>{role === 'admin' ? 'System Administrator · Technical configuration only' : role === 'operations' ? 'Operations Management (SSD) · All sites and clients' : role === 'supervisor' ? 'Supervisor / Site In-Charge · Assigned sites and clients' : 'Security Personnel (Guards) · Own records'}</strong>
+            <div>Phase 1 demo · Sample records. {role === 'supervisor' ? 'Demo assignment: BGC Financial Tower. Connected API enforces actual site assignments.' : 'Operational changes in this mode stay in this browser.'}</div>
+          </div>
+          {safeActive === 'dashboard' && role === 'supervisor' && <section style={{ padding: 24, color: darkMode ? '#dbeafe' : '#16476d' }}><h2>Assigned Site Dashboard</h2><h3>BGC Financial Tower</h3><p>Fictional assigned site · BCC Holdings</p><p>Review deployment, attendance, equipment accountability and incidents using the assigned-site modules.</p><div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>{(['manpower', 'equipment', 'incidents'] as Module[]).map(module => <button key={module} onClick={() => setActive(module)} style={{ padding: 12, borderRadius: 8, background: '#1976b9', color: '#fff', border: 0 }}>{moduleMeta[module].title}</button>)}</div></section>}
+          {safeActive === 'dashboard' && role === 'operations' && <DashboardModule canEdit={role === 'operations' || role === 'supervisor'} onNavigate={setActive} />}
+          {safeActive === 'manpower' && <ManpowerModule assignedOnly={role === 'supervisor'} canEdit={role === 'operations' || role === 'supervisor'} />}
+          {safeActive === 'equipment' && <EquipmentModule assignedOnly={role === 'supervisor'} canEdit={role === 'operations'} canReport={role === 'operations' || role === 'supervisor'} />}
+          {safeActive === 'incidents' && <IncidentModule assignedOnly={role === 'supervisor'} canEdit={role === 'operations' || role === 'supervisor'} canReport={role === 'operations' || role === 'supervisor'} />}
+          {safeActive === 'tactical' && <TacticalModule canEdit={role === 'operations' || role === 'supervisor'} />}
           {safeActive === 'guard' && <GuardModule />}
           {safeActive === 'admin' && <AdminModule />}
         </main>
