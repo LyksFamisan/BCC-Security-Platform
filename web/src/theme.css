@@ -76,3 +76,8 @@ html[data-bcc-theme=light] .connected.auth-screen .login .password-eye{color:#36
 .connected.auth-screen>header h1.login-brand-art{max-width:none;margin:0;font-size:0;line-height:0}
 .login-brand-art img{display:block;width:100%;height:auto;border-radius:14px;box-shadow:0 12px 38px #0003}
 @media(max-width:800px){.connected.auth-screen>header{width:100%;max-width:620px}.login-brand-art img{border-radius:10px}}
+/* Blue atmosphere behind the orange identity and sign-in card. */
+.connected.auth-screen::before,html[data-bcc-theme=light] .connected.auth-screen::before{background-image:linear-gradient(100deg,#06396c66,#123c7c70 55%,#102860a6),url('/assets/security-team-bg.webp')}
+
+.connected.auth-screen>header h1.login-brand-art{aspect-ratio:1024/223;overflow:hidden;border-radius:14px}
+.login-brand-art img{height:100%;object-fit:cover;object-position:center}
