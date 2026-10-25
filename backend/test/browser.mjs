@@ -18,7 +18,18 @@ await db.exec(
     "utf8",
   ),
 )
-await db.exec(await readFile(new URL("../migrations/002_four_roles.sql", import.meta.url), "utf8"))
+await db.exec(
+  await readFile(
+    new URL("../migrations/002_four_roles.sql", import.meta.url),
+    "utf8",
+  ),
+)
+await db.exec(
+  await readFile(
+    new URL("../migrations/003_operations.sql", import.meta.url),
+    "utf8",
+  ),
+)
 const pool = {
   query: (q, a) => db.query(q, a),
   connect: async () => ({ query: (q, a) => db.query(q, a), release() {} }),
@@ -38,7 +49,12 @@ try {
   const site = "10000000-0000-4000-8000-000000000001",
     password = "browser-test-only"
   await db.query("INSERT INTO sites VALUES($1,$2)", [site, "Demo site"])
-  for (const [n, role] of ["operations", "guard", "supervisor"].entries()) {
+  for (const [n, role] of [
+    "operations",
+    "guard",
+    "supervisor",
+    "admin",
+  ].entries()) {
     const id = `20000000-0000-4000-8000-00000000000${n + 1}`
     await db.query("INSERT INTO users VALUES($1,$2,$3,$4,$5)", [
       id,
@@ -90,10 +106,40 @@ try {
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
   await page.goto("http://127.0.0.1:9843")
-  await page.getByLabel("Email", { exact: true }).fill("operations@demo.invalid")
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("operations@demo.invalid")
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Sign in", exact: true }).click()
   await page.getByRole("button", { name: "Sign out", exact: true }).waitFor()
+  // Exercise the actual roster form and persisted record, not just the API.
+  await page.getByRole("button", { name: "Duty roster", exact: true }).click()
+  await page.getByRole("button", { name: "+ Add record", exact: true }).click()
+  await page.getByLabel("Site", { exact: true }).selectOption(site)
+  await page
+    .getByLabel("Person", { exact: true })
+    .selectOption("20000000-0000-4000-8000-000000000002")
+  await page
+    .getByLabel("Title", { exact: true })
+    .fill("Browser roster verification")
+  await page.getByLabel("Duty post", { exact: true }).fill("North gate")
+  await page
+    .getByLabel("Start", { exact: true })
+    .fill(new Date(Date.now() + 3600000).toISOString().slice(0, 16))
+  await page
+    .getByLabel("End", { exact: true })
+    .fill(new Date(Date.now() + 7200000).toISOString().slice(0, 16))
+  await page.getByRole("button", { name: "Save record", exact: true }).click()
+  await page
+    .getByRole("heading", { name: "Browser roster verification", exact: true })
+    .waitFor()
+  await page.screenshot({
+    path: "/tmp/bcc-roster-verified.png",
+    fullPage: true,
+  })
+  await page
+    .getByRole("button", { name: "Incident center ↗", exact: true })
+    .click()
   const auth = await fetch(api + "/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -127,6 +173,12 @@ try {
   await page
     .getByRole("heading", { name: "Browser verified incident" })
     .waitFor()
+  await page.getByLabel("Approval", { exact: true }).selectOption("Approved")
+  await page.waitForFunction(
+    () =>
+      document.querySelector('select[aria-label="Approval"]')?.value ===
+      "Approved",
+  )
   await page.getByLabel("Status", { exact: true }).selectOption("Resolved")
   await page.waitForFunction(
     () => document.querySelector("article strong")?.textContent === "Resolved",
@@ -203,6 +255,36 @@ try {
   )
   await page.getByRole("button", { name: "Sign out", exact: true }).click()
   await page.getByLabel("Email", { exact: true }).waitFor()
+  await page.getByLabel("Email", { exact: true }).fill("admin@demo.invalid")
+  await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.getByRole("button", { name: "Sign in", exact: true }).click()
+  await page
+    .getByRole("button", { name: "Sites & geofences", exact: true })
+    .click()
+  await page.getByRole("button", { name: "+ Add site", exact: true }).click()
+  await page.getByLabel("Name", { exact: true }).fill("Browser configured site")
+  await page.getByLabel("Client name", { exact: true }).fill("Fictional client")
+  await page.getByLabel("Latitude", { exact: true }).fill("14.55")
+  await page.getByLabel("Longitude", { exact: true }).fill("121.02")
+  await page.getByRole("button", { name: "Save site", exact: true }).click()
+  await page
+    .getByRole("heading", { name: "Browser configured site", exact: true })
+    .waitFor()
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Incident center ↗", exact: true })
+      .count(),
+    0,
+  )
+  assert(
+    await page
+      .locator(".ops-main")
+      .evaluate((e) => e.getBoundingClientRect().left >= 0),
+    "Mobile workspace must not be clipped on the left",
+  )
+  await page.screenshot({ path: "/tmp/bcc-admin-verified.png", fullPage: true })
+  await page.getByRole("button", { name: "Sign out", exact: true }).click()
+  await page.getByLabel("Email", { exact: true }).waitFor()
   await page
     .getByRole("button", {
       name: "View preserved prototype (sample data only)",
@@ -213,7 +295,7 @@ try {
     .waitFor()
   assert.deepEqual(errors, [])
   console.log(
-    "PASS: browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; preserved prototype switch.",
+    "PASS: roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; preserved prototype switch.",
   )
 } finally {
   await browser?.close()

@@ -11,6 +11,10 @@ export function createService(pool, secret) {
       .to("user:" + row.reporter_id)
       .to("site:" + row.site_id)
       .emit("incidents:changed")
+    io.to("operations")
+      .to("user:" + row.reporter_id)
+      .to("site:" + row.site_id)
+      .emit("operations:changed")
   })
   const server = createServer(app)
   io = new Server(server, {

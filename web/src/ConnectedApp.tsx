@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type FormEvent } from "react"
 import { io } from "socket.io-client"
 import "./connected.css"
+import OperationsWorkspace from "./OperationsWorkspace"
 const api = import.meta.env.VITE_API_URL || "http://localhost:3001"
 type User = { id: string; name: string; role: string }
 type AuditEvent = {
@@ -19,6 +20,13 @@ type Incident = {
   reporter_name: string
   site_name: string
   assignee_id: string | null
+  classification: string
+  severity: string
+  approval: string
+  investigation: string
+  root_cause: string
+  version: number
+  due_at: string | null
   photo_key: string
 }
 export default function ConnectedApp() {
@@ -34,6 +42,7 @@ export default function ConnectedApp() {
     [audit, setAudit] = useState<AuditEvent[]>([]),
     [photo, setPhoto] = useState<string | null>(null),
     [live, setLive] = useState(false)
+  const [view, setView] = useState<"workspace" | "incidents">("workspace")
   const activeSession = useRef(session)
   activeSession.current = session
   function clearSession(message = "") {
@@ -196,7 +205,7 @@ export default function ConnectedApp() {
     <div className="connected">
       <header>
         <p>BCC / CAT • CONNECTED OPERATIONS</p>
-        <h1>Incident Resolution Center</h1>
+        <h1>Security Services Platform</h1>
         <p>
           {session
             ? `${session.user.name} · ${session.user.role} · ${
@@ -206,7 +215,10 @@ export default function ConnectedApp() {
         </p>
         {session && (
           <button
-            onClick={() => clearSession()}
+            onClick={() => {
+              void request("/auth/logout", { method: "POST" }).catch(() => {})
+              clearSession()
+            }}
           >
             Sign out
           </button>
@@ -242,10 +254,17 @@ export default function ConnectedApp() {
           <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
           <p>Use the account provided by your administrator.</p>
         </form>
-      ) : session.user.role === "admin" ? (
-        <section><h2>System Administrator</h2><p>Technical administration only. Operational incidents and photos are restricted.</p><p>Use the demo administration portal for the configuration preview. Server-side user management and system integrations require their own implementation.</p></section>
+      ) : session.user.role === "admin" || view === "workspace" ? (
+        <OperationsWorkspace
+          key={session.token}
+          role={session.user.role}
+          request={request}
+          onIncidents={() => setView("incidents")}
+        />
       ) : (
         <>
+          <button onClick={() => setView("workspace")}>← Operations</button>
+          <h2>Incident center</h2>
           <p>
             {reports.length} accessible reports · updates also refresh every 15
             seconds.
@@ -291,6 +310,7 @@ export default function ConnectedApp() {
                         onChange={(e) =>
                           void update(i.id, {
                             assignee_id: e.target.value || null,
+                            version: i.version,
                           })
                         }
                       >
@@ -302,6 +322,91 @@ export default function ConnectedApp() {
                         ))}
                       </select>
                     </label>
+                    <label>
+                      Classification
+                      <input
+                        aria-label="Classification"
+                        defaultValue={i.classification}
+                        key={i.id + "classification" + i.version}
+                        onBlur={(e) => {
+                          if (e.target.value !== i.classification)
+                            void update(i.id, {
+                              classification: e.target.value,
+                              version: i.version,
+                            })
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Severity
+                      <select
+                        aria-label="Severity"
+                        disabled={busy}
+                        value={i.severity}
+                        onChange={(e) =>
+                          void update(i.id, {
+                            severity: e.target.value,
+                            version: i.version,
+                          })
+                        }
+                      >
+                        {["Low", "Medium", "High", "Critical"].map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Approval
+                      <select
+                        aria-label="Approval"
+                        disabled={busy}
+                        value={i.approval}
+                        onChange={(e) =>
+                          void update(i.id, {
+                            approval: e.target.value,
+                            version: i.version,
+                          })
+                        }
+                      >
+                        {["Pending", "Approved", "Returned"].map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <p>
+                      Resolution due:{" "}
+                      {i.due_at
+                        ? new Date(i.due_at).toLocaleString()
+                        : "Not set"}
+                    </p>
+                    {["investigation", "root_cause"].map((field) => (
+                      <label key={field}>
+                        {field === "investigation"
+                          ? "Investigation notes"
+                          : "Root cause"}
+                        <textarea
+                          aria-label={
+                            field === "investigation"
+                              ? "Investigation notes"
+                              : "Root cause"
+                          }
+                          key={i.id + field + i.version}
+                          defaultValue={
+                            i[(field as "investigation" | "root_cause")]
+                          }
+                          onBlur={(e) => {
+                            if (
+                              e.target.value !==
+                              i[(field as "investigation" | "root_cause")]
+                            )
+                              void update(i.id, {
+                                [field]: e.target.value,
+                                version: i.version,
+                              })
+                          }}
+                        />
+                      </label>
+                    ))}
                     <small>
                       The server accepts only assignees belonging to this site.
                     </small>
@@ -311,9 +416,11 @@ export default function ConnectedApp() {
                   <button onClick={() => void inspect(i, "photo")}>
                     View photo
                   </button>
-                  <button onClick={() => void inspect(i, "audit")}>
-                    Audit trail
-                  </button>
+                  {session.user.role === "operations" && (
+                    <button onClick={() => void inspect(i, "audit")}>
+                      Audit trail
+                    </button>
+                  )}
                 </div>
               </article>
             ))}

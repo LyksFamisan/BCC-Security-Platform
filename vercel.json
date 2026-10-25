@@ -10,7 +10,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "feat/connected-security-apps": false
+      "feat/connected-security-apps": false,
+      "feat/tor-operational-workflows": false
     }
   }
 }

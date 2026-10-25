@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from "react"
 import {
   AppState,
+  Alert,
+  Modal,
   SafeAreaView,
   ScrollView,
   Text,
@@ -17,6 +19,7 @@ import {
 } from "react-native"
 import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
+import OperationsPanel from "./OperationsPanel"
 import { io } from "socket.io-client"
 const APP_ROLE = "guard"
 const SESSION_KEY = "bcc-guard-token"
@@ -27,6 +30,12 @@ type Report = {
   status: string
   description: string
   location: string
+  severity: string
+  classification: string
+  approval: string
+  investigation: string
+  root_cause: string
+  version: number
 }
 export default function App() {
   const [token, setToken] = useState<string | null>(null),
@@ -44,17 +53,28 @@ export default function App() {
     [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null),
     [live, setLive] = useState(false)
   const [role, setRole] = useState<string | null>(null)
-  const [tab, setTab] = useState<"home" | "reports" | "new">("home")
+  const [tab, setTab] = useState<"home" | "reports" | "new" | "duty">("duty")
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [search, setSearch] = useState("")
+  const [refreshing, setRefreshing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [notice, setNotice] = useState("")
   const currentToken = useRef(token)
   currentToken.current = token
   async function logout(message = "") {
+    const oldToken = currentToken.current
+    if (oldToken && api)
+      void fetch(api + "/auth/logout", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + oldToken },
+      }).catch(() => {})
     currentToken.current = null
     setToken(null)
     setRole(null)
-    setTab("home")
+    setTab("duty")
     setNotice("")
+    setSelectedReport(null)
+    setSearch("")
     setReports([])
     setSites([])
     setSite("")
@@ -80,11 +100,17 @@ export default function App() {
       .finally(() => setReady(true))
   }, [])
   async function request(route: string, options: RequestInit = {}) {
-    if (!api) throw Error("Set EXPO_PUBLIC_API_URL in mobile/.env")
-    const res = await fetch(api + route, {
+    if (!api)
+      throw Error("Service unavailable. Please contact your administrator.")
+    const controller=new AbortController()
+    const timeout=setTimeout(()=>controller.abort(),20000)
+    let res: Response
+    try {res = await fetch(api + route, {
+      signal: controller.signal,
       ...options,
       headers: { Authorization: "Bearer " + token, ...options.headers },
     })
+    } finally {clearTimeout(timeout)}
     if (currentToken.current !== token) throw Error("Session changed")
     if (res.status === 401) {
       await logout("Session expired. Sign in again.")
@@ -142,11 +168,16 @@ export default function App() {
   async function login() {
     setBusy(true)
     try {
-      if (!api) throw Error("Set EXPO_PUBLIC_API_URL in mobile/.env")
+      if (!api)
+        throw Error("Service unavailable. Please contact your administrator.")
       const res = await fetch(api + "/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, app_role: APP_ROLE }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          app_role: APP_ROLE,
+        }),
       })
       const d = await res.json()
       if (!res.ok) throw Error(d.error)
@@ -164,12 +195,17 @@ export default function App() {
       setBusy(false)
     }
   }
-  async function pick() {
+  async function pick(camera = false) {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted)
-        throw Error("Photo library permission is required")
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const permission = await (camera
+        ? ImagePicker.requestCameraPermissionsAsync()
+        : ImagePicker.requestMediaLibraryPermissionsAsync())
+      if (!permission.granted) throw Error("Camera or photo access is required")
+      const result = await (
+        camera
+          ? ImagePicker.launchCameraAsync
+          : ImagePicker.launchImageLibraryAsync
+      )({
         mediaTypes: ["images"],
         quality: 0.8,
       })
@@ -215,7 +251,7 @@ export default function App() {
       setPhoto(null)
       await refresh()
       setTab("reports")
-      setNotice("Report submitted. Your team can now review it.")
+      setNotice("Report submitted")
     } catch (e) {
       if (currentToken.current === token) setError((e as Error).message)
     } finally {
@@ -226,17 +262,29 @@ export default function App() {
   const openReports = reports.filter(
     (report) => report.status !== "Resolved",
   ).length
-  const displayReports = tab === "home" ? reports.slice(0, 3) : reports
-  async function changeStatus(id: string, status: string) {
+  const displayReports =
+    tab === "home"
+      ? reports.slice(0, 3)
+      : reports.filter((r) =>
+          `${r.title} ${r.location} ${r.status}`
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        )
+  async function changeStatus(
+    id: string,
+    status: string,
+    extra: Record<string, unknown> = {},
+  ) {
     const activeToken = token
     setBusy(true)
     try {
       await request("/incidents/" + id, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, version: reports.find(r=>r.id===id)?.version, ...extra }),
       })
       await refresh()
+      if(currentToken.current===activeToken)setNotice("Saved")
     } catch (e) {
       if (currentToken.current === activeToken) setError((e as Error).message)
     } finally {
@@ -245,10 +293,90 @@ export default function App() {
   }
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#102B35" />
+      <Modal
+        visible={!!selectedReport}
+        animationType="slide"
+        onRequestClose={() => setSelectedReport(null)}
+      >
+        <SafeAreaView style={styles.safe}>
+          <ScrollView contentContainerStyle={styles.page}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setSelectedReport(null)}
+              style={{ minHeight: 48, justifyContent: "center" }}
+            >
+              <Text style={styles.link}>‹ Back</Text>
+            </Pressable>
+            {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+            {!!notice && <Text accessibilityLiveRegion="polite" style={styles.success}>{notice}</Text>}
+            {selectedReport && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>{selectedReport.title}</Text>
+                <Text style={styles.muted}>
+                  {reports.find((r) => r.id === selectedReport.id)?.status ||
+                    selectedReport.status}
+                </Text>
+                <Text style={styles.body}>{selectedReport.description}</Text>
+                <Text style={styles.muted}>{selectedReport.location}</Text>
+                <Text style={styles.muted}>
+                  {reports.find((r) => r.id === selectedReport.id)?.approval ||
+                    selectedReport.approval}
+                </Text>
+                {supervisor && (
+                  <Text style={styles.muted}>
+                    {selectedReport.classification} · {selectedReport.severity}
+                  </Text>
+                )}
+                <Text style={styles.body}>{selectedReport.investigation}</Text>
+                {supervisor && (
+                  <View style={{ gap: 10 }}>
+                    <Field label="Classification" value={selectedReport.classification||""} onChangeText={v=>setSelectedReport({...selectedReport,classification:v})} placeholder="Incident category" maxLength={100}/>
+                    <Text style={styles.label}>Severity</Text>
+                    <View style={styles.siteChoices}>{["Low","Medium","High","Critical"].map(v=><Pressable key={v} accessibilityRole="radio" accessibilityLabel={v} accessibilityState={{selected:selectedReport.severity===v}} onPress={()=>setSelectedReport({...selectedReport,severity:v})} style={[styles.siteChoice,selectedReport.severity===v&&styles.siteChoiceSelected]}><Text style={styles.link}>{v}</Text></Pressable>)}</View>
+                    <Field label="Investigation" value={selectedReport.investigation||""} onChangeText={v=>setSelectedReport({...selectedReport,investigation:v})} placeholder="Investigation findings" multiline maxLength={5000}/>
+                    <Field label="Root cause" value={selectedReport.root_cause||""} onChangeText={v=>setSelectedReport({...selectedReport,root_cause:v})} placeholder="Cause of incident" multiline maxLength={5000}/>
+                    <Action label="Save case details" busy={busy} onPress={()=>void changeStatus(selectedReport.id,reports.find(r=>r.id===selectedReport.id)?.status||selectedReport.status,{classification:selectedReport.classification,severity:selectedReport.severity,investigation:selectedReport.investigation,root_cause:selectedReport.root_cause})}/>
+                    <Action
+                      label="Approve incident"
+                      busy={busy}
+                      onPress={() =>
+                        void changeStatus(
+                          selectedReport.id,
+                          reports.find((r) => r.id === selectedReport.id)
+                            ?.status || selectedReport.status,
+                          { approval: "Approved" },
+                        )
+                      }
+                    />
+                    <Action
+                      label="Return for clarification"
+                      busy={busy}
+                      onPress={() =>
+                        void changeStatus(selectedReport.id, "Under Review", {
+                          approval: "Returned",
+                        })
+                      }
+                    />
+                  </View>
+                )}
+                <Image
+                  source={{
+                    uri: api + "/incidents/" + selectedReport.id + "/photo",
+                    headers: { Authorization: "Bearer " + token },
+                  }}
+                  style={{ width: "100%", height: 280, borderRadius: 12 }}
+                  resizeMode="contain"
+                  accessibilityLabel="Incident evidence"
+                />
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+      <StatusBar barStyle="dark-content" backgroundColor="#f4fbff" />
       {!ready ? (
         <View style={styles.loading}>
-          <ActivityIndicator color="#F5AB69" />
+          <ActivityIndicator color="#F06522" />
           <Text style={styles.lightText}>Restoring your session…</Text>
         </View>
       ) : (
@@ -262,21 +390,34 @@ export default function App() {
             refreshControl={
               token ? (
                 <RefreshControl
-                  tintColor="#F5AB69"
-                  refreshing={busy}
-                  onRefresh={() => void refresh()}
+                  tintColor="#F06522"
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    setRefreshing(true)
+                    void refresh().finally(() => setRefreshing(false))
+                  }}
                 />
               ) : undefined
             }
           >
             <View style={styles.brandRow}>
               <View style={styles.brandMark}>
-                <Text style={styles.brandLetter}>B</Text>
+                <Image
+                  source={require("./assets/BCC_logo.jpg")}
+                  accessibilityLabel="BCC"
+                  style={{ width: 42, height: 42 }}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.brand}>BCC Guard</Text>
-                <Text style={styles.brandSub}>SECURITY SERVICES</Text>
               </View>
+              <Image
+                source={require("./assets/CAT_logo.jpg")}
+                accessibilityLabel="CAT"
+                style={{ width: 36, height: 36 }}
+                resizeMode="contain"
+              />
               {token && (
                 <Pressable
                   accessibilityRole="button"
@@ -289,25 +430,13 @@ export default function App() {
                 </Pressable>
               )}
             </View>
+
             {!token ? (
               <>
                 <View style={styles.loginHero}>
-                  <Text style={styles.eyebrow}>YOUR PARTNER ON DUTY</Text>
-                  <Text style={styles.heroTitle}>
-                    Stay connected.{"\n"}Stay protected.
-                  </Text>
-                  <Text style={styles.heroCopy}>
-                    A clear view of every report, wherever duty takes you.
-                  </Text>
-                  <View style={styles.roleRow}>
-                    <Text style={styles.rolePill}>GUARD APPLICATION</Text>
-                  </View>
+                  <Text style={styles.heroTitle}>Sign in</Text>
                 </View>
                 <View style={styles.card}>
-                  <Text style={styles.sectionTitle}>Welcome back</Text>
-                  <Text style={styles.muted}>
-                    Sign in with your assigned account.
-                  </Text>
                   {!!error && (
                     <Text accessibilityRole="alert" style={styles.error}>
                       {error}
@@ -352,56 +481,36 @@ export default function App() {
                     disabled={!email.trim() || !password}
                     onPress={() => void login()}
                   />
-                  <Text style={styles.small}>
-                    Your account determines which sites and records you can
-                    access.
-                  </Text>
                 </View>
-                <Text style={styles.footer}>
-                  BCC Guard · Security Services Platform
-                </Text>
               </>
             ) : (
               <>
-                <View style={styles.hero}>
-                  <View style={styles.between}>
-                    <Text style={styles.eyebrow}>
-                      {supervisor ? "SITE OPERATIONS" : "YOUR DUTY COMPANION"}
-                    </Text>
-                    <View style={styles.connection}>
-                      <View
-                        style={[
-                          styles.dot,
-                          { backgroundColor: live ? "#75E0B6" : "#F5AB69" },
-                        ]}
-                      />
-                      <Text style={styles.connectionText}>
-                        {live ? "Live" : "Reconnecting"}
-                      </Text>
+                {tab !== "duty" && (
+                  <View style={styles.hero}>
+                    <View style={styles.between}>
+                      <View style={styles.connection}>
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: live ? "#75E0B6" : "#F06522" },
+                          ]}
+                        />
+                        <Text style={styles.connectionText}>
+                          {live ? "Live" : "Reconnecting"}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.dashboardTitle}>
-                    {tab === "new"
-                      ? "Report an incident"
-                      : tab === "reports"
-                        ? "Your reports, in focus."
-                        : supervisor
-                          ? "Your sites. One view."
-                          : "Ready for your shift."}
-                  </Text>
-                  <Text style={styles.heroCopy}>
-                    {supervisor
-                      ? "Monitor reports across your assigned sites."
-                      : "Report clearly. Track progress. Keep your team informed."}
-                  </Text>
-                  <View style={styles.scopeTag}>
-                    <Text style={styles.lightText}>
-                      {supervisor
-                        ? "Supervisor / Site In-Charge"
-                        : "Security Personnel (Guard)"}
+                    <Text style={styles.dashboardTitle}>
+                      {tab === "new"
+                        ? "Report an incident"
+                        : tab === "reports"
+                          ? "Reports"
+                          : supervisor
+                            ? "Site overview"
+                            : "My dashboard"}
                     </Text>
                   </View>
-                </View>
+                )}
                 {!!error && (
                   <Text accessibilityRole="alert" style={styles.error}>
                     {error}
@@ -420,6 +529,13 @@ export default function App() {
                       {notice} ×
                     </Text>
                   </Pressable>
+                )}
+                {tab === "duty" && (
+                  <OperationsPanel
+                    key={token}
+                    role={APP_ROLE}
+                    request={request}
+                  />
                 )}
                 {tab === "home" && (
                   <>
@@ -446,12 +562,8 @@ export default function App() {
                         <Text style={styles.plusText}>+</Text>
                       </View>
                       <View style={styles.flex}>
-                        <Text style={styles.quickTitle}>
-                          Something to report?
-                        </Text>
-                        <Text style={styles.muted}>
-                          Add details and photo evidence
-                        </Text>
+                        <Text style={styles.quickTitle}>New incident</Text>
+                        <Text style={styles.muted}>Report an issue</Text>
                       </View>
                       <Text style={styles.arrow}>→</Text>
                     </Pressable>
@@ -477,12 +589,10 @@ export default function App() {
                     </View>
                   </>
                 )}
-                {tab === "new" ? (
+                {tab === "duty" ? null : tab === "new" ? (
                   <View style={styles.card}>
                     <Text style={styles.sectionTitle}>Incident details</Text>
-                    <Text style={styles.muted}>
-                      Give your team the information they need to act.
-                    </Text>
+
                     <Text style={styles.label}>Assigned site</Text>
                     <View style={styles.siteChoices}>
                       {sites.map((item) => (
@@ -540,7 +650,16 @@ export default function App() {
                     <Pressable
                       accessibilityRole="button"
                       disabled={busy}
-                      onPress={() => void pick()}
+                      onPress={() =>
+                        Alert.alert("Add photo", undefined, [
+                          {
+                            text: "Take photo",
+                            onPress: () => void pick(true),
+                          },
+                          { text: "Photo library", onPress: () => void pick() },
+                          { text: "Cancel", style: "cancel" },
+                        ])
+                      }
                       style={styles.upload}
                     >
                       {photo ? (
@@ -559,7 +678,7 @@ export default function App() {
                         </>
                       )}
                       <Text style={styles.link}>
-                        {photo ? "Replace photo" : "Choose from gallery"}
+                        {photo ? "Replace photo" : "Camera or gallery"}
                       </Text>
                     </Pressable>
                     <Action
@@ -574,10 +693,6 @@ export default function App() {
                       }
                       onPress={() => void submit()}
                     />
-                    <Text style={styles.small}>
-                      Your report will appear in the connected operations
-                      dashboard after submission.
-                    </Text>
                   </View>
                 ) : (
                   <>
@@ -589,6 +704,7 @@ export default function App() {
                             ? "Assigned-site reports"
                             : "My reports"}
                       </Text>
+
                       {tab === "home" && (
                         <Pressable
                           accessibilityRole="button"
@@ -598,13 +714,21 @@ export default function App() {
                         </Pressable>
                       )}
                     </View>
+                    {tab === "reports" && (
+                      <TextInput
+                        accessibilityLabel="Search reports"
+                        placeholder="Search reports"
+                        value={search}
+                        onChangeText={setSearch}
+                        style={styles.input}
+                      />
+                    )}
                     {!displayReports.length && (
                       <View style={[styles.card, styles.empty]}>
                         <Text style={styles.emptyIcon}>◎</Text>
-                        <Text style={styles.sectionTitle}>A clear board</Text>
+                        <Text style={styles.sectionTitle}>No reports yet</Text>
                         <Text style={styles.muted}>
-                          No reports to show yet. Pull down to refresh or submit
-                          your first incident.
+                          Your submitted incidents will appear here.
                         </Text>
                         <Action
                           label="Create a report"
@@ -631,8 +755,19 @@ export default function App() {
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.reportTitle}>{report.title}</Text>
-                        <Text style={styles.body}>{report.description}</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={"Open report: " + report.title}
+                          onPress={() => setSelectedReport(report)}
+                          style={{ minHeight: 44, justifyContent: "center" }}
+                        >
+                          <Text style={styles.reportTitle}>
+                            {report.title} ›
+                          </Text>
+                        </Pressable>
+                        <Text numberOfLines={3} style={styles.body}>
+                          {report.description}
+                        </Text>
                         <View style={styles.location}>
                           <Text style={styles.muted}>◎ {report.location}</Text>
                         </View>
@@ -670,19 +805,15 @@ export default function App() {
                     ))}
                   </>
                 )}
-                <Text style={styles.footer}>
-                  {supervisor ? "Assigned sites only" : "Your reports only"} ·
-                  Pull down to refresh
-                </Text>
               </>
             )}
           </ScrollView>
           {token && (
             <View style={styles.nav}>
               {([
-                ["home", "◈", "Overview"],
+                ["duty", "⌂", "Duty"],
                 ["new", "＋", "Report"],
-                ["reports", "≡", "Activity"],
+                ["reports", "≡", "Reports"],
               ] as const).map(([key, icon, label]) => (
                 <Pressable
                   key={key}
@@ -738,7 +869,7 @@ function Action({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color="#102B35" />
+        <ActivityIndicator color="#f4fbff" />
       ) : (
         <Text style={styles.actionText}>{label} →</Text>
       )}
@@ -793,11 +924,11 @@ function Stat({ number, label }: { number: number; label: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#102B35",
+    backgroundColor: "#f4fbff",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   flex: { flex: 1 },
-  page: { padding: 22, paddingBottom: 28, gap: 18 },
+  page: { padding: 20, paddingBottom: 24, gap: 16 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   brandRow: {
     flexDirection: "row",
@@ -806,15 +937,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   brandMark: {
-    width: 42,
+    width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: "#F5AB69",
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
   },
-  brandLetter: { fontSize: 26, fontWeight: "900", color: "#102B35" },
-  brand: { fontSize: 18, fontWeight: "800", color: "#FFF", letterSpacing: 1.4 },
+  brandLetter: { fontSize: 26, fontWeight: "900", color: "#f4fbff" },
+  brand: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#12304a",
+    letterSpacing: -0.4,
+  },
   brandSub: {
     fontSize: 9,
     fontWeight: "600",
@@ -823,22 +959,22 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   signout: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  lightText: { color: "#D0E0E5", fontSize: 12, fontWeight: "500" },
-  loginHero: { paddingVertical: 20, gap: 18 },
+  lightText: { color: "#52718b", fontSize: 12, fontWeight: "500" },
+  loginHero: { paddingTop: 28, paddingBottom: 4, gap: 8 },
   eyebrow: {
-    color: "#F5AB69",
+    color: "#F06522",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.8,
   },
   heroTitle: {
-    fontSize: 40,
-    lineHeight: 47,
-    color: "#F7FAF9",
+    fontSize: 30,
+    lineHeight: 36,
+    color: "#12304a",
     fontWeight: "800",
     letterSpacing: -1.5,
   },
-  heroCopy: { fontSize: 14, lineHeight: 22, color: "#B4C9D0" },
+  heroCopy: { fontSize: 14, lineHeight: 22, color: "#52718b" },
   roleRow: { flexDirection: "row", gap: 10 },
   rolePill: {
     fontSize: 9,
@@ -851,11 +987,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#34535C",
   },
-  card: { backgroundColor: "#F9FBFA", padding: 20, borderRadius: 24, gap: 14 },
+  card: { backgroundColor: "#ffffff", padding: 18, borderRadius: 18, gap: 14 },
   sectionTitle: {
     fontSize: 19,
     fontWeight: "800",
-    color: "#19333D",
+    color: "#12304a",
     letterSpacing: -0.5,
   },
   muted: { fontSize: 12, lineHeight: 19, color: "#61777F" },
@@ -863,18 +999,18 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: "700", color: "#334E58", marginBottom: 3 },
   field: { gap: 6 },
   input: {
-    backgroundColor: "#EEF3F2",
+    backgroundColor: "#f4f8fc",
     borderWidth: 1,
-    borderColor: "#DAE5E2",
+    borderColor: "#d6e5f0",
     paddingHorizontal: 15,
     paddingVertical: 14,
     borderRadius: 14,
     fontSize: 14,
-    color: "#19333D",
+    color: "#12304a",
     minHeight: 50,
   },
   textarea: { minHeight: 130 },
-  link: { fontSize: 12, fontWeight: "700", color: "#246A60" },
+  link: { fontSize: 12, fontWeight: "700", color: "#1976b9" },
   between: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -882,14 +1018,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   action: {
-    backgroundColor: "#F5AB69",
+    backgroundColor: "#F06522",
     borderRadius: 15,
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
     padding: 14,
   },
-  actionText: { fontSize: 14, fontWeight: "800", color: "#16343D" },
+  actionText: { fontSize: 14, fontWeight: "800", color: "#ffffff" },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.8 },
   error: {
@@ -917,15 +1053,15 @@ const styles = StyleSheet.create({
   },
   hero: { paddingVertical: 10, gap: 15 },
   dashboardTitle: {
-    fontSize: 32,
-    lineHeight: 39,
-    color: "#F7FAF9",
+    fontSize: 26,
+    lineHeight: 32,
+    color: "#12304a",
     fontWeight: "800",
     letterSpacing: -1,
   },
   connection: { flexDirection: "row", gap: 6, alignItems: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  connectionText: { fontSize: 10, color: "#C9DBDF" },
+  connectionText: { fontSize: 10, color: "#52718b" },
   scopeTag: {
     alignSelf: "flex-start",
     backgroundColor: "#24454E",
@@ -936,15 +1072,15 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", gap: 10 },
   stat: {
     flex: 1,
-    backgroundColor: "#21424B",
+    backgroundColor: "#ffffff",
     padding: 14,
     borderRadius: 18,
     gap: 6,
   },
-  statValue: { fontSize: 25, fontWeight: "800", color: "#F6C08E" },
-  statLabel: { fontSize: 10, color: "#B9CDD3" },
+  statValue: { fontSize: 25, fontWeight: "800", color: "#1976b9" },
+  statLabel: { fontSize: 10, color: "#52718b" },
   quickAction: {
-    backgroundColor: "#E4EFEA",
+    backgroundColor: "#e7f5fd",
     padding: 18,
     borderRadius: 22,
     flexDirection: "row",
@@ -955,32 +1091,32 @@ const styles = StyleSheet.create({
     height: 42,
     width: 42,
     borderRadius: 14,
-    backgroundColor: "#23594F",
+    backgroundColor: "#1976b9",
     alignItems: "center",
     justifyContent: "center",
   },
   plusText: { fontSize: 26, color: "#FFF" },
   quickTitle: { fontSize: 14, fontWeight: "700", color: "#203D47" },
-  arrow: { fontSize: 24, color: "#23594F" },
+  arrow: { fontSize: 24, color: "#1976b9" },
   siteRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderColor: "#E3EBE7",
+    borderColor: "#e0eaf2",
   },
   siteIcon: {
     width: 32,
     height: 32,
     borderRadius: 11,
-    backgroundColor: "#E4EFEA",
+    backgroundColor: "#e7f5fd",
     alignItems: "center",
     justifyContent: "center",
   },
   siteName: { fontSize: 13, color: "#304E57", flex: 1 },
-  count: { color: "#246A60", fontSize: 12, fontWeight: "800" },
-  sectionOnDark: { fontSize: 18, color: "#F4F7F6", fontWeight: "700" },
+  count: { color: "#1976b9", fontSize: 12, fontWeight: "800" },
+  sectionOnDark: { fontSize: 18, color: "#12304a", fontWeight: "700" },
   siteChoices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   siteChoice: {
     padding: 12,
@@ -989,8 +1125,8 @@ const styles = StyleSheet.create({
     borderColor: "#D8E3DE",
     minHeight: 44,
   },
-  siteChoiceSelected: { backgroundColor: "#E2F1E9", borderColor: "#33766A" },
-  selectedText: { fontSize: 12, fontWeight: "700", color: "#20594F" },
+  siteChoiceSelected: { backgroundColor: "#e7f5fd", borderColor: "#1976b9" },
+  selectedText: { fontSize: 12, fontWeight: "700", color: "#1976b9" },
   upload: {
     padding: 18,
     borderWidth: 1,
@@ -999,9 +1135,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#EFF5F0",
+    backgroundColor: "#f4f8fc",
   },
-  uploadIcon: { fontSize: 30, color: "#33766A" },
+  uploadIcon: { fontSize: 30, color: "#1976b9" },
   photo: { width: "100%", height: 190, borderRadius: 12 },
   empty: { alignItems: "stretch", gap: 14 },
   emptyIcon: { fontSize: 36, color: "#3F7C6D" },
@@ -1018,15 +1154,15 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#19333D",
+    color: "#12304a",
     lineHeight: 23,
   },
   body: { fontSize: 13, lineHeight: 21, color: "#597078" },
-  location: { borderTopWidth: 1, borderColor: "#E3EBE7", paddingTop: 12 },
+  location: { borderTopWidth: 1, borderColor: "#e0eaf2", paddingTop: 12 },
   review: { gap: 10, paddingTop: 8 },
   statusAction: {
     padding: 12,
-    backgroundColor: "#E4EFEA",
+    backgroundColor: "#e7f5fd",
     borderRadius: 12,
     minHeight: 44,
   },
@@ -1048,8 +1184,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     minHeight: 56,
   },
-  navActive: { backgroundColor: "#E2EFE8" },
+  navActive: { backgroundColor: "#d9effc" },
   navIcon: { fontSize: 23, color: "#81958F" },
   navLabel: { fontSize: 10, fontWeight: "600", color: "#6E837C" },
-  navSelected: { color: "#23594F" },
+  navSelected: { color: "#1976b9" },
 })

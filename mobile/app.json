@@ -7,8 +7,8 @@
     "android": {
       "package": "com.bcc.demo.guard",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#102B35"
+        "foregroundImage": "./assets/BCC_logo.jpg",
+        "backgroundColor": "#ffffff"
       }
     },
     "plugins": [
@@ -17,13 +17,20 @@
         "expo-image-picker",
         {
           "photosPermission": "Choose an incident evidence photo.",
-          "microphonePermission": false
+          "microphonePermission": false,
+          "cameraPermission": "Take a photo for an incident report."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Verify your location for duty attendance and GPS check-ins."
         }
       ]
     ],
     "userInterfaceStyle": "light",
-    "backgroundColor": "#102B35",
-    "icon": "./assets/icon.png",
+    "backgroundColor": "#f4fbff",
+    "icon": "./assets/BCC_logo.jpg",
     "ios": {
       "bundleIdentifier": "com.bcc.demo.guard"
     },

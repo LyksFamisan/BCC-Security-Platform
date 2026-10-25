@@ -14,7 +14,9 @@
     "expo-secure-store": "~15.0.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "expo-location": "~19.0.8",
+    "@react-native-community/datetimepicker": "8.4.4"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
