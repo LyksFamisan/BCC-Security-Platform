@@ -54,7 +54,7 @@ export default function GeofenceMap({ sites, points = [], onPick }: { sites: Sit
       const age=Date.now()- +new Date(String(p.data.recorded_at)), stale=!Number.isFinite(age)||age>15*60000
       const time=new Date(String(p.data.recorded_at)); const timestamp=Number.isNaN(+time)?"Unknown time":time.toLocaleString()
       L.circleMarker([Number(p.data.latitude),Number(p.data.longitude)],{radius:9,color:stale?"#667085":"#fff",weight:3,fillColor:color,fillOpacity:stale?.45:1})
-        .bindPopup(popup([p.subject_name || "Guard",p.site_name || "",`${status}${stale?" · Stale location":""}`,`Last shared: ${timestamp}`,`GPS accuracy: ±${p.data.accuracy} m`])).addTo(group)
+        .bindPopup(popup([p.subject_name || "Guard",p.site_name || "",`${status}${stale?" · Stale location":""}`,`${p.data.preview_only ? "GPS checked" : "Last shared"}: ${timestamp}`,`GPS accuracy: ±${p.data.accuracy} m`])).addTo(group)
     }
     if (group.getLayers().length && fitted.current !== site+":ready") { instance.fitBounds(group.getBounds().pad(.2),{maxZoom:16}); fitted.current=site+":ready" }
   }, [sites,latest,site])

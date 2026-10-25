@@ -13,3 +13,9 @@ Mobile branding uses the web app's CAT/BCC logos, navy/orange palette, rounded c
 The existing Makati City site has no approved coordinates configured. An administrator must set its actual centre and radius; no fake boundary or attendance was created for this update.
 
 Validation: repeated/legacy cycles, duplicate concurrency protection, billing pairing and hosted evidence storage in backend tests; seven native GPS/state tests; browser next-action and photo flow; TypeScript and Android JS exports. Real phone camera/GPS acceptance testing is still required.
+
+## Live web setup and checks
+
+Guard Portal `/guard` displays the selected site, radius, GPS accuracy and Inside/Outside/Uncertain/Not configured state, plus a zoomable site/current-device map. A device preview marker is labelled GPS checked, while shared records retain Last shared. Camera attendance still obtains a fresh GPS fix before validation.
+
+Admin can configure a site using Sites & geofences → Configure → Use current device location (on-site) → Save site. This requests precise browser GPS and refuses poor accuracy. Only use this while physically at the approved site; otherwise choose the correct centre on the map. Coordinates are not written until Save site. The existing Makati City boundary remains unconfigured until actual coordinates are supplied.

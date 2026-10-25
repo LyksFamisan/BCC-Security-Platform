@@ -1003,6 +1003,7 @@ export default function OperationsWorkspace({
                   </label>
                 ))}
                 <div><Suspense fallback={<p>Loading map…</p>}><GeofenceMap sites={[{id: siteDraft.id || "draft", name: siteDraft.name || "New site", latitude: siteDraft.latitude, longitude: siteDraft.longitude, radius_m: siteDraft.radius_m}]} onPick={(latitude,longitude)=>setSiteDraft({...siteDraft,latitude,longitude})} /></Suspense></div>
+                <button type="button" disabled={busy} onClick={()=>{if(!navigator.geolocation){setError("GPS is unavailable on this device");return}setBusy(true);setError("");navigator.geolocation.getCurrentPosition(position=>{if(position.coords.accuracy>100){setError("GPS accuracy is too low to set the site centre. Move outdoors and retry.");setBusy(false);return}setSiteDraft((previous:any)=>previous?{...previous,latitude:Number(position.coords.latitude.toFixed(6)),longitude:Number(position.coords.longitude.toFixed(6))}:previous);setBusy(false)},()=>{setError("Allow precise Location permission and enable phone GPS, then retry.");setBusy(false)},{enableHighAccuracy:true,timeout:20000,maximumAge:0})}}>Use current device location (on-site)</button>
                 <button disabled={busy}>Save site</button>
                 <button type="button" onClick={() => setSiteDraft(null)}>
                   Cancel

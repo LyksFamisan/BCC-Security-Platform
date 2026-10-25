@@ -316,6 +316,11 @@ try {
   await page.getByLabel("Client name", { exact: true }).fill("Fictional client")
   await page.getByLabel("Latitude", { exact: true }).fill("14.55")
   await page.getByLabel("Longitude", { exact: true }).fill("121.02")
+  await page.context().grantPermissions(["geolocation"])
+  await page.context().setGeolocation({latitude:14.5501,longitude:121.0201,accuracy:5})
+  await page.getByRole("button",{name:"Use current device location (on-site)",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('input[type="number"][value="14.5501"]'))
+
   await page.locator(".geofence-map .leaflet-interactive").first().waitFor()
   await page.locator(".geofence-map-panel").screenshot({path:"/tmp/bcc-geofence-map.png"})
 
@@ -370,6 +375,16 @@ try {
   await page.context().setGeolocation({latitude:14.55,longitude:121.02,accuracy:5})
   await page.getByRole("button",{name:"Check GPS",exact:true}).click()
   await page.getByRole("status").filter({hasText:"GPS ready"}).waitFor()
+  assert((await page.getByLabel("Geofence status",{exact:true}).textContent()).includes("Inside"))
+  await page.context().setGeolocation({latitude:14.56,longitude:121.02,accuracy:5})
+  await page.getByRole("button",{name:"Check GPS",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('[aria-label="Geofence status"]')?.textContent.includes('Outside'))
+  await page.context().setGeolocation({latitude:14.55,longitude:121.02,accuracy:5})
+  await page.getByRole("button",{name:"Check GPS",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('[aria-label="Geofence status"]')?.textContent.includes('Inside'))
+  await page.locator('.guard-geofence-status').screenshot({path:"/tmp/bcc-guard-geofence-status.png"})
+
+
   const duty = page.locator("article.guard-card").filter({hasText:"Current gate duty"})
   await duty.getByRole("button",{name:"Open camera",exact:true}).click()
   await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2)
