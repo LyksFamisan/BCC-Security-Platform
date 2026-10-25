@@ -1,18 +1,23 @@
 # BCC Security Services Platform
 
-Connected incident MVP: React/Vite web for SSD, Supervisor and System Administrator, Expo React Native Android app for Guards and Supervisors, Express API and shared PostgreSQL. Existing manpower, equipment, tactical, duty and administration screens remain available through **View preserved prototype**. Those screens use simulated login and browser-local data; they are explicitly not connected or production features. The connected incident app is the default.
+React/Vite web, separate Expo Guard and Supervisor apps, shared Express API and PostgreSQL. This branch adds database-backed manpower, equipment, training, case follow-up, notifications, reports and technical administration to the connected incident workflow.
 
-## Structure
+**Implementation is not a production activation.** The Vercel site continues to use the preserved sample-data prototype until a hosted API URL is configured. See [TOR-COVERAGE.md](TOR-COVERAGE.md) for the feature-by-feature scope, partial integrations and acceptance limits. There is no signed APK or paid infrastructure created by this change.
 
-- `web/`: connected dashboard and original prototype, styles and assets.
-- `mobile/`: Expo Guard app, secure token storage, incident/photo submission and own-report tracking.
-- `backend/`: authenticated REST API, Socket.IO notifications, migration, fictional seed and integration tests.
-- `compose.yaml`: local PostgreSQL only. No cloud resources are created.
-- `amplify.yml`: web build configuration. Existing Vercel root config points to `web/dist`; automatic Vercel deployment is disabled for this review branch.
+## Applications and access
 
-## Run locally
+| Role | Application | Server-enforced scope |
+|---|---|---|
+| Security Personnel / Guard | `mobile/` | Own roster, attendance, GPS check-ins, issued equipment, training, certifications, assessments, incident reports and alerts |
+| Supervisor / Site In-Charge | `mobile-supervisor/`, `web/` | Assigned sites only; roster, equipment assignments, assessments, incident review, actions and escalations |
+| Operations Management / SSD | `web/` | All operational sites, records, analytics, exports and authorized audit |
+| System Administrator | `web/` | Accounts, site assignments/geofences, workflow settings, integration settings, audit metadata, health and encrypted backup management; no operational report/photo access |
 
-Use Node 22.12+ (Node 24 recommended), npm and Docker Compose. From the repository root:
+`Own` does not grant permission to edit training/license records. Supervisors can view training, licenses, inventory and maintenance but cannot change them. Guard evidence and incident history remain isolated. The backend role is authoritative.
+
+## Local setup
+
+Use Node 22.12+ (Node 24 recommended), npm and PostgreSQL. Docker Compose is provided for a loopback-only local database.
 
 ```sh
 npm run setup
@@ -20,9 +25,15 @@ docker compose up -d
 cp backend/.env.example backend/.env
 cp web/.env.example web/.env
 cp mobile/.env.example mobile/.env
+cp mobile-supervisor/.env.example mobile-supervisor/.env
 ```
 
-Edit `backend/.env`: set `JWT_SECRET` to a random value (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) and `DEMO_PASSWORD` to a password of at least 12 characters. The committed database password in Compose is for loopback-only local development; never reuse it remotely. Never commit `.env` files.
+Edit the local `.env` files; never commit real credentials:
+
+- `backend/.env`: local `DATABASE_URL`, a random `JWT_SECRET` of at least 32 characters and a `DEMO_PASSWORD` of at least 12 characters if using fictional seed accounts.
+- Optional `PHOTO_ENCRYPTION_KEY` and `BACKUP_ENCRYPTION_KEY`: separate, random 32-byte keys encoded as base64. Keep recovery copies separately from application data. Generate each locally with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Do not paste keys into chat or GitHub.
+- `web/.env`: `VITE_API_URL=http://localhost:3001`.
+- Both mobile `.env` files: `EXPO_PUBLIC_API_URL=http://YOUR_COMPUTER_LAN_IP:3001`.
 
 ```sh
 cd backend
@@ -31,115 +42,134 @@ npm run seed
 npm run dev
 ```
 
-In a second terminal, from the root:
+Seeding is explicit and optional. It creates only fictional `@demo.invalid` users and fictional roster, radio, assignment, training, certification, assessment and maintenance records. Rerunning resets demo passwords but does not replace operational records. Demo shifts are created relative to the **first** seed; create a new shift if they expire. Remove fictional data before real use.
+
+In another terminal, from the repository root:
 
 ```sh
 npm run dev
 ```
 
-Web runs at `http://localhost:8443`. In containers where network interface enumeration is blocked, use `FIGMA_DEV_SERVER_HOST=127.0.0.1 npm run dev`. If occupied, Vite prints another port; update `WEB_ORIGINS` accordingly and restart the API. API runs at `http://localhost:3001`; `/health` checks the database. No demo credentials are prefilled or bundled in clients.
+Web: `http://localhost:8443`. API: `http://localhost:3001`; `/health` verifies database connectivity. Use `FIGMA_DEV_SERVER_HOST=127.0.0.1 npm run dev` if container interface enumeration is restricted. If changing the web port, update `WEB_ORIGINS` on the API.
 
-Seed accounts (all use your chosen `DEMO_PASSWORD`):
+Fictional logins use your own `DEMO_PASSWORD`:
 
-| Email | Role | Access |
-|---|---|---|
-| operations@demo.invalid | Operations Management (SSD) | All incidents; update status and assign |
-| admin@demo.invalid | System Administrator | Technical role; no incident or evidence access |
-| supervisor@demo.invalid | Supervisor | Review and update reports at Demo Site 1 |
-| guard@demo.invalid | Guard | Own reports; submit at Demo Site 1 |
-| guard2@demo.invalid | Guard | Own reports; submit at Demo Site 2 |
-
-The seed is explicit and opt-in; re-running it resets these demo users' passwords. No real client records are included. Users/sites are managed through SQL for this MVP, not the preserved prototype's administration screen.
-
-## Test on a physical Android phone
-
-1. Put the phone and computer on the same Wi-Fi. Find the computer's LAN IP.
-2. Set `mobile/.env` to `EXPO_PUBLIC_API_URL=http://COMPUTER_LAN_IP:3001`. `localhost` on the phone refers to the phone, not your computer.
-3. Allow local inbound TCP 3001 through the computer firewall. Keep PostgreSQL bound to loopback.
-4. `cd mobile && npm start`; scan the QR with an Expo Go version compatible with SDK 54. If your current Expo Go does not support SDK 54, use the matching Android client from https://expo.dev/go or a development build. Restart Expo after changing `.env`.
-5. Sign in as `guard@demo.invalid`, choose the site, enter title/description/location and select a JPEG/PNG/WebP photo under 5 MB. Submit, then sign in to the web as Admin or Supervisor.
-6. Admin changes the status to Under Review, In Progress or Resolved. Check the phone updates. Disable phone network, update on web, then reconnect and foreground the app: a fresh list recovers missed updates. Pull-to-refresh is also available.
-7. Sign in as guard2 and verify the first guard's reports are absent. Supervisor only sees assigned sites.
-
-HTTP is only for trusted local development. Use HTTPS API/WSS for hosted clients. Expo public environment values and Vite values are public configuration, never server secrets. This is source ready for Android testing, not a signed APK or Play Store release.
-
-## API and access
-
-Send `Authorization: Bearer <token>` except on login and health. JWTs expire after one hour. Mobile stores the token in SecureStore; web keeps it in memory (refresh requires login). Sign-out deletes the client token; there is no server-side token revocation yet.
-
-| Method/path | Access |
+| Email | Role |
 |---|---|
-| POST /auth/login | Rate-limited credentials; server determines role |
-| GET /sites | Admin: all; others: assigned sites |
-| GET /users | Admin, assignment choices |
-| GET /incidents | Admin: all; Supervisor: assigned sites; Guard: own |
-| POST /incidents | Authenticated; assigned site required except Admin; multipart `title`, `description`, `location`, `site_id`, `photo` |
-| PATCH /incidents/:id | Admin only; `status` and/or nullable `assignee_id`; assignee must belong to report site |
-| GET /incidents/:id/photo | Same visibility as incident; private, no-store |
-| GET /incidents/:id/audit | Same visibility as incident |
+| `admin@demo.invalid` | System Administrator |
+| `operations@demo.invalid` | SSD |
+| `supervisor@demo.invalid` | Supervisor, Demo Site 1 |
+| `guard@demo.invalid` | Guard, Demo Site 1 |
+| `guard2@demo.invalid` | Guard, Demo Site 2 |
 
-Report creation/update and audit writes are transactional. Photos are decoded and re-encoded as JPEG, metadata is removed, maximum input is 5 MB / 25 megapixels. Files are not publicly served. Socket rooms follow server-assigned roles/sites; events contain no report payload and clients refetch authorized data. Both clients poll every 15 seconds and refresh after reconnect/foreground. Guard submissions are not queued offline: failures retain the form so the user can retry. A request that succeeds while the connection drops may be duplicated on retry; idempotency is a future enhancement.
+## Test the mobile applications
 
-## Verification
+Install an Expo Go client compatible with SDK 54, or make a development build. SDK 54 is retained deliberately; this branch does not perform an unrelated SDK upgrade. Installable APKs use the supplied EAS preview profiles and require your Expo project/signing setup.
 
 ```sh
-npm test
-npm run test:browser
-npm run build
-cd web && npx tsc --noEmit
-cd ../mobile && npm run typecheck
-```
-
-The integration test uses PGlite (embedded PostgreSQL engine), real HTTP, JWT auth, real image decoding and Socket.IO against the shared API. It checks mobile-shaped multipart submission → web read, web update → guard read, reconnect recovery, site/ownership restrictions, protected photos/audits, unauthorized modifications, invalid status/assignee/image and persisted audit events. The browser test starts isolated Vite/API processes and requires Chromium (`cd web && npx playwright install chromium`). Set `CHROMIUM_EXECUTABLE_PATH` if using an existing Chromium binary. It also verifies expired-session cleanup and delayed-response isolation after account switching. This does not replace testing on an actual Android device and a separately hosted PostgreSQL service. See `VERIFICATION.md` for execution results.
-
-## AWS hosting preparation (no deployment performed)
-
-1. Create a **new** Amplify Hosting app from this repository/feature branch when ready. Select monorepo root `web`; set `AMPLIFY_MONOREPO_APP_ROOT=web`. The root `amplify.yml` builds only the web app.
-2. Set `VITE_API_URL=https://YOUR_API_HOST` before building. Configure a SPA 200 rewrite for client routes if introducing routing. Use the new Amplify URL first; leave existing project DNS unchanged.
-3. Host the Express API separately on a Node service that supports persistent WebSockets (for example an isolated EC2/container service). Install with `npm ci`, run `npm start` in `backend/`. Set `DATABASE_URL`, strong `JWT_SECRET`, `PORT`, `WEB_ORIGINS` (exact web origins, comma-separated) and `UPLOAD_DIR`; inject secrets on the server. Put TLS in front and configure proxy trust/rate limiting for your actual trusted proxy. Run migration once per release before starting API traffic.
-4. Provision PostgreSQL separately, for example RDS, with private network access and verified TLS as appropriate to your provider. Do not expose database credentials to either client. Configure backups and connection limits.
-5. Photos currently use the API's private local `UPLOAD_DIR`. On one API instance, mount persistent storage there and back it up. Ephemeral hosting loses photos on restart. For S3, implement a private S3 storage adapter and authenticated retrieval/presigned access before deployment; S3 integration is **not implemented** here. Do not make evidence public. Multiple API replicas also need shared file storage and a Socket.IO adapter/message broker; this MVP is single-instance.
-6. Set `EXPO_PUBLIC_API_URL` to the HTTPS API URL for Android development/release builds. Amplify hosts the web, not the Android app, Express server, PostgreSQL or private photos.
-
-Use separate resources/names for this demo. AWS charges depend on provisioned resources and usage. No AWS resources, domain changes, or deployment actions are included in this change.
-
-Before real use: security review, production identity/user lifecycle, revocation, retention policies, upload malware scanning where needed, backups/restore tests, monitoring, and device/release QA. Existing prototype data remains local and is not migrated automatically.
-
-References: [Amplify monorepo configuration](https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html), [Expo image picker](https://docs.expo.dev/versions/v54.0.0/sdk/imagepicker/).
-
-## Phase 1 role design (October 25, 2026)
-
-- Security Personnel (Guards), `guard`: mobile, own reports and assigned records.
-- Supervisor / Site In-Charge, `supervisor`: web and mobile, assigned sites and clients.
-- Operations Management (SSD), `operations`: web, all operational sites and clients.
-- System Administrator, `admin`: web, technical administration only. No incident/photo access.
-
-The deployed frontend remains a sample-data demo without `VITE_API_URL`. Portal navigation starts with four role choices. Demo emails: `security@gmail.com`, `supervisor@demo.invalid`, `ar@gmail.com` (SSD), `bcc@gmail.com` (System Administrator). Use any non-empty demo password; this is simulated login, not authentication. Never enter real credentials.
-
-System Administration → Roles & Permissions contains the supplied 52-feature permission design. A matrix entry is a permission specification, not confirmation that a production module or integration has been implemented. Existing screens and records are illustrative. Supervisor demo assignment is BGC Financial Tower. Confirm training/certification ownership, equipment maintenance and final incident approvals with BCC.
-
-Apply backend migration `002_four_roles.sql` before using the new API. It preserves existing operational administrators by changing them to SSD (`operations`); provision technical administrators separately. Seed includes all four roles. Existing JWTs are resolved against the current database role. Supervisor incident updates are restricted to assigned sites; technical admins cannot list incidents or access their evidence. API and mobile changes require their own backend release and mobile build; a Vercel frontend release does not publish them.
-
-## Separate Guard and Supervisor mobile applications
-
-`mobile/` is **BCC Guard** (`com.bcc.demo.guard`). `mobile-supervisor/` is **BCC Supervisor** (`com.bcc.demo.supervisor`). They have separate Expo slugs, URL schemes, session keys and icons; both can be installed on one Android device. The four user roles remain unchanged.
-
-Both apps call the same `EXPO_PUBLIC_API_URL` and shared PostgreSQL-backed API. Copy each folder's `.env.example` to its own `.env` and set the same API URL. Deploy the latest backend first: it validates the requested mobile role before issuing an app-bound token. Client checks also reject wrong-role and restored sessions. Supervisor permissions are still restricted to assigned sites by the API.
-
-Run in separate terminals from the project root:
-
-```bash
 cd mobile
 npm ci
 npx expo start -c --port 8081
 ```
 
-```bash
+```sh
 cd mobile-supervisor
 npm ci
 npx expo start -c --port 8082
 ```
 
-Scan the corresponding QR code in Expo Go. These are source projects, not published APKs. For independent installable Android demos, each project includes `eas.json` with a `preview` APK profile. From each app folder, configure your own Expo project and run `eas build --platform android --profile preview`. Build signing and EAS configuration are separate; no build service or store release has been initiated.
+Use the corresponding QR code. The phone and computer must be on the same network, with local inbound API port 3001 allowed. `localhost` on the phone is the phone itself. For hosted use, set the same HTTPS API URL in both apps and restart/rebuild them. Vite/Expo public environment variables contain public URLs only, never database or server keys.
 
-Current functional scope is incident reporting, assigned sites, report tracking, and Supervisor status updates. Schedule, attendance and equipment modules from the broader TOR still require mobile implementation; separating the apps does not implement those features. The web application is unchanged. Physical-device testing is still required.
+Guard app: Duty → Schedule / Equipment / Training / Licenses / Assessments / Faults; Report and Reports are separate bottom tabs. Supervisor app: site operations plus incident reporting and review. Both use the existing web BCC/CAT logos and blue/orange theme.
+
+## End-to-end acceptance walkthrough
+
+1. **System Administrator:** create a site and its client label, required staffing, latitude/longitude and geofence radius. Create/enable users and assign them to sites. Defaults are examples; confirm workflow/SLA ownership with BCC.
+2. **SSD or assigned Supervisor:** add a shift with a Guard, start/end and duty post. Overlapping shifts are rejected. Schedule changes after attendance are blocked to preserve recorded timekeeping.
+3. **Guard on an actual phone:** within 30 minutes before the shift through its end, grant foreground location access and tap Time in. The API validates ownership, duplicate events, site assignment, GPS accuracy and distance. Time out requires a previous Time in. Location/GPS is user-triggered; there is no hidden continuous/background tracking. Mobile GPS spoofing resistance is limited and requires device testing.
+4. **Web:** verify attendance and latest GPS check-in under the assigned site. Overview shows coverage, utilization, incidents, SLA and trend totals derived from scoped records.
+5. **SSD:** create equipment. **Supervisor:** issue it to an assigned Guard. **Guard:** acknowledge receipt and report a fault. The server prevents double issue and changing a recipient's acknowledgment. Return equipment before retiring it.
+6. **SSD:** add training/license records; **Supervisor:** view them and record a competency assessment. **Guard:** view only own records.
+7. **Guard:** submit an incident with title, location, description and a camera/gallery image. On the web, review its classification, severity, approval, investigation and root cause. Add corrective/preventive actions and escalations for that incident/site. Approval and completion of outstanding actions are required before resolution when the approval policy is enabled. Guard refresh/reconnect recovers the new status.
+8. **Notifications:** verify missing check-in, staffing shortage, overdue maintenance, expiring license, unacknowledged equipment, open faults and overdue SLA/action alerts. They are computed from current database records and can be marked read. These are in-app notifications, not OS push, email or SMS.
+9. **Reports:** filter by accessible site and record creation dates, download CSV, save the report preference and choose dashboard widgets. Time values are recorded in UTC and displayed using the client locale. No export includes records outside the caller's scope.
+10. **System Administrator:** disable an account or change assignments; prior tokens fail on the next authenticated API request. Sign-out revokes the JWT server-side. Audit metadata is visible without operational payloads.
+
+Socket.IO events contain no operational payload; clients refetch authorized data. Incident screens have reconnect recovery; operation screens poll every 15 seconds and refresh when re-opened. An internet connection is required; no zero-rated cellular service, offline sync queue or external biometric connection is included.
+
+## API summary
+
+JWT `Authorization: Bearer ...` is required except login and health. JWTs expire after one hour. Web stores tokens in memory; mobile uses SecureStore. Disabled accounts and changed account revisions are rejected server-side.
+
+| Endpoint | Function |
+|---|---|
+| `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | Credentials, current account and server-side revocation |
+| `GET /sites`, `GET /users` | Authorized site/assignment choices |
+| `/incidents`, `/incidents/:id` | Multipart submission, scoped list, review/assignment/status update |
+| `GET /incidents/:id/photo` | Authenticated evidence, no-store |
+| `GET /incidents/:id/audit` | SSD-only incident audit; record scope checked first |
+| `GET /operations/catalog` | Allowed modules and validated form schema |
+| `GET/POST /operations/:kind`, `PATCH /operations/:kind/:id` | Validated operational records; edits require current `version` |
+| `POST /attendance` | Own geofenced shift Time in/out with server timestamp |
+| `POST /location/check-in` | Own explicit foreground GPS point |
+| `POST /equipment/:assignmentId/acknowledge` | Current Guard recipient acknowledgment |
+| `GET /dashboard`, `GET /notifications`, `POST /notifications/read` | Scoped metrics and in-app alerts |
+| `GET /reports/export?kind=...&site_id=...&from=...&to=...` | CSV with permission filtering; dates refer to creation timestamp |
+| `GET/PUT /preferences` | Scoped dashboard/report preferences |
+| `/system/users`, `/system/sites` | Admin-only account lifecycle, roles, assignments and geofences |
+| `GET/PUT /system/config` | Admin-only approval policy and severity SLA durations |
+| `GET/PUT /system/integrations` | Admin-only timekeeping import enablement/source label |
+| `POST /integrations/attendance` | SSD-authenticated timekeeping import contract |
+| `GET /system/audit` | SSD full operation audit; Admin metadata only |
+| `GET /system/health` | Admin-only runtime/database and configuration diagnostics |
+| `GET/POST /system/backups`, `GET /system/backups/:id` | Admin-only encrypted backup creation/list/download |
+
+Timekeeping contract example (fictional identifiers; use real assigned shift IDs from your deployment):
+
+```json
+{"events":[{"external_id":"FICTIONAL-CLOCK-0001","shift_id":"30000000-0000-4000-8000-000000000001","event":"in","recorded_at":"2026-10-25T00:00:00Z"}]}
+```
+
+Enable the source as Admin, then call with an SSD token. Imports are transactional, limited to 100 events, scoped to valid shifts and idempotent for the same external ID. Invalid timing, conflicting IDs and duplicate shift events are rejected. This is a working adapter contract, **not** a connection to BCC's unnamed vendor; provider credentials, field mapping, scheduling and acceptance testing are still required. Do not embed an SSD credential in an untrusted biometric device or mobile client.
+
+## Encryption, backups and restore
+
+Photo uploads are restricted to JPEG/PNG/WebP under 5 MB and decoded/re-encoded with metadata removed. New evidence is AES-256-GCM encrypted when `PHOTO_ENCRYPTION_KEY` is set; existing unencrypted evidence stays readable and requires a separate migration if encryption is mandated for historical uploads. Database-at-rest encryption is controlled by the hosting provider; no UI toggle claims to change it.
+
+Backup snapshots include the database tables and evidence bytes. They are AES-256-GCM encrypted with `BACKUP_ENCRYPTION_KEY`; a missing key blocks backup creation. Local snapshots are bounded to 100 MB total / 70 MB evidence; larger deployments require provider backups or a streaming `pg_dump`/object-store workflow. Downloaded archives remain encrypted. Keys are not included in archives; retain both the backup key and any photo key separately.
+
+For restore, run all migrations into an **isolated empty** PostgreSQL database. Configure `RESTORE_DATABASE_URL`, `RESTORE_UPLOAD_DIR`, and the original backup key on a secure operator machine. Keep the application's original `DATABASE_URL` set so the script can reject that target.
+
+```sh
+node --env-file=.env src/restore-backup.js /secure/path/snapshot.bccbackup --confirm-target=HOST/DATABASE
+```
+
+The script refuses the active application database and any database containing records. Evidence files are created exclusively; existing evidence is never overwritten. Verify the isolated restore before any controlled cutover. Scheduling, offsite replication, retention, provider failover and production restore approval are deployment tasks, not enabled by this source change.
+
+Use HTTPS on hosted clients. Set `REQUIRE_HTTPS=true` and `TRUST_PROXY_HOPS` only for the actual trusted proxy topology. Require verified database TLS through the database provider. No keys or passwords are committed.
+
+## Verification
+
+```sh
+npm test
+npm run build
+cd web && npx tsc --noEmit
+cd ../mobile && npm run typecheck
+cd ../mobile-supervisor && npm run typecheck
+```
+
+Browser regression: `npm run test:browser` after installing Chromium with `cd web && npx playwright install chromium`, or point `CHROMIUM_EXECUTABLE_PATH` to an existing compatible executable.
+
+Android JavaScript exports: in each mobile folder, `npx expo export --platform android`. This verifies bundling; it does not generate a signed APK or replace physical-device tests.
+
+The tests use PGlite, a PostgreSQL engine, real HTTP/JWT/image processing and Socket.IO. They cover role/site/own-record restrictions, roster collisions, geofence/accuracy failures, duplicate attendance, double-issued equipment, acknowledgment, training visibility, stale-version conflicts, approvals/actions, imports, backup encryption/restore and revoked sessions. Browser tests exercise actual roster/site forms and the original incident/reconnect/session flow. See `VERIFICATION.md` for the exact execution status.
+
+## Hosting and release
+
+- **Web:** existing Vercel project, or AWS Amplify using the supplied `amplify.yml` and monorepo root `web`. Set `VITE_API_URL` before building.
+- **API:** a persistent Node host supporting WebSockets. Install backend dependencies, inject server environment variables, run all migrations once, then `npm start`. Do not run the fictional seed against production data.
+- **Database:** hosted PostgreSQL with verified TLS, backups and access controls. Credentials remain on the API server.
+- **Evidence/backups:** private persistent directories for this single-instance implementation. Do not deploy uploads or backups onto ephemeral storage. Shared object storage and a Socket.IO adapter are required before running multiple API replicas.
+- **Mobile:** both apps use the same HTTPS API URL; build/install separately. Vercel hosting does not publish a native Android app.
+
+This review branch has automatic Vercel deployment disabled. No paid cloud resources, production migration, domain changes, store release or production backend deployment are performed by this change. Live activation requires the target backend/database/storage to be selected and configured, and BCC acceptance of policy values and role ownership.

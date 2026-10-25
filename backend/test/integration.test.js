@@ -16,7 +16,18 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       "utf8",
     ),
   )
-  await db.exec(await readFile(new URL("../migrations/002_four_roles.sql", import.meta.url), "utf8"))
+  await db.exec(
+    await readFile(
+      new URL("../migrations/002_four_roles.sql", import.meta.url),
+      "utf8",
+    ),
+  )
+  await db.exec(
+    await readFile(
+      new URL("../migrations/003_operations.sql", import.meta.url),
+      "utf8",
+    ),
+  )
   const pool = {
     query: (sql, args) => db.query(sql, args),
     connect: async () => ({
@@ -73,18 +84,50 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       tokens[n] = (await res.json()).token
     }
     // App selection is checked on the server, before a token is issued.
-    for (const [user, appRole, expected] of [[2, "guard", 200], [1, "supervisor", 200], [2, "supervisor", 403], [1, "guard", 403], [0, "supervisor", 403]]) {
-      const res = await fetch(base + "/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: `user${user}@demo.invalid`, password, app_role: appRole }) })
-      assert.equal(res.status, expected, `${appRole} app access for user ${user}`)
+    for (const [user, appRole, expected] of [
+      [2, "guard", 200],
+      [1, "supervisor", 200],
+      [2, "supervisor", 403],
+      [1, "guard", 403],
+      [0, "supervisor", 403],
+    ]) {
+      const res = await fetch(base + "/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: `user${user}@demo.invalid`,
+          password,
+          app_role: appRole,
+        }),
+      })
+      assert.equal(
+        res.status,
+        expected,
+        `${appRole} app access for user ${user}`,
+      )
       if (expected === 403) assert.equal((await res.json()).token, undefined)
       else {
         const { token: appToken } = await res.json()
-        assert.equal((await fetch(base + "/auth/me", { headers: { Authorization: "Bearer " + appToken } })).status, 200)
+        assert.equal(
+          (
+            await fetch(base + "/auth/me", {
+              headers: { Authorization: "Bearer " + appToken },
+            })
+          ).status,
+          200,
+        )
         // Changing an account role invalidates its app-bound session.
         const id = `20000000-0000-4000-8000-00000000000${user + 1}`
         const otherRole = appRole === "guard" ? "supervisor" : "guard"
         await db.query("UPDATE users SET role=$1 WHERE id=$2", [otherRole, id])
-        assert.equal((await fetch(base + "/auth/me", { headers: { Authorization: "Bearer " + appToken } })).status, 401)
+        assert.equal(
+          (
+            await fetch(base + "/auth/me", {
+              headers: { Authorization: "Bearer " + appToken },
+            })
+          ).status,
+          401,
+        )
         await db.query("UPDATE users SET role=$1 WHERE id=$2", [appRole, id])
       }
     }
@@ -175,15 +218,40 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
         },
         body: JSON.stringify(data),
       })
-    assert.equal((await update(2, { status: "Resolved" })).status, 403)
+    assert.equal(
+      (await update(2, { status: "Resolved", approval: "Approved" })).status,
+      403,
+    )
     assert.equal((await update(1, { status: "Under Review" })).status, 200)
-    assert.equal((await update(4, { status: "Resolved" })).status, 404)
+    assert.equal(
+      (await update(4, { status: "Resolved", approval: "Approved" })).status,
+      404,
+    )
     assert.deepEqual(await (await get("/incidents", 4)).json(), [])
-    assert.equal((await get("/incidents/" + report.id + "/photo", 4)).status, 404)
-    const otherSite = await fetch(base + "/incidents", { method: "POST", headers: { Authorization: "Bearer " + tokens[3] }, body: form(site2) })
+    assert.equal(
+      (await get("/incidents/" + report.id + "/photo", 4)).status,
+      404,
+    )
+    const otherSite = await fetch(base + "/incidents", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + tokens[3] },
+      body: form(site2),
+    })
     assert.equal(otherSite.status, 201)
     const otherReport = await otherSite.json()
-    assert.equal((await fetch(base + "/incidents/" + otherReport.id, { method: "PATCH", headers: { Authorization: "Bearer " + tokens[1], "Content-Type": "application/json" }, body: JSON.stringify({ status: "Resolved" }) })).status, 404)
+    assert.equal(
+      (
+        await fetch(base + "/incidents/" + otherReport.id, {
+          method: "PATCH",
+          headers: {
+            Authorization: "Bearer " + tokens[1],
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "Resolved", approval: "Approved" }),
+        })
+      ).status,
+      404,
+    )
     assert.equal((await (await get("/incidents", 1)).json()).length, 1)
     assert.equal((await (await get("/incidents", 0)).json()).length, 2)
     assert.equal((await update(0, { status: "Closed" })).status, 400)
@@ -234,7 +302,10 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       400,
     )
     socket.disconnect()
-    assert.equal((await update(0, { status: "Resolved" })).status, 200)
+    assert.equal(
+      (await update(0, { status: "Resolved", approval: "Approved" })).status,
+      200,
+    )
     socket.connect()
     await new Promise((resolve) => socket.once("connect", resolve))
     assert.equal(

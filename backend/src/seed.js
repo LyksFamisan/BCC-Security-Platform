@@ -12,7 +12,13 @@ try {
       `10000000-0000-4000-8000-00000000000${n}`,
       `Demo Site ${n}`,
     ])
-  for (const [n, role] of ["operations", "supervisor", "guard", "guard", "admin"].entries()) {
+  for (const [n, role] of [
+    "operations",
+    "supervisor",
+    "guard",
+    "guard",
+    "admin",
+  ].entries()) {
     const id = `20000000-0000-4000-8000-00000000000${n + 1}`,
       email = n === 3 ? "guard2@demo.invalid" : `${role}@demo.invalid`
     await c.query(
@@ -24,6 +30,106 @@ try {
       [id, `10000000-0000-4000-8000-00000000000${n === 3 ? 2 : 1}`],
     )
   }
+  // Fictional sample records only; explicit seeding is never run at API startup.
+  const now = Date.now(),
+    at = (hours) => new Date(now + hours * 3600000).toISOString()
+  const site = "10000000-0000-4000-8000-000000000001",
+    guard = "20000000-0000-4000-8000-000000000003",
+    actor = "20000000-0000-4000-8000-000000000001"
+  await c.query(
+    "INSERT INTO site_settings(site_id,client_name,required_guards) VALUES($1,'Fictional Demo Client',2) ON CONFLICT DO NOTHING",
+    [site],
+  )
+  const examples = [
+    [
+      "30000000-0000-4000-8000-000000000001",
+      "shifts",
+      guard,
+      {
+        title: "Demo gate duty",
+        post: "Main entrance",
+        start: at(-1),
+        end: at(7),
+        status: "Scheduled",
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000002",
+      "equipment",
+      null,
+      {
+        title: "Demo handheld radio",
+        serial: "FICTIONAL-R001",
+        category: "Radio",
+        status: "Available",
+        acquired_at: at(-720),
+        notes: "Fictional equipment for testing only",
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000003",
+      "assignments",
+      guard,
+      {
+        equipment_id: "30000000-0000-4000-8000-000000000002",
+        issued_at: at(-1),
+        returned_at: null,
+        condition: "Good",
+        acknowledged: false,
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000004",
+      "training",
+      guard,
+      {
+        title: "Demo emergency orientation",
+        completed_at: at(-48),
+        expires_at: null,
+        notes: "Fictional completion",
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000005",
+      "certifications",
+      guard,
+      {
+        title: "Demo guard license",
+        number: "FICTIONAL-L001",
+        expires_at: at(480),
+        notes: "Not a real license",
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000006",
+      "assessments",
+      guard,
+      {
+        title: "Demo radio handling",
+        score: 90,
+        assessed_at: at(-24),
+        notes: "Fictional assessment",
+      },
+    ],
+    [
+      "30000000-0000-4000-8000-000000000007",
+      "maintenance",
+      null,
+      {
+        equipment_id: "30000000-0000-4000-8000-000000000002",
+        title: "Demo radio inspection",
+        due_at: at(168),
+        status: "Scheduled",
+        completed_at: null,
+        notes: "",
+      },
+    ],
+  ]
+  for (const [id, kind, subject, data] of examples)
+    await c.query(
+      "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO NOTHING",
+      [id, kind, site, subject, actor, JSON.stringify(data)],
+    )
   await c.query("COMMIT")
   console.log("Fictional users seeded; password comes from DEMO_PASSWORD")
 } catch (e) {
