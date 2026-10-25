@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BCC Guard",
+    "name": "BCC Security",
     "slug": "bcc-guard",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,6 +16,8 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#102B35"
   }
 }
