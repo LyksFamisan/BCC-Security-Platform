@@ -236,7 +236,7 @@ export default function ConnectedApp() {
       )}
       {!session ? (
         <form onSubmit={login} className="login">
-          <div className="login-heading"><span className="access-indicator" aria-hidden="true"/><h2>Sign in</h2></div>
+          <div className="login-heading"><svg className="login-shield" viewBox="0 0 48 56" fill="none" aria-hidden="true"><path d="M24 3C17 8 10 10 4 11v15c0 12 8 21 20 27 12-6 20-15 20-27V11C38 10 31 8 24 3Z" stroke="currentColor" strokeWidth="2.5"/><path d="M24 9c-5 3-10 5-15 6v11c0 9 6 16 15 21 9-5 15-12 15-21V15c-5-1-10-3-15-6Z" fill="currentColor" opacity=".2"/></svg><h2>Sign in</h2></div>
           {error && <p role="alert" className="error">{error}</p>}
           <label>
             Email

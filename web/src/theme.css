@@ -33,3 +33,28 @@ html[data-bcc-theme=light] .connected .ops-panel label{color:#365071}
 .connected.auth-screen>header h1,.connected.activation>header h1{font-size:clamp(30px,2.7vw,40px);max-width:390px}
 @media(max-width:800px){.connected.auth-screen>header,.connected.activation>header{padding:22px 18px;gap:16px;max-width:440px}.connected.auth-screen>header .auth-brand img,.connected.activation>header .auth-brand img{width:48px;height:48px}.connected.auth-screen>header h1,.connected.activation>header h1{font-size:26px}.connected.auth-screen::before,.connected.activation::before,html[data-bcc-theme=light] .connected.auth-screen::before,html[data-bcc-theme=light] .connected.activation::before{background-position:28% center;background-image:linear-gradient(#101c3977,#201733a6),url('/assets/security-team-bg.webp')}}
 @media(max-width:360px){.connected.auth-screen>header,.connected.activation>header{grid-template-columns:1fr;text-align:center}.connected.auth-screen>header .auth-brand,.connected.activation>header .auth-brand{justify-content:center}}
+/* Reference-inspired frosted sign-in card; original brand assets stay intact. */
+.connected.auth-screen{grid-template-columns:minmax(0,1fr);align-content:center;justify-items:center;gap:24px;padding:76px 24px 42px}
+.connected.auth-screen>header{align-self:auto;justify-self:center;margin:0;padding:0;max-width:460px;background:none;border:0;box-shadow:none;backdrop-filter:none;gap:18px}
+.connected.auth-screen>header h1{font-size:25px;max-width:300px}
+.connected.auth-screen>header .auth-brand img{width:52px;height:52px}
+.connected.auth-screen .login{max-width:360px;padding:28px 30px 30px;background:linear-gradient(145deg,#c8d7ff24,#ffffff0d);border:1px solid #ffffff50;box-shadow:0 20px 60px #0004,inset 0 1px 0 #ffffff30;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#fff;border-radius:20px}
+.connected.auth-screen .login::before{display:none}
+.connected.auth-screen .login-heading{flex-direction:column;gap:14px;margin-bottom:24px;text-align:center}
+.login-shield{width:42px;height:50px;color:#e1e4ef;filter:drop-shadow(0 2px 10px #ffffff20)}
+.connected.auth-screen .login h2{font-size:27px;color:#fff}
+.connected.auth-screen .login label{color:#f0f3fb;font-size:13px;margin:16px 0}
+.connected.auth-screen .login input{background:#ffffff10;border-color:#c4cde580;color:#fff;min-height:46px;padding:12px 14px;box-shadow:inset 0 1px 3px #0002}
+.connected.auth-screen .login input::placeholder{color:#d4dbea}
+.connected.auth-screen .login input:focus{outline:2px solid #b99af3;outline-offset:2px;border-color:#d2b8ff}
+.connected.auth-screen .login button{min-height:46px;margin-top:12px;box-shadow:0 6px 20px #0003;border:1px solid #f8976166}
+html[data-bcc-theme=light] .connected.auth-screen .login{background:linear-gradient(145deg,#ffffffdf,#eff1ffba);border-color:#ffffffb3;color:#172b49}
+html[data-bcc-theme=light] .connected.auth-screen .login h2{color:#172b49}
+html[data-bcc-theme=light] .connected.auth-screen .login label{color:#294362}
+html[data-bcc-theme=light] .connected.auth-screen .login input{background:#ffffffb0;border-color:#aabbd2;color:#172b49}
+html[data-bcc-theme=light] .connected.auth-screen .login input::placeholder{color:#5e718d}
+html[data-bcc-theme=light] .login-shield{color:#4f4b80}
+@media(max-width:800px){.connected.auth-screen>header{width:auto;max-width:360px;grid-template-columns:auto minmax(0,1fr);text-align:left;gap:14px}.connected.auth-screen>header h1{font-size:22px}.connected.auth-screen>header .auth-brand img{width:44px;height:44px}.connected.auth-screen .login{padding:26px 24px;max-width:360px}.connected.auth-screen{gap:26px}}
+@media(max-width:360px){.connected.auth-screen>header{grid-template-columns:1fr;text-align:center}.connected.auth-screen>header .auth-brand{justify-content:center}}
+html[data-bcc-theme=dark] .connected.auth-screen .login{background:linear-gradient(145deg,#61709955,#19263b66);border-color:#c8d4ed66;box-shadow:0 20px 60px #0004,inset 0 1px 0 #ffffff26}
+html[data-bcc-theme=dark] .connected.auth-screen .login label{color:#f0f3fb}
