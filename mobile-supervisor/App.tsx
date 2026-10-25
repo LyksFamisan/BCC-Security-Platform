@@ -943,7 +943,9 @@ const baseStyles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 24, gap: 16 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   brandRow: {
-    backgroundColor: "#0B2140",
+    backgroundColor: "#172343",
+    borderLeftWidth: 3,
+    borderLeftColor: "#F08A3E",
     borderRadius: 18,
     paddingHorizontal: 14,
     minHeight: 76,
@@ -1034,7 +1036,7 @@ const baseStyles = StyleSheet.create({
     gap: 8,
   },
   action: {
-    backgroundColor: "#2563EB",
+    backgroundColor: "#C94E18",
     borderRadius: 15,
     minHeight: 52,
     alignItems: "center",
@@ -1200,7 +1202,7 @@ const baseStyles = StyleSheet.create({
     borderRadius: 16,
     minHeight: 56,
   },
-  navActive: { backgroundColor: "#DBEAFE" },
+  navActive: { backgroundColor: "#ECE8FF" },
   navIcon: { fontSize: 23, color: "#81958F" },
   navLabel: { fontSize: 10, fontWeight: "600", color: "#6E837C" },
   navSelected: { color: "#2563EB" },
