@@ -1254,8 +1254,8 @@ export function mountOperations(app, pool, notify) {
       photo_encryption: encryptionKey()
         ? "AES-256-GCM for new uploads"
         : "not configured",
-      database_encryption: "Verify in hosting provider",
-      backup: "Requires configured backup job and restore verification",
+      database_encryption: "Provider-managed",
+      backup: process.env.BACKUP_ENCRYPTION_KEY ? "On-demand encrypted snapshots" : "Not configured",
     })
   })
   const configSchema = z

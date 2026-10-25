@@ -2,7 +2,7 @@
 
 Baseline: the user-supplied Phase 1 features/access matrix. This is not BCC acceptance sign-off or verification of a separate unseen TOR document. **Locally implemented does not mean live or production-accepted.**
 
-Shared prerequisites: hosted API/PostgreSQL/private persistent storage, migration 003, real accounts, confirmed policies and physical-device acceptance. The current live site is still the prototype without its API URL.
+Hosted API, PostgreSQL and encrypted persistent evidence storage are now configured. The live site opens the authenticated application. Initial real administrator activation, site/account setup, policy confirmation and physical-device acceptance are still required.
 
 | Role | Scope |
 |---|---|
@@ -91,7 +91,7 @@ Shared prerequisites: hosted API/PostgreSQL/private persistent storage, migratio
 ## Outstanding acceptance work
 
 - Confirm BCC ownership of training, maintenance and final approvals, plus critical/high/standard SLA values. Defaults are configurable examples.
-- Select/configure backend, PostgreSQL and persistent evidence/backup hosting. No new paid resources or live API deployment has been performed.
+- Hosted connectivity is active through Vercel `/api` and Neon Free PostgreSQL. Verify workload limits before wider rollout; larger evidence/backup volumes need a dedicated storage strategy.
 - Connect the actual timekeeping/biometric vendor; the authenticated import contract is tested but no unnamed vendor integration is claimed.
 - Test both native apps on actual phones: permissions, camera, accurate GPS, poor network, reconnect, app install and accessibility.
 - Agree whether continuous background location and OS push are required. They are not implemented in this branch.

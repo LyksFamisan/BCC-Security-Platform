@@ -2,7 +2,7 @@
 
 React/Vite web, separate Expo Guard and Supervisor apps, shared Express API and PostgreSQL. This branch adds database-backed manpower, equipment, training, case follow-up, notifications, reports and technical administration to the connected incident workflow.
 
-**Implementation is not a production activation.** The Vercel site continues to use the preserved sample-data prototype until a hosted API URL is configured. See [TOR-COVERAGE.md](TOR-COVERAGE.md) for the feature-by-feature scope, partial integrations and acceptance limits. There is no signed APK or paid infrastructure created by this change.
+**Hosted activation:** the production website now opens the authenticated application directly. Its same-origin `/api` runs on Vercel Functions and connects to PostgreSQL in the existing Neon Free organization. No simulated-login or prototype toggle is served. See [TOR-COVERAGE.md](TOR-COVERAGE.md) for the feature-by-feature scope, partial integrations and acceptance limits. There is no signed APK or paid infrastructure created by this change.
 
 ## Applications and access
 
@@ -167,9 +167,18 @@ The tests use PGlite, a PostgreSQL engine, real HTTP/JWT/image processing and So
 ## Hosting and release
 
 - **Web:** existing Vercel project, or AWS Amplify using the supplied `amplify.yml` and monorepo root `web`. Set `VITE_API_URL` before building.
-- **API:** a persistent Node host supporting WebSockets. Install backend dependencies, inject server environment variables, run all migrations once, then `npm start`. Do not run the fictional seed against production data.
+- **API (current hosted release):** `api/index.js` runs the existing Express API on Vercel Node Functions in Singapore. Hosted clients use authenticated polling with reconnect recovery; the local standalone Socket.IO server remains available. For an alternative persistent Node deployment, Install backend dependencies, inject server environment variables, run all migrations once, then `npm start`. Do not run the fictional seed against production data.
 - **Database:** hosted PostgreSQL with verified TLS, backups and access controls. Credentials remain on the API server.
-- **Evidence/backups:** private persistent directories for this single-instance implementation. Do not deploy uploads or backups onto ephemeral storage. Shared object storage and a Socket.IO adapter are required before running multiple API replicas.
+- **Evidence/backups (current hosted release):** encrypted bytes persist in the private PostgreSQL `private_files` table with `FILE_STORAGE=postgres`, rather than ephemeral function storage. Local development still supports private directories. Hosted uploads are limited to 3 MB. Larger datasets/backup downloads require an object-storage/streaming export strategy; Vercel function payload limits still apply.
 - **Mobile:** both apps use the same HTTPS API URL; build/install separately. Vercel hosting does not publish a native Android app.
 
-This review branch has automatic Vercel deployment disabled. No paid cloud resources, production migration, domain changes, store release or production backend deployment are performed by this change. Live activation requires the target backend/database/storage to be selected and configured, and BCC acceptance of policy values and role ownership.
+The hosted schema has been applied without fictional seed data. First use requires the private, one-time administrator activation link delivered to the owner; passwords are chosen by the owner and are never committed. That link can create only the first administrator, then becomes unusable. No paid plan upgrade or store release was initiated. Vendor connections, physical-device QA and BCC acceptance remain separate tasks.
+
+## Hosted first use
+
+1. Open the private activation link supplied to the owner and choose your administrator email/password. Do not publish that link.
+2. Sign in, create real sites/geofences and user accounts, then assign Guard/Supervisor site access. No demonstration accounts or fictional records were loaded into the hosted database.
+3. Both mobile projects now default to `https://bcc-security-platform.vercel.app/api`. Existing local `.env` values override that default; update an old local URL when taking this release. Use the latest source/rebuild; an installed APK does not change automatically.
+4. Hosted polling refreshes incidents/operations in approximately 10–15 seconds and on reconnect/foreground. Actual Android sensor/install testing and the external biometric vendor connection are still outstanding.
+
+`004_hosted_storage.sql` adds durable private-file storage and persistent account sign-in throttling. Vercel stores server credentials only in sensitive production environment variables; no production credentials are shared with preview branches or committed to GitHub.

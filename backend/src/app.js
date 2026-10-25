@@ -29,6 +29,7 @@ export function createApp(pool, secret, notify = () => {}) {
       return res.status(426).json({ error: "HTTPS is required" })
     next()
   })
+  app.use((req,res,next)=>{res.set("Cache-Control","private, no-store");next()})
   app.use(helmet(), cors({ origin: origins }), express.json({ limit: "32kb" }))
   app.use(rateLimit({ windowMs: 60000, limit: 180 }))
   app.get("/health", async (req, res) => {
