@@ -1,0 +1,39 @@
+name: Phase 1 validation
+on:
+  push:
+    branches: [feat/phase1-production-readiness]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [web, backend, mobile, mobile-supervisor]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - run: npm ci
+        working-directory: ${{ matrix.project }}
+      - name: Validate web build
+        if: matrix.project == 'web'
+        run: npm run build
+        working-directory: web
+      - name: Backend tests
+        if: matrix.project == 'backend'
+        run: npm test
+        working-directory: backend
+      - name: Typecheck Guard app
+        if: matrix.project == 'mobile'
+        run: npm run typecheck
+        working-directory: mobile
+      - name: Typecheck Supervisor app
+        if: matrix.project == 'mobile-supervisor'
+        run: npm run typecheck
+        working-directory: mobile-supervisor
