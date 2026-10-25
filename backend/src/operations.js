@@ -949,6 +949,9 @@ export function mountOperations(app, pool, notify) {
       sites: data.sites.map((s) => ({
         id: s.id,
         name: s.name,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        radius_m: s.radius_m,
         client_name: req.user.role === "guard" ? undefined : s.client_name,
         required: s.required_guards || 1,
         scheduled: active.filter((a) => a.site_id === s.id).length,

@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef, type FormEvent } from "react"
+import { useEffect, useState, useRef, lazy, Suspense, type FormEvent } from "react"
 import "./operations.css"
+const GeofenceMap = lazy(() => import("./GeofenceMap"))
 type Row = {
   id: string
   site_id: string
@@ -466,6 +467,7 @@ export default function OperationsWorkspace({
             </section>
           </>
         )}
+        {section === "gps" && <Suspense fallback={<p>Loading map…</p>}><GeofenceMap sites={dashboard?.sites || []} points={rows} /></Suspense>}
         {(module || ["attendance", "gps"].includes(section)) && (
           <>
             <div className="ops-heading">
@@ -994,6 +996,7 @@ export default function OperationsWorkspace({
                     />
                   </label>
                 ))}
+                <div><Suspense fallback={<p>Loading map…</p>}><GeofenceMap sites={[{id: siteDraft.id || "draft", name: siteDraft.name || "New site", latitude: siteDraft.latitude, longitude: siteDraft.longitude, radius_m: siteDraft.radius_m}]} onPick={(latitude,longitude)=>setSiteDraft({...siteDraft,latitude,longitude})} /></Suspense></div>
                 <button disabled={busy}>Save site</button>
                 <button type="button" onClick={() => setSiteDraft(null)}>
                   Cancel

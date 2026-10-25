@@ -10,4 +10,6 @@ Notifications include an outside-boundary alert only for the latest sample per g
 
 GPS status accounts for accuracy: Inside requires the whole accuracy range inside the radius; Outside requires it wholly outside. Low accuracy or an overlapping range is Uncertain. Existing historical GPS samples remain as recorded and do not receive an invented status.
 
-This is foreground GPS check-in geofencing, not continuous background tracking or a live map. Internet is required to submit samples and update the web app. No real client site coordinates or production records were changed during implementation.
+The web map shows site radius circles and latest shared guard markers, with site filtering, zoom, popups and a Fit all markers control. Admin can click the map while configuring a site to choose its centre; Save site persists the change. Map tiles use OpenStreetMap with visible attribution. For a different tile provider configure VITE_MAP_TILE_URL and VITE_MAP_ATTRIBUTION before building. Tile availability depends on the provider and connectivity.
+
+This is foreground GPS check-in geofencing, not continuous background tracking. Internet is required to submit samples and update the web app. No real client site coordinates or production records were changed during implementation.

@@ -67,6 +67,8 @@ try {
     if (role !== "supervisor")
       await db.query("INSERT INTO user_sites VALUES($1,$2)", [id, site])
   }
+  await db.query("INSERT INTO site_settings(site_id,latitude,longitude,radius_m) VALUES($1,14.55,121.02,300)",[site])
+  await db.query("INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'gps',$2,$3,$3,$4)",["30000000-0000-4000-8000-000000000001",site,"20000000-0000-4000-8000-000000000002",JSON.stringify({latitude:14.5505,longitude:121.0205,accuracy:5,geofence_status:"Inside",recorded_at:new Date().toISOString()})])
   vite = spawn(
     process.execPath,
     [
@@ -104,6 +106,13 @@ try {
   })
   const page = await browser.newPage()
   page.setDefaultTimeout(10000)
+  if (process.env.BCC_MAP_REAL_TILES === "1") await page.route("https://tile.openstreetmap.org/**", async route => {
+    try {
+      const response = await fetch(route.request().url(),{headers:{"User-Agent":"BCCSecurityPlatformVerification/1.0 (+https://bcc-security-platform.vercel.app)",Referer:"https://bcc-security-platform.vercel.app/"},signal:AbortSignal.timeout(10000)})
+      await route.fulfill({status:response.status,contentType:response.headers.get("content-type") || "image/png",body:Buffer.from(await response.arrayBuffer())})
+    } catch { await route.abort() }
+  })
+
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
   await page.goto("http://127.0.0.1:9843")
@@ -132,6 +141,18 @@ try {
   await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
   await page.getByRole("button",{name:"Sign out",exact:true}).waitFor()
   await page.screenshot({path:"/tmp/bcc-theme-dark-workspace.png",fullPage:true})
+  await page.getByRole("button", {name:"Location & geofencing",exact:true}).click()
+  await page.getByRole("region", {name:"Geofence map",exact:true}).waitFor()
+  await page.locator(".leaflet-container").waitFor()
+  await page.getByRole("button",{name:"Fit all markers",exact:true}).click()
+  await page.locator(".geofence-map .leaflet-interactive").last().click({force:true})
+  await page.getByText("GPS accuracy: ±5 m",{exact:true}).waitFor()
+  if (process.env.BCC_MAP_REAL_TILES === "1") await page.waitForFunction(()=>document.querySelectorAll(".leaflet-tile-loaded").length>0)
+  await delay(300)
+  await page.locator(".geofence-map-panel").screenshot({path:"/tmp/bcc-guard-map.png"})
+
+  await page.getByRole("button",{name:"Duty roster",exact:true}).click()
+
   // Exercise the actual roster form and persisted record, not just the API.
   await page.getByRole("button", { name: "Duty roster", exact: true }).click()
   await page.getByRole("button", { name: "+ Add record", exact: true }).click()
@@ -286,6 +307,9 @@ try {
   await page.getByLabel("Client name", { exact: true }).fill("Fictional client")
   await page.getByLabel("Latitude", { exact: true }).fill("14.55")
   await page.getByLabel("Longitude", { exact: true }).fill("121.02")
+  await page.locator(".geofence-map .leaflet-interactive").first().waitFor()
+  await page.locator(".geofence-map-panel").screenshot({path:"/tmp/bcc-geofence-map.png"})
+
   await page.getByRole("button", { name: "Save site", exact: true }).click()
   await page
     .getByRole("heading", { name: "Browser configured site", exact: true })
