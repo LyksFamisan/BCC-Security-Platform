@@ -10,7 +10,7 @@ try {
   for (let n = 1; n <= 2; n++)
     await c.query("INSERT INTO sites VALUES($1,$2) ON CONFLICT DO NOTHING", [
       `10000000-0000-4000-8000-00000000000${n}`,
-      `Demo Site ${n}`,
+      ["Demo Makati Office", "Demo BGC Commercial Site"][n - 1],
     ])
   for (const [n, role] of [
     "operations",
@@ -29,6 +29,17 @@ try {
       "INSERT INTO user_sites VALUES($1,$2) ON CONFLICT DO NOTHING",
       [id, `10000000-0000-4000-8000-00000000000${n === 3 ? 2 : 1}`],
     )
+  }
+  // Extra fictional assigned sites for demonstrations. No real geofence coordinates are invented.
+  for (const [n, name] of [[3, "Demo Ortigas Business Center"], [4, "Demo Quezon City Warehouse"]]) {
+    const siteId = "10000000-0000-4000-8000-00000000000" + n
+    await c.query("INSERT INTO sites(id,name) VALUES($1,$2) ON CONFLICT DO NOTHING", [siteId, name])
+  }
+  for (const [userNo, siteNo] of [[1,2],[1,3],[2,2],[2,3],[3,3],[4,4]]) {
+    await c.query("INSERT INTO user_sites(user_id,site_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [
+      "20000000-0000-4000-8000-00000000000" + userNo,
+      "10000000-0000-4000-8000-00000000000" + siteNo,
+    ])
   }
   // Fictional sample records only; explicit seeding is never run at API startup.
   const now = Date.now(),
@@ -125,6 +136,29 @@ try {
       },
     ],
   ]
+  // Additional fictional records for the operations and supervisor dashboards.
+  const secondSite = "10000000-0000-4000-8000-000000000002"
+  const thirdSite = "10000000-0000-4000-8000-000000000003"
+  const fourthSite = "10000000-0000-4000-8000-000000000004"
+  const secondGuard = "20000000-0000-4000-8000-000000000004"
+  for (const [id, siteId, subjectId, post] of [
+    ["30000000-0000-4000-8000-000000000011", secondSite, guard, "Lobby reception"],
+    ["30000000-0000-4000-8000-000000000012", fourthSite, secondGuard, "Warehouse entrance"],
+  ]) {
+    await c.query(
+      "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'shifts',$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",
+      [id, siteId, subjectId, actor, JSON.stringify({ title: "Demo security duty", post, start: at(-1), end: at(7), status: "Scheduled" })],
+    )
+  }
+  for (const [id, siteId, subjectId, title] of [
+    ["30000000-0000-4000-8000-000000000013", thirdSite, guard, "Demo fire safety orientation"],
+    ["30000000-0000-4000-8000-000000000014", fourthSite, secondGuard, "Demo emergency response training"],
+  ]) {
+    await c.query(
+      "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'training',$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",
+      [id, siteId, subjectId, actor, JSON.stringify({ title, completed_at: at(-48), expires_at: null, notes: "Fictional demo record" })],
+    )
+  }
   for (const [id, kind, subject, data] of examples)
     await c.query(
       "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO NOTHING",

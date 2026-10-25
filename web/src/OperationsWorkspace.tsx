@@ -102,6 +102,18 @@ export default function OperationsWorkspace({
       "sites",
     ]),
     [revision, setRevision] = useState(0)
+  const [demoPreview, setDemoPreview] = useState(false)
+  const previewDashboard = demoPreview ? {
+    counts: { incidents: 12, open_incidents: 3, on_duty: 19, scheduled: 22, equipment: 37, issued_equipment: 26, overdue_incidents: 1, attendance_today: 42 },
+    sites: [
+      { id: "demo-makati", name: "Demo Makati Office", client_name: "Sample Corporate Client", required: 6, scheduled: 6, present: 5 },
+      { id: "demo-bgc", name: "Demo BGC Commercial Site", client_name: "Sample Property Management", required: 8, scheduled: 7, present: 7 },
+      { id: "demo-ortigas", name: "Demo Ortigas Business Center", client_name: "Sample Business Center", required: 4, scheduled: 4, present: 3 },
+      { id: "demo-qc", name: "Demo Quezon City Warehouse", client_name: "Sample Logistics Client", required: 5, scheduled: 5, present: 4 },
+    ],
+    kpi: { site_coverage_percent: "95.7%", attendance_compliance_percent: "90.5%", incident_resolution_percent: "75%" },
+    incident_trend: { Monday: 2, Tuesday: 1, Wednesday: 3, Thursday: 2, Friday: 4 },
+  } : dashboard
   const [accountDraft, setAccountDraft] = useState<any>(null),
     [siteDraft, setSiteDraft] = useState<any>(null)
   const preferencesLoaded = useRef(false)
@@ -359,10 +371,17 @@ export default function OperationsWorkspace({
             {notice}
           </p>
         )}
-        {section === "dashboard" && dashboard && (
+        {section === "dashboard" && role !== "admin" && (
+          <section className="ops-panel">
+            <strong>{demoPreview ? "DEMO PREVIEW — fictional data, not live records" : "Live dashboard"}</strong>
+            <p>Sample figures are for demonstration only and are not saved to the database.</p>
+            <button type="button" onClick={() => setDemoPreview(v => !v)}>{demoPreview ? "Return to live data" : "Show sample data"}</button>
+          </section>
+        )}
+        {section === "dashboard" && previewDashboard && (
           <>
             <div className="ops-stats">
-              {Object.entries(dashboard.counts)
+              {Object.entries(previewDashboard.counts)
                 .filter(([k]) =>
                   widgets.includes(
                     k.includes("equipment")
@@ -394,7 +413,7 @@ export default function OperationsWorkspace({
                       </tr>
                     </thead>
                     <tbody>
-                      {dashboard.sites.map((s: any) => (
+                      {previewDashboard.sites.map((s: any) => (
                         <tr key={s.id}>
                           <td>{s.name}</td>
                           <td>{s.client_name || "—"}</td>
@@ -410,25 +429,25 @@ export default function OperationsWorkspace({
             )}
             <section className="ops-panel">
               <h3>Utilization & SLA</h3>
-              {dashboard.kpi &&
-                Object.entries(dashboard.kpi).map(([k, v]) => (
+              {previewDashboard.kpi &&
+                Object.entries(previewDashboard.kpi).map(([k, v]) => (
                   <p key={k}>
                     {label(k)}: <strong>{String(v)}</strong>
                   </p>
                 ))}
               <h3>Incident trend</h3>
-              {Object.entries(dashboard.incident_trend).map(([day, count]) => (
+              {Object.entries(previewDashboard.incident_trend).map(([day, count]) => (
                 <p key={day}>
                   {day}{" "}
                   <meter
                     min={0}
-                    max={Math.max(1, dashboard.counts.incidents)}
+                    max={Math.max(1, previewDashboard.counts.incidents)}
                     value={Number(count)}
                   />{" "}
                   {String(count)}
                 </p>
               ))}
-              {!Object.keys(dashboard.incident_trend).length && (
+              {!Object.keys(previewDashboard.incident_trend).length && (
                 <p>No incident history yet.</p>
               )}
             </section>
