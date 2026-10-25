@@ -374,10 +374,10 @@ export default function App() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4fbff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#EFF6FF" />
       {!ready ? (
         <View style={styles.loading}>
-          <ActivityIndicator color="#F06522" />
+          <ActivityIndicator color="#2563EB" />
           <Text style={styles.lightText}>Restoring your session…</Text>
         </View>
       ) : (
@@ -391,7 +391,7 @@ export default function App() {
             refreshControl={
               token ? (
                 <RefreshControl
-                  tintColor="#F06522"
+                  tintColor="#2563EB"
                   refreshing={refreshing}
                   onRefresh={() => {
                     setRefreshing(true)
@@ -427,7 +427,7 @@ export default function App() {
                   onPress={() => void logout()}
                   style={styles.signout}
                 >
-                  <Text style={styles.lightText}>Sign out</Text>
+                  <Text style={[styles.lightText,{color:"#D9E9FF"}]}>Sign out</Text>
                 </Pressable>
               )}
             </View>
@@ -493,7 +493,7 @@ export default function App() {
                         <View
                           style={[
                             styles.dot,
-                            { backgroundColor: live ? "#75E0B6" : "#F06522" },
+                            { backgroundColor: live ? "#75E0B6" : "#2563EB" },
                           ]}
                         />
                         <Text style={styles.connectionText}>
@@ -870,7 +870,7 @@ function Action({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color="#f4fbff" />
+        <ActivityIndicator color="#EFF6FF" />
       ) : (
         <Text style={styles.actionText}>{label} →</Text>
       )}
@@ -925,13 +925,17 @@ function Stat({ number, label }: { number: number; label: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#f4fbff",
+    backgroundColor: "#EFF6FF",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   flex: { flex: 1 },
   page: { padding: 20, paddingBottom: 24, gap: 16 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   brandRow: {
+    backgroundColor: "#0B2140",
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    minHeight: 76,
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
@@ -945,11 +949,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  brandLetter: { fontSize: 26, fontWeight: "900", color: "#f4fbff" },
+  brandLetter: { fontSize: 26, fontWeight: "900", color: "#EFF6FF" },
   brand: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#12304a",
+    color: "#EFF6FF",
     letterSpacing: -0.4,
   },
   brandSub: {
@@ -963,7 +967,7 @@ const styles = StyleSheet.create({
   lightText: { color: "#52718b", fontSize: 12, fontWeight: "500" },
   loginHero: { paddingTop: 28, paddingBottom: 4, gap: 8 },
   eyebrow: {
-    color: "#F06522",
+    color: "#2563EB",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.8,
@@ -1011,7 +1015,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   textarea: { minHeight: 130 },
-  link: { fontSize: 12, fontWeight: "700", color: "#1976b9" },
+  link: { fontSize: 12, fontWeight: "700", color: "#2563EB" },
   between: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1019,7 +1023,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   action: {
-    backgroundColor: "#F06522",
+    backgroundColor: "#2563EB",
     borderRadius: 15,
     minHeight: 52,
     alignItems: "center",
@@ -1081,7 +1085,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 25, fontWeight: "800", color: "#90E3C8" },
   statLabel: { fontSize: 10, color: "#52718b" },
   quickAction: {
-    backgroundColor: "#e7f5fd",
+    backgroundColor: "#E9F1FF",
     padding: 18,
     borderRadius: 22,
     flexDirection: "row",
@@ -1092,13 +1096,13 @@ const styles = StyleSheet.create({
     height: 42,
     width: 42,
     borderRadius: 14,
-    backgroundColor: "#1976b9",
+    backgroundColor: "#2563EB",
     alignItems: "center",
     justifyContent: "center",
   },
   plusText: { fontSize: 26, color: "#FFF" },
   quickTitle: { fontSize: 14, fontWeight: "700", color: "#203D47" },
-  arrow: { fontSize: 24, color: "#1976b9" },
+  arrow: { fontSize: 24, color: "#2563EB" },
   siteRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1111,12 +1115,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 11,
-    backgroundColor: "#e7f5fd",
+    backgroundColor: "#E9F1FF",
     alignItems: "center",
     justifyContent: "center",
   },
   siteName: { fontSize: 13, color: "#304E57", flex: 1 },
-  count: { color: "#1976b9", fontSize: 12, fontWeight: "800" },
+  count: { color: "#2563EB", fontSize: 12, fontWeight: "800" },
   sectionOnDark: { fontSize: 18, color: "#12304a", fontWeight: "700" },
   siteChoices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   siteChoice: {
@@ -1126,8 +1130,8 @@ const styles = StyleSheet.create({
     borderColor: "#D8E3DE",
     minHeight: 44,
   },
-  siteChoiceSelected: { backgroundColor: "#e7f5fd", borderColor: "#1976b9" },
-  selectedText: { fontSize: 12, fontWeight: "700", color: "#1976b9" },
+  siteChoiceSelected: { backgroundColor: "#E9F1FF", borderColor: "#2563EB" },
+  selectedText: { fontSize: 12, fontWeight: "700", color: "#2563EB" },
   upload: {
     padding: 18,
     borderWidth: 1,
@@ -1138,7 +1142,7 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "#f4f8fc",
   },
-  uploadIcon: { fontSize: 30, color: "#1976b9" },
+  uploadIcon: { fontSize: 30, color: "#2563EB" },
   photo: { width: "100%", height: 190, borderRadius: 12 },
   empty: { alignItems: "stretch", gap: 14 },
   emptyIcon: { fontSize: 36, color: "#3F7C6D" },
@@ -1163,7 +1167,7 @@ const styles = StyleSheet.create({
   review: { gap: 10, paddingTop: 8 },
   statusAction: {
     padding: 12,
-    backgroundColor: "#e7f5fd",
+    backgroundColor: "#E9F1FF",
     borderRadius: 12,
     minHeight: 44,
   },
@@ -1185,8 +1189,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     minHeight: 56,
   },
-  navActive: { backgroundColor: "#d9effc" },
+  navActive: { backgroundColor: "#DBEAFE" },
   navIcon: { fontSize: 23, color: "#81958F" },
   navLabel: { fontSize: 10, fontWeight: "600", color: "#6E837C" },
-  navSelected: { color: "#1976b9" },
+  navSelected: { color: "#2563EB" },
 })

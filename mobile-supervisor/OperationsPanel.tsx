@@ -264,7 +264,7 @@ export default function OperationsPanel({
           {notice}
         </Text>
       ) : null}
-      {loading ? <ActivityIndicator color="#1976b9" /> : null}
+      {loading ? <ActivityIndicator color="#2563EB" /> : null}
       {role === "guard" &&
         section === "shifts" &&
         sites.map((site) => (
@@ -596,15 +596,15 @@ const s = StyleSheet.create({
     borderColor: "#d6e5f0",
     justifyContent: "center",
   },
-  selected: { backgroundColor: "#1976b9", borderColor: "#1976b9" },
+  selected: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
   selectedText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  link: { color: "#1976b9", fontSize: 12, fontWeight: "600" },
+  link: { color: "#2563EB", fontSize: 12, fontWeight: "600" },
   card: { backgroundColor: "#fff", padding: 18, borderRadius: 18, gap: 12 },
   caption: { fontSize: 12, color: "#52718b" },
   field: { gap: 8 },
   label: { fontSize: 12, fontWeight: "600", color: "#12304a" },
   input: {
-    backgroundColor: "#f4f8fc",
+    backgroundColor: "#F4F8FF",
     padding: 14,
     minHeight: 48,
     borderRadius: 12,
@@ -616,7 +616,7 @@ const s = StyleSheet.create({
     padding: 14,
     minHeight: 48,
     borderRadius: 12,
-    backgroundColor: "#F06522",
+    backgroundColor: "#2563EB",
     alignItems: "center",
     justifyContent: "center",
   },

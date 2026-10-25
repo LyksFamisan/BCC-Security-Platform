@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type FormEvent } from "react"
 import { io } from "socket.io-client"
 import "./connected.css"
+import SecurityVisual from "./SecurityVisual"
 import AccountActivation from "./AccountActivation"
 import OperationsWorkspace from "./OperationsWorkspace"
 const api = import.meta.env.VITE_API_URL || "/api"
@@ -216,6 +217,7 @@ export default function ConnectedApp() {
             : ""}
 
         </p>
+        {!session && <SecurityVisual />}
         {session && (
           <button
             onClick={() => {
@@ -227,18 +229,21 @@ export default function ConnectedApp() {
           </button>
         )}
       </header>
-      {error && (
+      {error && session && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
       {!session ? (
         <form onSubmit={login} className="login">
+          <div className="login-heading"><span className="access-indicator" aria-hidden="true"/><h2>Sign in</h2></div>
+          {error && <p role="alert" className="error">{error}</p>}
           <label>
             Email
             <input
               type="email"
               autoComplete="username"
+              placeholder="you@company.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -249,6 +254,7 @@ export default function ConnectedApp() {
             <input
               type="password"
               autoComplete="current-password"
+              placeholder="Enter your password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
