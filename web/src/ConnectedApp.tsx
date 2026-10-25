@@ -210,7 +210,7 @@ export default function ConnectedApp() {
   return (
     <div className={"connected"+(!session?" auth-screen":"")}>
       <header>
-        {!session ? <div className="login-brand-art" aria-label="CAT Security Services Platform"><div className="login-brand-logos"><img src="/assets/BCC_logo.jpg" alt="BCC logo" /><img src="/assets/CAT_logo.jpg" alt="CAT logo" /></div><div className="login-brand-heading"><span>CAT Security Services</span><strong>Platform</strong></div></div> : <>
+        {!session ? <h1 className="login-brand-art"><img src="/assets/cat-security-brand-orange.webp" alt="BCC / CAT Security Services Platform" /></h1> : <>
         <div className="auth-brand"><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></div>
         <h1>CAT Security Services Platform</h1>
         </>}
