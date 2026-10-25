@@ -116,6 +116,14 @@ try {
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
   await page.goto("http://127.0.0.1:9843")
+  await page.getByLabel("Password",{exact:true}).fill("visibility-test-only")
+  await page.getByRole("button",{name:"Show password",exact:true}).click()
+  assert.equal(await page.getByLabel("Password",{exact:true}).getAttribute("type"),"text")
+  assert.equal(await page.getByLabel("Password",{exact:true}).inputValue(),"visibility-test-only")
+  await page.getByRole("button",{name:"Hide password",exact:true}).click()
+  assert.equal(await page.getByLabel("Password",{exact:true}).getAttribute("type"),"password")
+  await page.getByLabel("Password",{exact:true}).fill("")
+
   await page.getByRole("switch",{name:"Dark mode",exact:true}).click()
   await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
   await page.screenshot({path:"/tmp/bcc-theme-dark-login.png",fullPage:true})

@@ -37,6 +37,7 @@ export default function ConnectedApp() {
     ),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
+    [showPassword, setShowPassword] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false)
   const [reports, setReports] = useState<Incident[]>([]),
@@ -145,7 +146,7 @@ export default function ConnectedApp() {
       clearSession()
       activeSession.current = data
       setSession(data)
-      setPassword("")
+      setPassword(""); setShowPassword(false)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -249,17 +250,21 @@ export default function ConnectedApp() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <label>
-            Password
+          <label htmlFor="login-password">Password</label>
+          <div className="password-field">
             <input
-              type="password"
+              id="login-password"
+              type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               placeholder="Enter your password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </label>
+            <button type="button" className="password-eye" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{showPassword && <path d="m3 3 18 18"/>}</svg>
+            </button>
+          </div>
           <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
 
         </form>

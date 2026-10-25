@@ -63,3 +63,10 @@ html[data-bcc-theme=dark] .connected.auth-screen .login label{color:#f0f3fb}
 .connected.auth-screen>header .auth-brand img{width:68px;height:68px}
 .connected.auth-screen>header h1{font-size:clamp(30px,3vw,40px);line-height:1.15;max-width:480px}
 @media(max-width:800px){.connected.auth-screen>header{max-width:440px;gap:16px}.connected.auth-screen>header .auth-brand img{width:52px;height:52px}.connected.auth-screen>header h1{font-size:28px}}
+
+.connected.auth-screen .password-field{position:relative;margin-top:-8px}
+.connected.auth-screen .password-field input{padding-right:52px}
+.connected.auth-screen .login .password-eye{position:absolute;right:3px;top:1px;display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;height:44px;padding:0;margin:0;background:transparent;border:0;box-shadow:none;color:#eef3ff;border-radius:8px}
+.connected.auth-screen .login .password-eye:hover{background:#ffffff18;box-shadow:none}
+html[data-bcc-theme=light] .connected.auth-screen .login .password-eye{color:#365071}
+.connected.auth-screen .login .password-eye:focus-visible{outline:2px solid #b99af3;outline-offset:1px}
