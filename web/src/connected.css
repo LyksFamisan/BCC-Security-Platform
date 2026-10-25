@@ -10,30 +10,3 @@
 @media(max-width:800px){.connected.auth-screen,.connected.activation{grid-template-columns:minmax(0,1fr);gap:30px;padding:40px 22px;align-content:center}.auth-screen>header,.activation>header{text-align:center}.auth-screen .auth-brand,.activation .auth-brand{justify-content:center}.auth-screen h1,.activation>header h1{max-width:none;font-size:26px;letter-spacing:-.7px;margin:20px 0 0}.security-visual{display:none}.connected .login{max-width:420px;border-radius:20px;padding:30px 26px}.auth-screen>.error{grid-column:1;grid-row:auto;width:100%;max-width:420px}.connected>header{padding:22px}.login-heading{margin-bottom:22px}}
 @media(prefers-reduced-motion:reduce){.connected *{transition:none!important}}
 .connected:not(.auth-screen):not(.activation)>header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 20px;align-items:center;padding:22px 26px}.connected:not(.auth-screen):not(.activation)>header>.auth-brand{grid-row:1/span 2}.connected:not(.auth-screen):not(.activation)>header>h1{grid-column:2;grid-row:1;font-size:24px;letter-spacing:-.6px;margin:0}.connected:not(.auth-screen):not(.activation)>header>p{grid-column:2;grid-row:2;margin:0}.connected:not(.auth-screen):not(.activation)>header>button{grid-column:3;grid-row:1/span 2;margin:0;background:#1e4772;border-color:#4774a355;font-size:12px}@media(max-width:650px){.connected:not(.auth-screen):not(.activation)>header{grid-template-columns:minmax(0,1fr) auto;padding:20px;gap:14px}.connected:not(.auth-screen):not(.activation)>header>.auth-brand{grid-column:1;grid-row:1}.connected:not(.auth-screen):not(.activation)>header>h1{grid-column:1/-1;grid-row:2;font-size:23px}.connected:not(.auth-screen):not(.activation)>header>p{grid-column:1/-1;grid-row:3;font-size:12px}.connected:not(.auth-screen):not(.activation)>header>button{grid-column:2;grid-row:1}}
-
-
-/* Warm, readable brand artwork: no saturated blue banner image. */
-.auth-screen .login-brand-art{display:flex;align-items:center;gap:clamp(12px,2vw,26px);width:100%;max-width:740px;padding:clamp(18px,2.5vw,32px);box-sizing:border-box;border-radius:24px;background:linear-gradient(115deg,rgba(255,255,255,.96),rgba(247,241,232,.92));border:1px solid rgba(255,255,255,.9);box-shadow:0 18px 50px #0002;color:#f58212}
-.auth-screen .login-brand-logos{display:flex;gap:12px;flex-shrink:0}
-.auth-screen .login-brand-logos img{width:clamp(58px,6vw,92px);height:clamp(58px,6vw,92px);object-fit:contain;border-radius:14px;background:#fff;padding:5px;box-sizing:border-box;box-shadow:0 5px 15px #0002}
-.auth-screen .login-brand-heading{display:flex;flex-direction:column;min-width:0;font-weight:850;line-height:1.12;letter-spacing:-.04em;text-shadow:0 2px 2px #8c39002a;font-size:clamp(22px,2.4vw,39px)}
-.auth-screen .login-brand-heading strong{font:inherit;color:#eb7410}
-.auth-screen .login-brand-heading{font-style:italic}.auth-screen .login-brand-heading strong{font-style:italic}
-@media(max-width:800px){.auth-screen .login-brand-art{justify-content:center;flex-wrap:wrap;text-align:center;margin:auto}.auth-screen .login-brand-heading{font-size:clamp(23px,6vw,34px)}}
-
-
-/* Screenshot-inspired login: dark blue hero, orange italic heading, centered glass form. */
-.connected.auth-screen{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;gap:28px;min-height:100svh;padding:clamp(22px,3vw,42px);background:linear-gradient(110deg,rgba(9,24,51,.68),rgba(22,40,82,.62)),url('/assets/security-team-bg.webp') center / cover fixed;color:#f3f6ff}
-.connected.auth-screen>header{width:100%;max-width:1320px;align-self:auto}
-.auth-screen .login-brand-art{max-width:none;width:100%;min-height:clamp(170px,20vw,265px);justify-content:center;background:linear-gradient(95deg,rgba(3,24,62,.87),rgba(4,42,98,.78)),url('/assets/bg.jpg') center / cover;border:1px solid rgba(155,193,243,.3);border-radius:24px;box-shadow:0 18px 40px #0003;color:#ff8b16}
-.auth-screen .login-brand-logos img{width:clamp(68px,10vw,142px);height:clamp(68px,10vw,142px);border-radius:18px}
-.auth-screen .login-brand-heading{font-size:clamp(26px,4.2vw,65px);font-style:italic;font-weight:850;color:#ff8a12;text-shadow:2px 4px 3px #061326,0 0 12px #ff87001f}
-.auth-screen .login-brand-heading strong{font-style:italic;color:#ff8a12}
-.connected.auth-screen .login{max-width:530px;background:rgba(24,39,74,.79);border:1px solid rgba(193,212,249,.4);box-shadow:0 22px 60px #020b2470;backdrop-filter:blur(18px);color:#f6f8ff}
-.auth-screen .login h2,.auth-screen .login label{color:#f6f8ff}
-.auth-screen .login input{background:rgba(255,255,255,.11);border-color:#b6c6e280;color:#fff}
-.auth-screen .login input::placeholder{color:#d2daea}
-.connected.auth-screen .login button[type="submit"]{background:linear-gradient(105deg,#e86416,#c9470f);border-color:#ff8d33;color:#fff}
-.connected.auth-screen .login button[type="submit"]:hover{background:linear-gradient(105deg,#fa7c24,#db5512)}
-.auth-screen .security-visual{display:none}
-@media(max-width:800px){.connected.auth-screen{padding:18px;gap:22px}.auth-screen .login-brand-art{min-height:0;padding:20px 14px}.auth-screen .login-brand-logos img{width:72px;height:72px}.auth-screen .login-brand-heading{font-size:clamp(24px,5.5vw,37px)}}
