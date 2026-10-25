@@ -319,13 +319,13 @@ export default function EquipmentModule({ canEdit = false, canReport = false }: 
                   <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 7, padding: '10px 14px', textAlign: 'center' }}>Fault report submitted to Equipment Control.</div>
                 ) : faultFormOpen ? (
                   <form className="flex flex-col gap-2" onSubmit={event => { event.preventDefault(); setFaultSubmitted(true); setFaultFormOpen(false); recordEquipmentFault(); addActivity('Equipment Control', 'FAULT_REPORT', `Fault reported for ${faultAsset}: ${faultDescription}`) }}>
-                    <select value={faultAsset} onChange={event => setFaultAsset(event.target.value)} required style={{ background: L.cardSoft, border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>
+                    <select value={faultAsset} onChange={event => setFaultAsset(event.target.value)} required style={{ background: L.cardAlt, border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }}>
                       <option value="">Select asset...</option>
                       <option>FN-0061 — Beretta M9</option>
                       <option>RD-0167 — Motorola DP4400e</option>
                       <option>RD-0128 — Kenwood TK-3402</option>
                     </select>
-                    <input value={faultDescription} onChange={event => setFaultDescription(event.target.value)} required placeholder="Describe the fault or defect..." style={{ background: L.cardSoft, border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
+                    <input value={faultDescription} onChange={event => setFaultDescription(event.target.value)} required placeholder="Describe the fault or defect..." style={{ background: L.cardAlt, border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 13, color: L.heading }} />
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setFaultFormOpen(false)} style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: L.body, background: 'transparent', border: `1px solid ${L.cardBorder}`, borderRadius: 6, padding: '8px', cursor: 'pointer' }}>Cancel</button>
                       <button type="submit" style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#fff', background: '#1976b9', border: 'none', borderRadius: 6, padding: '8px', cursor: 'pointer' }}>Submit Report</button>

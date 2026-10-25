@@ -206,7 +206,7 @@ export default function DashboardModule({ canEdit = false, onNavigate }: { canEd
           <div className="dashboard-view-tabs flex items-center gap-2">
             <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: L.heading }}>Dashboard View</span>
             {(['management'] as const).map(view => (
-              <button key={view} type="button" onClick={() => { setReportView(view); addActivity('Operations Dashboard', 'VIEW', `Opened ${view === 'operations' ? 'Operations' : 'Executive'} dashboard view`) }} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{view === 'operations' ? 'Operations' : 'Executive Report'}</button>
+              <button key={view} type="button" onClick={() => { setReportView(view); addActivity('Operations Dashboard', 'VIEW', `Opened Executive dashboard view`) }} style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: reportView === view ? '#fff' : L.body, background: reportView === view ? '#1976b9' : 'transparent', border: `1px solid ${reportView === view ? '#1976b9' : L.cardBorder}`, borderRadius: 6, padding: '6px 11px', cursor: 'pointer' }}>{'Executive Report'}</button>
             ))}
           </div>
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>

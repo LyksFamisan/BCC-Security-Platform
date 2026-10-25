@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "BCC Guard",
+    "slug": "bcc-guard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.bcc.demo.guard"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose an incident evidence photo.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}

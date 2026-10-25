@@ -1,9 +1,16 @@
 {
-  "version": 2,
+  "installCommand": "npm --prefix web ci",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
+  "outputDirectory": "web/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feat/connected-security-apps": false
+    }
+  }
 }

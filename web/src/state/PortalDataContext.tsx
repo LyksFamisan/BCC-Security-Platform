@@ -237,7 +237,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     },
     addIncidentRecord(record) {
       const createdAt = new Date().toISOString()
-      setIncidentHistory(current => [{ ...record, id: `INC-${Date.now()}`, status: 'Submitted', createdAt }, ...current].slice(0, 100))
+      setIncidentHistory(current => [{ ...record, id: `INC-${Date.now()}`, status: 'Submitted' as const, createdAt }, ...current].slice(0, 100))
       setIncidentReports(current => current + 1)
     },
     recordEquipmentFault() {
