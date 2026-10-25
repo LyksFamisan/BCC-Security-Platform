@@ -18,6 +18,8 @@ import {
 import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
 import { io } from "socket.io-client"
+const APP_ROLE = "guard"
+const SESSION_KEY = "bcc-guard-token"
 const api = process.env.EXPO_PUBLIC_API_URL
 type Report = {
   id: string
@@ -64,7 +66,7 @@ export default function App() {
     setLive(false)
     setError(message)
     try {
-      await SecureStore.deleteItemAsync("bcc-token")
+      await SecureStore.deleteItemAsync(SESSION_KEY)
     } catch {
       setError(
         "Could not remove saved login. Clear this app's storage before sharing the device.",
@@ -72,7 +74,7 @@ export default function App() {
     }
   }
   useEffect(() => {
-    SecureStore.getItemAsync("bcc-token")
+    SecureStore.getItemAsync(SESSION_KEY)
       .then(setToken)
       .catch(() => setError("Could not restore login"))
       .finally(() => setReady(true))
@@ -103,8 +105,8 @@ export default function App() {
         request("/auth/me"),
       ])
       if (currentToken.current !== token) return
-      if (!["guard", "supervisor"].includes(identity.role)) {
-        await logout("Use a Guard or Supervisor account")
+      if (![APP_ROLE].includes(identity.role)) {
+        await logout("Use a Guard account in BCC Guard")
         return
       }
       setRole(identity.role)
@@ -144,14 +146,14 @@ export default function App() {
       const res = await fetch(api + "/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, app_role: APP_ROLE }),
       })
       const d = await res.json()
       if (!res.ok) throw Error(d.error)
-      if (!["guard", "supervisor"].includes(d.user.role))
-        throw Error("Use a Guard or Supervisor account")
+      if (![APP_ROLE].includes(d.user.role))
+        throw Error("Use a Guard account in BCC Guard")
       setRole(d.user.role)
-      await SecureStore.setItemAsync("bcc-token", d.token)
+      await SecureStore.setItemAsync(SESSION_KEY, d.token)
       currentToken.current = d.token
       setToken(d.token)
       setPassword("")
@@ -272,7 +274,7 @@ export default function App() {
                 <Text style={styles.brandLetter}>B</Text>
               </View>
               <View style={styles.flex}>
-                <Text style={styles.brand}>BCC / CAT</Text>
+                <Text style={styles.brand}>BCC Guard</Text>
                 <Text style={styles.brandSub}>SECURITY SERVICES</Text>
               </View>
               {token && (
@@ -298,8 +300,7 @@ export default function App() {
                     A clear view of every report, wherever duty takes you.
                   </Text>
                   <View style={styles.roleRow}>
-                    <Text style={styles.rolePill}>GUARD</Text>
-                    <Text style={styles.rolePill}>SUPERVISOR</Text>
+                    <Text style={styles.rolePill}>GUARD APPLICATION</Text>
                   </View>
                 </View>
                 <View style={styles.card}>
@@ -357,7 +358,7 @@ export default function App() {
                   </Text>
                 </View>
                 <Text style={styles.footer}>
-                  BCC Security Services Platform · Mobile
+                  BCC Guard · Security Services Platform
                 </Text>
               </>
             ) : (

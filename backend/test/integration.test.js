@@ -72,6 +72,22 @@ test("shared mobile/web flow, authorization, evidence, audit and reconnect", asy
       assert.equal(res.status, 200)
       tokens[n] = (await res.json()).token
     }
+    // App selection is checked on the server, before a token is issued.
+    for (const [user, appRole, expected] of [[2, "guard", 200], [1, "supervisor", 200], [2, "supervisor", 403], [1, "guard", 403], [0, "supervisor", 403]]) {
+      const res = await fetch(base + "/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: `user${user}@demo.invalid`, password, app_role: appRole }) })
+      assert.equal(res.status, expected, `${appRole} app access for user ${user}`)
+      if (expected === 403) assert.equal((await res.json()).token, undefined)
+      else {
+        const { token: appToken } = await res.json()
+        assert.equal((await fetch(base + "/auth/me", { headers: { Authorization: "Bearer " + appToken } })).status, 200)
+        // Changing an account role invalidates its app-bound session.
+        const id = `20000000-0000-4000-8000-00000000000${user + 1}`
+        const otherRole = appRole === "guard" ? "supervisor" : "guard"
+        await db.query("UPDATE users SET role=$1 WHERE id=$2", [otherRole, id])
+        assert.equal((await fetch(base + "/auth/me", { headers: { Authorization: "Bearer " + appToken } })).status, 401)
+        await db.query("UPDATE users SET role=$1 WHERE id=$2", [appRole, id])
+      }
+    }
     async function get(route, user) {
       return fetch(base + route, {
         headers: { Authorization: "Bearer " + tokens[user] },

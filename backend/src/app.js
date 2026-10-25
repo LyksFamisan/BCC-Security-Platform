@@ -32,6 +32,7 @@ export function createApp(pool, secret, notify = () => {}) {
       [claims.sub],
     )
     if (!rows[0]) throw Error("Invalid identity")
+    if (claims.app_role && claims.app_role !== rows[0].role) throw Error("App access changed")
     return rows[0]
   }
   app.locals.identity = identity
@@ -40,7 +41,7 @@ export function createApp(pool, secret, notify = () => {}) {
     rateLimit({ windowMs: 15 * 60000, limit: 20 }),
     async (req, res) => {
       const parsed = z
-        .object({ email: z.email(), password: z.string().min(1).max(128) })
+        .object({ email: z.email(), password: z.string().min(1).max(128), app_role: z.enum(["guard", "supervisor"]).optional() })
         .safeParse(req.body)
       if (!parsed.success)
         return res.status(400).json({ error: "Email and password required" })
@@ -53,12 +54,13 @@ export function createApp(pool, secret, notify = () => {}) {
       )
         return res.status(401).json({ error: "Invalid credentials" })
       const u = rows[0]
+      if (parsed.data.app_role && parsed.data.app_role !== u.role) return res.status(403).json({ error: "This account is not authorized for the selected mobile app" })
       await pool.query(
         "INSERT INTO audit_events(actor_id,action) VALUES($1,'LOGIN')",
         [u.id],
       )
       res.json({
-        token: jwt.sign({}, secret, {
+        token: jwt.sign(parsed.data.app_role ? { app_role: parsed.data.app_role } : {}, secret, {
           subject: u.id,
           expiresIn: "1h",
           issuer: "bcc-api",

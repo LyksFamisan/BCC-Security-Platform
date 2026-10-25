@@ -1,11 +1,15 @@
 {
   "expo": {
-    "name": "BCC Security",
+    "name": "BCC Guard",
     "slug": "bcc-guard",
     "version": "1.0.0",
     "orientation": "portrait",
     "android": {
-      "package": "com.bcc.demo.guard"
+      "package": "com.bcc.demo.guard",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#102B35"
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -18,6 +22,11 @@
       ]
     ],
     "userInterfaceStyle": "light",
-    "backgroundColor": "#102B35"
+    "backgroundColor": "#102B35",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.bcc.demo.guard"
+    },
+    "scheme": "bcc-guard"
   }
 }

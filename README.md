@@ -119,3 +119,27 @@ The deployed frontend remains a sample-data demo without `VITE_API_URL`. Portal 
 System Administration → Roles & Permissions contains the supplied 52-feature permission design. A matrix entry is a permission specification, not confirmation that a production module or integration has been implemented. Existing screens and records are illustrative. Supervisor demo assignment is BGC Financial Tower. Confirm training/certification ownership, equipment maintenance and final incident approvals with BCC.
 
 Apply backend migration `002_four_roles.sql` before using the new API. It preserves existing operational administrators by changing them to SSD (`operations`); provision technical administrators separately. Seed includes all four roles. Existing JWTs are resolved against the current database role. Supervisor incident updates are restricted to assigned sites; technical admins cannot list incidents or access their evidence. API and mobile changes require their own backend release and mobile build; a Vercel frontend release does not publish them.
+
+## Separate Guard and Supervisor mobile applications
+
+`mobile/` is **BCC Guard** (`com.bcc.demo.guard`). `mobile-supervisor/` is **BCC Supervisor** (`com.bcc.demo.supervisor`). They have separate Expo slugs, URL schemes, session keys and icons; both can be installed on one Android device. The four user roles remain unchanged.
+
+Both apps call the same `EXPO_PUBLIC_API_URL` and shared PostgreSQL-backed API. Copy each folder's `.env.example` to its own `.env` and set the same API URL. Deploy the latest backend first: it validates the requested mobile role before issuing an app-bound token. Client checks also reject wrong-role and restored sessions. Supervisor permissions are still restricted to assigned sites by the API.
+
+Run in separate terminals from the project root:
+
+```bash
+cd mobile
+npm ci
+npx expo start -c --port 8081
+```
+
+```bash
+cd mobile-supervisor
+npm ci
+npx expo start -c --port 8082
+```
+
+Scan the corresponding QR code in Expo Go. These are source projects, not published APKs. For independent installable Android demos, each project includes `eas.json` with a `preview` APK profile. From each app folder, configure your own Expo project and run `eas build --platform android --profile preview`. Build signing and EAS configuration are separate; no build service or store release has been initiated.
+
+Current functional scope is incident reporting, assigned sites, report tracking, and Supervisor status updates. Schedule, attendance and equipment modules from the broader TOR still require mobile implementation; separating the apps does not implement those features. The web application is unchanged. Physical-device testing is still required.

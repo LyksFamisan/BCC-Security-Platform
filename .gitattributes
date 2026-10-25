@@ -148,3 +148,7 @@
 # Preserve existing ordinary binary assets after moving the web application.
 web/public/assets/** -filter -diff -merge
 web/src/imports/** -filter -diff -merge
+
+# Keep small Expo launcher icons directly in Git for ZIP downloads and EAS builds.
+mobile/assets/** -filter -diff -merge
+mobile-supervisor/assets/** -filter -diff -merge

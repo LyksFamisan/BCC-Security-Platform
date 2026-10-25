@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "BCC Supervisor",
+    "slug": "bcc-supervisor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.bcc.demo.supervisor",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#102B35"
+      }
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose an incident evidence photo.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#102B35",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.bcc.demo.supervisor"
+    },
+    "scheme": "bcc-supervisor"
+  }
+}
