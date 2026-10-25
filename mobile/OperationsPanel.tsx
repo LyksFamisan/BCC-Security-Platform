@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Switch,
   Platform,
 } from "react-native"
-import * as Location from "expo-location"
+import {getDutyPosition, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
 import DateTimePicker from "@react-native-community/datetimepicker"
 type Row = {
@@ -72,6 +72,10 @@ export default function OperationsPanel({
     [person, setPerson] = useState(""),
     [dateField, setDateField] = useState<string | null>(null),
     [dateMode, setDateMode] = useState<"date" | "time">("date")
+  const mounted = useRef(true), running = useRef(false)
+  const [gps, setGps] = useState<GpsPosition | null>(null)
+  const [gpsState, setGpsState] = useState("")
+  useEffect(() => { mounted.current=true; return () => { mounted.current=false } }, [])
   const module = catalog.find((m) => m.key === section)
   useEffect(() => {
     let active = true
@@ -122,40 +126,41 @@ export default function OperationsPanel({
     }
   }, [section, rev])
   async function run(fn: () => Promise<any>) {
+    if(running.current) return
+    running.current=true
     setBusy(true)
     setError("")
     setNotice("")
     try {
       const result = await fn()
+      if(!mounted.current) return
       setRev((v) => v + 1)
-      setNotice(result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
+      setNotice(result?.gps_checked ? "GPS checked. Time In/Time Out will capture a fresh location." : result?.data?.event ? `Time ${result.data.event} recorded · ${new Date(result.data.recorded_at).toLocaleString()}` : result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
       setDraft(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
-      setBusy(false)
+      running.current=false
+      if(mounted.current) setBusy(false)
     }
   }
   async function position() {
-    const p = await Location.requestForegroundPermissionsAsync()
-    if (!p.granted) throw Error("Allow location access to check in")
-    const loc = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    })
-    if (Platform.OS === "android" && loc.mocked)
-      throw Error("Turn off mock location before checking in")
-    if (loc.coords.accuracy === null)
-      throw Error("GPS accuracy unavailable. Try again")
-    return {
-      latitude: loc.coords.latitude,
-      longitude: loc.coords.longitude,
-      accuracy: loc.coords.accuracy,
+    setGpsState("Getting precise GPS…")
+    try {
+      const coords=await getDutyPosition()
+      if(!mounted.current) throw Error("Attendance screen closed. Retry from the app.")
+      setGps(coords)
+      setGpsState(`GPS ready · ±${Math.round(coords.accuracy)} m`)
+      return coords
+    } catch(error) {
+      if(mounted.current) setGpsState("GPS unavailable · retry")
+      throw error
     }
   }
   async function punch(shift: Row, event: string) {
     await run(async () => {
       const coords = await position()
-      await request(
+      return request(
         "/attendance",
         jsonOptions({ shift_id: shift.id, event, ...coords }),
       )
@@ -213,7 +218,7 @@ export default function OperationsPanel({
   const tabs =
     role === "guard"
       ? [
-          ["shifts", "Schedule"],
+          ["shifts", "Attendance"],
           ["assignments", "Equipment"],
           ["training", "Training"],
           ["certifications", "Licenses"],
@@ -268,6 +273,14 @@ export default function OperationsPanel({
         </Text>
       ) : null}
       {loading ? <ActivityIndicator color="#2563EB" /> : null}
+      {role === "guard" && section === "shifts" && <View style={s.card}>
+        <Text style={s.title}>Attendance & GPS</Text>
+        <Text accessibilityLiveRegion="polite" style={s.value}>{gpsState || "Check GPS before recording attendance"}</Text>
+        {gps && <Text style={s.caption}>{gps.latitude.toFixed(6)}, {gps.longitude.toFixed(6)} · Last GPS check</Text>}
+        <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Please wait…" : "Check GPS"}</Text></Pressable>
+        {!loading && !rows.length && <Text style={s.caption}>No assigned shifts. Your supervisor must create your duty schedule before you can time in.</Text>}
+      </View>}
+
       {role === "guard" &&
         section === "shifts" &&
         sites.map((site) => (
@@ -465,6 +478,7 @@ export default function OperationsPanel({
               row.data.status !== "Cancelled" && (
                 <View style={s.tabs}>
                   {["in", "out"].map((event) => {
+                    const checkedIn = attendance.some(a => a.data.shift_id === row.id && a.data.event === "in")
                     const recorded = attendance.some(
                       (a) =>
                         a.data.shift_id === row.id && a.data.event === event,
@@ -473,12 +487,12 @@ export default function OperationsPanel({
                       <Pressable
                         key={event}
                         accessibilityRole="button"
-                        disabled={busy || recorded}
+                        disabled={busy || recorded || (event === "out" && !checkedIn)}
                         onPress={() => void punch(row, event)}
-                        style={[s.button, (busy || recorded) && s.disabled]}
+                        style={[s.button, (busy || recorded || (event === "out" && !checkedIn)) && s.disabled]}
                       >
                         <Text style={s.white}>
-                          {recorded ? "Recorded" : "Time " + event}
+                          {recorded ? (event === "in" ? "Timed in ✓" : "Timed out ✓") : (event === "in" ? "Time In" : "Time Out")}
                         </Text>
                       </Pressable>
                     )

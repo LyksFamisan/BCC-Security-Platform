@@ -819,7 +819,7 @@ function App() {
           {token && (
             <View style={styles.nav}>
               {([
-                ["duty", "⌂", "Duty"],
+                ["duty", "⌂", supervisor ? "Duty" : "Attendance"],
                 ["new", "＋", "Report"],
                 ["reports", "≡", "Reports"],
               ] as const).map(([key, icon, label]) => (
