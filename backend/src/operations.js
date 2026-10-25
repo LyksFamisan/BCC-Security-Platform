@@ -1,3 +1,6 @@
+import multer from "multer"
+import sharp from "sharp"
+import { encodePhoto, decodePhoto } from "./photo-storage.js"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
@@ -505,9 +508,13 @@ export function mountOperations(app, pool, notify) {
     notify({ site_id: row.site_id, reporter_id: req.user.id })
     res.json(row)
   })
-  app.post("/attendance", async (req, res) => {
+  const attendanceUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3145728, files: 1 } }).single("photo")
+  app.post("/attendance", attendanceUpload, async (req, res) => {
     role(req, ["guard"])
-    const d = valid(attendanceSchema, req.body)
+    const d = valid(attendanceSchema, { shift_id: req.body.shift_id, event: req.body.event, latitude: Number(req.body.latitude), longitude: Number(req.body.longitude), accuracy: Number(req.body.accuracy) })
+    if (!req.file) problem(400, "Camera photo required")
+    let photo
+    try { photo = await sharp(req.file.buffer).rotate().resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer() } catch { problem(400, "Invalid camera photo") }
     const row = await transaction(async (c) => {
       await c.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
         req.user.id,
@@ -560,8 +567,11 @@ export function mountOperations(app, pool, notify) {
       )
       if (distance > settings.radius_m)
         problem(403, "You are outside the assigned site geofence")
+      const photoKey = randomUUID() + ".jpg"
+      await fileStore(pool).write("attendance/" + photoKey, encodePhoto(photo))
       const data = {
         ...d,
+        photo_key: photoKey,
         recorded_at: new Date().toISOString(),
         distance_m: Math.round(distance),
       }
