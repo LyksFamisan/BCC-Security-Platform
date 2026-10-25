@@ -50,7 +50,7 @@ export default function GuardPortal() {
       ])
       if (identity.role !== "guard") throw Error("Only security guard accounts can use this portal.")
       setSites(siteRows)
-      setSiteId(prev => prev || siteRows[0]?.id || "")
+      setSiteId(prev => siteRows.some((site: Site) => site.id === prev) ? prev : siteRows[0]?.id || "")
       setShifts(shiftRows)
       setAttendance(attendanceRows)
       setReports(incidentRows)
@@ -118,8 +118,8 @@ export default function GuardPortal() {
     e.preventDefault(); setBusy(true); setError(""); setNotice("")
     try {
       if (!siteId || !photo) throw Error("Please choose your site and attach an evidence photo.")
-      if (photo.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))
-        throw Error("Use a JPEG, PNG or WebP photo under 5 MB.")
+      if (photo.size > 3 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))
+        throw Error("Use a JPEG, PNG or WebP photo under 3 MB.")
       const form = new FormData()
       form.append("title", title.trim()); form.append("description", description.trim())
       form.append("location", location.trim()); form.append("site_id", siteId)
@@ -129,7 +129,7 @@ export default function GuardPortal() {
       setNotice("Incident report submitted."); setTab("reports"); await refresh()
     } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
-  const active = attendance.filter(a => a.data?.event === "in").length - attendance.filter(a => a.data?.event === "out").length
+  const active = shifts.filter(shift => attendance.some(a => a.data?.shift_id === shift.id && a.data?.event === "in") && !attendance.some(a => a.data?.shift_id === shift.id && a.data?.event === "out")).length
   return <div className="guard-page">
     <div className="guard-shell">
       <header className="guard-head">
@@ -159,12 +159,12 @@ export default function GuardPortal() {
               const events = attendance.filter(a => a.data.shift_id === shift.id)
               const checkedIn = events.some(a => a.data.event === "in")
               const checkedOut = events.some(a => a.data.event === "out")
-              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small><button className="guard-primary" disabled={busy || checkedOut} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Check Out with GPS" : "Check In with GPS"}</button></article>
+              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small><button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Check Out with GPS" : "Check In with GPS"}</button></article>
             })}
             <h2>Live GPS Check-in</h2><section className="guard-card"><p>Share your current location with operations. GPS permission and internet connectivity are required.</p><label>Assigned site<select value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="guard-secondary" disabled={busy || !siteId} onClick={() => void updatePosition()}>Send Current Location</button></section>
           </>}
           {tab === "reports" && <><div className="guard-row"><h2>My Incident Reports</h2><button className="guard-secondary" onClick={() => void refresh()}>Refresh</button></div>{reports.length === 0 ? <div className="guard-card">No incident reports yet.</div> : reports.map(r => <article key={r.id} className="guard-card"><div className="guard-row"><strong>{r.title}</strong><span className="guard-pill">{r.status}</span></div><p>{r.description}</p><small>{r.site_name || r.location}</small></article>)}</>}
-          {tab === "new" && <form className="guard-card guard-form" onSubmit={submitReport}><h2>New Incident Report</h2><p>Submit verified details and an evidence photo to your operations team.</p><label>Site<select required value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.length === 0 && <option value="">No assigned sites</option>}{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>Incident title<input required minLength={3} maxLength={160} value={title} onChange={e => setTitle(e.target.value)} /></label><label>Description<textarea required minLength={5} maxLength={5000} rows={5} value={description} onChange={e => setDescription(e.target.value)} /></label><label>Location / post<input required minLength={2} maxLength={300} value={location} onChange={e => setLocation(e.target.value)} /></label><label>Evidence photo (JPEG, PNG, WebP — max 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => setPhoto(e.target.files?.[0] || null)} /></label><button disabled={busy} className="guard-primary">{busy ? "Submitting…" : "Submit Incident Report"}</button></form>}
+          {tab === "new" && <form className="guard-card guard-form" onSubmit={submitReport}><h2>New Incident Report</h2><p>Submit verified details and an evidence photo to your operations team.</p><label>Site<select required value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.length === 0 && <option value="">No assigned sites</option>}{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>Incident title<input required minLength={3} maxLength={160} value={title} onChange={e => setTitle(e.target.value)} /></label><label>Description<textarea required minLength={5} maxLength={5000} rows={5} value={description} onChange={e => setDescription(e.target.value)} /></label><label>Location / post<input required minLength={2} maxLength={300} value={location} onChange={e => setLocation(e.target.value)} /></label><label>Evidence photo (JPEG, PNG, WebP — max 3 MB)<input type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => setPhoto(e.target.files?.[0] || null)} /></label><button disabled={busy} className="guard-primary">{busy ? "Submitting…" : "Submit Incident Report"}</button></form>}
           {tab === "profile" && <section className="guard-card"><h2>My Profile</h2><p><strong>{session.user.name}</strong></p><p>Role: Security Guard</p><p>Assigned Sites: {sites.map(s => s.name).join(", ") || "None"}</p><p className="guard-muted">Your account permissions and assignments are managed by BCC Operations.</p></section>}
         </main>
         <nav className="guard-nav" aria-label="Guard navigation">{([["duty", "⌖", "Duty"], ["reports", "▤", "Reports"], ["new", "+", "New Report"], ["profile", "◯", "Profile"]] as const).map(([key, icon, label]) => <button key={key} className={tab === key ? "selected" : ""} onClick={() => { setTab(key); setError(""); setNotice("") }}><b>{icon}</b><span>{label}</span></button>)}</nav>
