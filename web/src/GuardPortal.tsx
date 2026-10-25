@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react"
 import "./guard.css"
+import AttendanceCamera from "./AttendanceCamera"
 
 const API = import.meta.env.VITE_API_URL || "/api"
 type Identity = { id: string; name: string; role: string }
@@ -17,7 +18,10 @@ export default function GuardPortal() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [gpsStatus, setGpsStatus] = useState("GPS not checked")
+  const [cameraShift,setCameraShift]=useState<{id:string;title:string}|null>(null)
   const [attendancePhoto,setAttendancePhoto]=useState<{shiftId:string;file:File}|null>(null)
+  const [attendancePreview,setAttendancePreview]=useState<string|null>(null)
+  useEffect(()=>{if(!attendancePhoto){setAttendancePreview(null);return}const url=URL.createObjectURL(attendancePhoto.file);setAttendancePreview(url);return()=>URL.revokeObjectURL(url)},[attendancePhoto])
   const [photoView,setPhotoView]=useState<string|null>(null)
   useEffect(()=>()=>{if(photoView)URL.revokeObjectURL(photoView)},[photoView])
   const [tab, setTab] = useState<Tab>("duty")
@@ -84,7 +88,7 @@ export default function GuardPortal() {
   }
   async function logout() {
     if (session) await request("/auth/logout", { method: "POST" }).catch(() => {})
-    setSession(null); setAttendancePhoto(null); setPhotoView(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
+    setSession(null); setCameraShift(null); setAttendancePhoto(null); setPhotoView(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
   }
   function getPosition(): Promise<GeolocationCoordinates> {
     return new Promise((resolve, reject) => {
@@ -156,6 +160,7 @@ export default function GuardPortal() {
   }
   const active = attendance.filter(a => a.data?.event === "in").length - attendance.filter(a => a.data?.event === "out").length
   return <div className="guard-page">
+    {cameraShift && <AttendanceCamera title={cameraShift.title} onClose={()=>setCameraShift(null)} onCapture={file=>{setAttendancePhoto({shiftId:cameraShift.id,file});setCameraShift(null)}} />}
     {photoView && <div role="dialog" aria-label="Attendance photo" className="attendance-photo-dialog"><button onClick={()=>setPhotoView(null)}>Close attendance photo</button><img src={photoView} alt="Attendance evidence with server timestamp and GPS" /></div>}
     <div className="guard-shell">
       <header className="guard-head">
@@ -185,7 +190,7 @@ export default function GuardPortal() {
               const events = attendance.filter(a => a.data.shift_id === shift.id)
               const checkedIn = events.some(a => a.data.event === "in")
               const checkedOut = events.some(a => a.data.event === "out")
-              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small>{!checkedOut && shift.data.status !== "Cancelled" && <label>Time In/Out photo<input aria-label={"Attendance photo for " + shift.data.title} type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={e=>setAttendancePhoto(e.target.files?.[0]?{shiftId:shift.id,file:e.target.files[0]}:null)} /><small>{attendancePhoto?.shiftId===shift.id ? attendancePhoto.file.name : "New photo required for each Time In and Time Out · max 3 MB"}</small></label>}<button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
+              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{checkedOut ? "Completed" : checkedIn ? "On Duty" : shift.data.status || "Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small>{!checkedOut && shift.data.status !== "Cancelled" && <div className="attendance-capture"><button type="button" className="guard-secondary" disabled={busy} onClick={()=>setCameraShift({id:shift.id,title:checkedIn?"Time Out photo":"Time In photo"})}>{attendancePhoto?.shiftId===shift.id ? "Retake attendance photo" : "Open camera"}</button>{attendancePhoto?.shiftId===shift.id && attendancePreview && <img className="attendance-captured-thumb" src={attendancePreview} alt="Attendance photo ready to submit" />}</div>}<button className="guard-primary" disabled={busy || checkedOut || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
             })}
             <h2>Attendance history</h2>{attendance.map(a=><article className="guard-card" key={a.id}><strong>{a.data.event === "in" ? "Time In" : "Time Out"}</strong><p>{new Date(a.data.recorded_at).toLocaleString()}</p><p>GPS: {a.data.latitude ?? "—"}, {a.data.longitude ?? "—"} · {a.data.geofence_status || a.data.source || "Legacy record"}</p>{a.data.photo_id && <button className="guard-secondary" onClick={()=>void viewAttendancePhoto(a.id)}>View attendance photo</button>}</article>)}
             <h2>GPS Check-in</h2><p role="status">{gpsStatus}</p><section className="guard-card"><p>Share your current location with operations. GPS permission and internet connectivity are required.</p><button className="guard-secondary" disabled={busy} onClick={() => { setBusy(true); setError(""); void getPosition().catch(e => setError(e.message)).finally(() => setBusy(false)) }}>Check GPS</button><label>Assigned site<select value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="guard-secondary" disabled={busy || !siteId} onClick={() => void updatePosition()}>Send Current Location</button></section>

@@ -101,7 +101,7 @@ try {
   if (!listening) throw Error("Vite did not start: " + logs)
   browser = await chromium.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
     executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined,
   })
   const page = await browser.newPage()
@@ -358,7 +358,7 @@ try {
   await page.getByLabel("Email", { exact: true }).waitFor()
   assert.equal(await page.getByText(/sample data|simulated login|pending backend setup/i).count(),0)
   await db.query("INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'shifts',$2,$3,$3,$4)",["30000000-0000-4000-8000-000000000009",site,"20000000-0000-4000-8000-000000000002",JSON.stringify({title:"Current gate duty",post:"Gate 1",status:"Scheduled",start:new Date(Date.now()-60000).toISOString(),end:new Date(Date.now()+1800000).toISOString()})])
-  await page.context().grantPermissions(["geolocation"])
+  await page.context().grantPermissions(["geolocation","camera"])
   await page.context().setGeolocation({latitude:14.55,longitude:121.02,accuracy:500})
   await page.goto("http://127.0.0.1:9843/guard")
   await page.getByLabel("Email address",{exact:true}).fill("guard@demo.invalid")
@@ -370,11 +370,24 @@ try {
   await page.getByRole("button",{name:"Check GPS",exact:true}).click()
   await page.getByRole("status").filter({hasText:"GPS ready"}).waitFor()
   const duty = page.locator("article.guard-card").filter({hasText:"Current gate duty"})
-  const punchPhoto={name:"attendance.jpg",mimeType:"image/jpeg",buffer:await sharp({create:{width:640,height:480,channels:3,background:"#345678"}}).jpeg().toBuffer()}
-  await duty.getByLabel("Attendance photo for Current gate duty",{exact:true}).setInputFiles(punchPhoto)
+  await duty.getByRole("button",{name:"Open camera",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2)
+  await page.evaluate(()=>{window.__attendanceTestStream=document.querySelector('video').srcObject})
+  await page.getByRole("dialog",{name:"Attendance camera",exact:true}).screenshot({path:"/tmp/bcc-live-camera.png"})
+  await page.getByRole("button",{name:"Capture photo",exact:true}).click()
+  await page.getByRole("img",{name:"Captured attendance photo preview",exact:true}).waitFor()
+  await page.getByRole("button",{name:"Retake photo",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2)
+  await page.getByRole("button",{name:"Capture photo",exact:true}).click()
+  await page.getByRole("button",{name:"Use photo",exact:true}).click()
+  assert(await page.evaluate(()=>window.__attendanceTestStream.getTracks().every(track=>track.readyState==='ended')), "Camera tracks stop after capture/close")
+  await duty.getByRole("img",{name:"Attendance photo ready to submit",exact:true}).waitFor()
   await duty.getByRole("button",{name:"Time In with GPS",exact:true}).click()
   await duty.getByRole("button",{name:"Time Out with GPS",exact:true}).waitFor()
-  await duty.getByLabel("Attendance photo for Current gate duty",{exact:true}).setInputFiles(punchPhoto)
+  await duty.getByRole("button",{name:"Open camera",exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2)
+  await page.getByRole("button",{name:"Capture photo",exact:true}).click()
+  await page.getByRole("button",{name:"Use photo",exact:true}).click()
   await duty.getByRole("button",{name:"Time Out with GPS",exact:true}).click()
   await page.getByText("Check-out recorded successfully.",{exact:true}).waitFor()
   await page.getByRole("button",{name:"Send Current Location",exact:true}).click()
