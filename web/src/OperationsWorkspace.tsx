@@ -309,7 +309,7 @@ export default function OperationsWorkspace({
           ["dashboard", "Overview"],
           ...catalog.map((m) => [m.key, m.label]),
           ["attendance", "Attendance"],
-          ["gps", "Location check-ins"],
+          ["gps", "Location & geofencing"],
           ["notifications", "Notifications"],
           ["reports", "Reports"],
           ...(role === "operations" ? [["audit", "Audit log"]] : []),
@@ -617,6 +617,7 @@ export default function OperationsWorkspace({
                 </div>
               </form>
             )}
+            {section === "gps" && <p className="ops-empty">Latest shared GPS samples with site boundary status. Uncertain means GPS accuracy cannot confirm the boundary. Updates appear when a guard shares a check-in.</p>}
             <div className="ops-records">
               {rows
                 .filter((r) =>
@@ -1005,6 +1006,7 @@ export default function OperationsWorkspace({
                   <h3>{s.name}</h3>
                   <p>{s.client_name || "No client set"}</p>
                   <p>Required guards: {s.required_guards || 1}</p>
+                  <p>{s.latitude != null && s.longitude != null ? `Geofence: ${s.radius_m} m radius · ${s.latitude}, ${s.longitude}` : "Geofence not configured"}</p>
                   <button
                     onClick={() =>
                       setSiteDraft({

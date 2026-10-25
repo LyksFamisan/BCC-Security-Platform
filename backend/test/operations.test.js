@@ -172,6 +172,23 @@ test("TOR workflows persist across clients, enforce scope, geofence, concurrency
       location: { latitude: 14.55, longitude: 121.02, accuracy: 5 },
     })
     assert.equal((await ok("supervisor", "/operations/gps")).length, 1)
+    assert.equal((await ok("supervisor", "/operations/gps"))[0].data.geofence_status, "Inside")
+    const outside = await ok("guard", "/location/check-in", {
+      site_id: site1,
+      location: { latitude: 14.56, longitude: 121.02, accuracy: 5 },
+    })
+    assert.equal(outside.data.geofence_status, "Outside")
+    assert(outside.data.distance_m > outside.data.radius_m)
+    assert((await ok("supervisor", "/notifications")).some(a => a.key === "geofence:" + outside.id))
+    assert(!(await ok("guard2", "/notifications")).some(a => a.key === "geofence:" + outside.id))
+    const uncertain = await ok("guard", "/location/check-in", {
+      site_id: site1,
+      location: { latitude: 14.55, longitude: 121.02, accuracy: 500 },
+    })
+    assert.equal(uncertain.data.geofence_status, "Uncertain")
+    assert(!(await ok("supervisor", "/notifications")).some(a => a.key.startsWith("geofence:")), "newer uncertain sample clears previous boundary alert")
+    assert.equal((await call("guard2", "/location/check-in", {site_id:site1,location:{latitude:14.55,longitude:121.02,accuracy:5}})).status,403)
+
     const equipment = await ok(
       "operations",
       "/operations/equipment",

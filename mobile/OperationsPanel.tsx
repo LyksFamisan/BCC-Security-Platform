@@ -126,9 +126,9 @@ export default function OperationsPanel({
     setError("")
     setNotice("")
     try {
-      await fn()
+      const result = await fn()
       setRev((v) => v + 1)
-      setNotice("Saved")
+      setNotice(result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
       setDraft(null)
     } catch (e) {
       setError((e as Error).message)

@@ -592,6 +592,17 @@ export function mountOperations(app, pool, notify) {
     )
     await siteAccess(req.user, d.site_id)
     const row = await transaction(async (c) => {
+      const settings = (await c.query("SELECT * FROM site_settings WHERE site_id=$1", [d.site_id])).rows[0]
+      let geofence = { geofence_status: "Not configured", distance_m: null, radius_m: null }
+      if (settings?.latitude != null && settings?.longitude != null) {
+        const distance = haversine(settings.latitude, settings.longitude, d.location.latitude, d.location.longitude)
+        const accuracy = d.location.accuracy
+        geofence = {
+          geofence_status: accuracy > Math.min(settings.radius_m, 100) ? "Uncertain" : distance + accuracy <= settings.radius_m ? "Inside" : distance - accuracy > settings.radius_m ? "Outside" : "Uncertain",
+          distance_m: Math.round(distance),
+          radius_m: settings.radius_m,
+        }
+      }
       const r = (
         await c.query(
           "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'gps',$2,$3,$3,$4) RETURNING *",
@@ -601,6 +612,7 @@ export function mountOperations(app, pool, notify) {
             req.user.id,
             JSON.stringify({
               ...d.location,
+              ...geofence,
               recorded_at: new Date().toISOString(),
             }),
           ],
@@ -646,6 +658,18 @@ export function mountOperations(app, pool, notify) {
       alerts = []
     function add(key, title, site, subject = null) {
       alerts.push({ key, title, site_id: site, subject_id: subject })
+    }
+    // Only the latest recent sample per guard/site can raise a boundary alert.
+    const latestLocations = new Map()
+    for (const point of data.records.gps) {
+      const key = point.subject_id + ":" + point.site_id
+      if (!latestLocations.has(key) || +new Date(point.data.recorded_at) > +new Date(latestLocations.get(key).data.recorded_at)) latestLocations.set(key, point)
+    }
+    for (const point of latestLocations.values()) {
+      const age = now - +new Date(point.data.recorded_at)
+      const onDuty = data.records.shifts.some(s => s.subject_id === point.subject_id && s.site_id === point.site_id && s.data.status !== "Cancelled" && +new Date(s.data.start) <= now && +new Date(s.data.end) > now && !data.records.attendance.some(a => a.data.shift_id === s.id && a.data.event === "out"))
+      if (point.data.geofence_status === "Outside" && age >= 0 && age < 15 * 60000 && onDuty)
+        add("geofence:" + point.id, `Outside site boundary: ${point.subject_name || "Guard"} · ${point.site_name}`, point.site_id, point.subject_id)
     }
     for (const shift of data.records.shifts) {
       if (shift.data.status === "Cancelled") continue
