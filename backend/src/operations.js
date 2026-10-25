@@ -509,6 +509,15 @@ export function mountOperations(app, pool, notify) {
     res.json(row)
   })
   const attendanceUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3145728, files: 1 } }).single("photo")
+  app.get("/attendance/:id/photo", async (req, res) => {
+    const id = valid(uuid, req.params.id)
+    const record = (await pool.query("SELECT * FROM operational_records WHERE id=$1 AND kind='attendance'", [id])).rows[0]
+    if (!record || !record.data.photo_key) problem(404, "Photo not found")
+    if (req.user.role !== "admin") await siteAccess(req.user, record.site_id)
+    if (req.user.role === "guard" && record.subject_id !== req.user.id) problem(403, "Access denied")
+    const bytes = await fileStore(pool).read("attendance/" + record.data.photo_key)
+    res.set({ "Content-Type": "image/jpeg", "Cache-Control": "private, no-store" }).send(decodePhoto(bytes))
+  })
   app.post("/attendance", attendanceUpload, async (req, res) => {
     role(req, ["guard"])
     const d = valid(attendanceSchema, { shift_id: req.body.shift_id, event: req.body.event, latitude: Number(req.body.latitude), longitude: Number(req.body.longitude), accuracy: Number(req.body.accuracy) })
