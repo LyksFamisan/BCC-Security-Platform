@@ -58,6 +58,7 @@ export default function OperationsPanel({
 }) {
   const s=useThemedStyles(baseStyles)
   const {dark}=useTheme()
+  const [selfiePreview,setSelfiePreview]=useState<string|null>(null)
   const [photoRecord,setPhotoRecord]=useState<string|null>(null)
   const [section, setSection] = useState("shifts"),
     [catalog, setCatalog] = useState<Module[]>([]),
@@ -163,6 +164,20 @@ export default function OperationsPanel({
       if(mounted.current) setGpsState("GPS unavailable · retry")
       throw error
     }
+  }
+  async function previewCamera() {
+    if(running.current) return
+    running.current=true;setBusy(true);setError("");setNotice("")
+    try {
+      const permission=await ImagePicker.requestCameraPermissionsAsync()
+      if(!permission.granted) throw Error("Camera permission is required. Open phone Settings → Apps → Expo Go → Permissions → Camera and allow access.")
+      const result=await ImagePicker.launchCameraAsync({mediaTypes:["images"],cameraType:ImagePicker.CameraType.front,quality:0.7,allowsEditing:false})
+      if(!result.canceled && mounted.current) {
+        setSelfiePreview(result.assets[0].uri)
+        setNotice("Camera ready. To record attendance, use Time In or Time Out on your assigned shift below. A fresh selfie and GPS are required.")
+      }
+    } catch(e) {if(mounted.current)setError((e as Error).message)}
+    finally {running.current=false;if(mounted.current)setBusy(false)}
   }
   async function punch(shift: Row, event: string) {
     await run(async () => {
@@ -306,6 +321,8 @@ export default function OperationsPanel({
           <Text style={{color:"#fff",fontSize:26,fontWeight:"800"}}>Your shift, verified.</Text>
           <Text accessibilityLiveRegion="polite" style={{color:"#c8d8ec",fontSize:14}}>{gpsState || "Enable Location · Capture photo · Record attendance"}</Text>
           {gps && <Text style={{color:"#c8d8ec",fontSize:12}}>{gps.latitude.toFixed(6)}, {gps.longitude.toFixed(6)} · ±{Math.round(gps.accuracy)} m</Text>}
+          <Pressable accessibilityRole="button" accessibilityLabel="Open selfie camera" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void previewCamera()}><Text style={s.white}>Open selfie camera</Text></Pressable>
+          {selfiePreview && <View style={{gap:8}}><Image source={{uri:selfiePreview}} accessibilityLabel="Selfie camera preview, not submitted as attendance" style={{width:"100%",height:220,borderRadius:16}} resizeMode="contain"/><Text style={{color:"#c8d8ec",fontSize:12}}>Camera preview · attendance not recorded</Text><Pressable accessibilityRole="button" onPress={()=>setSelfiePreview(null)}><Text style={{color:"#ffa765"}}>Clear preview</Text></Pressable></View>}
           <Pressable accessibilityRole="button" disabled={busy} style={[s.button,busy && s.disabled]} onPress={()=>void run(async()=>{await position();return {gps_checked:true}})}><Text style={s.white}>{busy ? "Getting location…" : "Check GPS & geofence"}</Text></Pressable>
           <Pressable accessibilityRole="button" style={{padding:10,alignItems:"center"}} onPress={()=>{void (Platform.OS === "android" ? Linking.sendIntent("android.settings.LOCATION_SOURCE_SETTINGS") : Linking.openSettings()).catch(()=>setError("Open phone settings and enable Location/GPS and precise location permission."))}}><Text style={{color:"#e1ebfb",fontSize:13,fontWeight:"600"}}>Open Location settings</Text></Pressable>
         </View>
