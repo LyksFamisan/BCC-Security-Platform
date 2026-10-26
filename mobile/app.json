@@ -7,7 +7,7 @@
     "android": {
       "package": "com.bcc.demo.guard",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/BCC_logo.jpg",
+        "foregroundImage": "./assets/BCC_icon.png",
         "backgroundColor": "#ffffff"
       }
     },
@@ -18,7 +18,7 @@
         {
           "photosPermission": "Choose an incident evidence photo.",
           "microphonePermission": false,
-          "cameraPermission": "Take a photo for an incident report."
+          "cameraPermission": "Take a selfie for Time In and Time Out, or a photo for an incident report."
         }
       ],
       [
@@ -26,11 +26,12 @@
         {
           "locationWhenInUsePermission": "Verify your location for duty attendance and GPS check-ins."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "userInterfaceStyle": "light",
     "backgroundColor": "#f4fbff",
-    "icon": "./assets/BCC_logo.jpg",
+    "icon": "./assets/BCC_icon.png",
     "ios": {
       "bundleIdentifier": "com.bcc.demo.guard"
     },

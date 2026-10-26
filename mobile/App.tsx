@@ -3,7 +3,6 @@ import {
   AppState,
   Alert,
   Modal,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import {
   RefreshControl,
   Image,
 } from "react-native"
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
 import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
 import {ThemeProvider,ThemeToggle,TechBackground,useTheme,useThemedStyles} from "./Theme"
@@ -39,7 +39,7 @@ type Report = {
   version: number
   created_at?:string
 }
-export default function Root() {return <ThemeProvider><App/></ThemeProvider>}
+export default function Root() {return <SafeAreaProvider><ThemeProvider><App/></ThemeProvider></SafeAreaProvider>}
 function App() {
   const styles=useThemedStyles(baseStyles)
   const {dark}=useTheme()
@@ -387,7 +387,7 @@ function App() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <StatusBar barStyle={dark?"light-content":"dark-content"} backgroundColor={dark?"#07172B":"#EFF6FF"} />
+      <StatusBar barStyle={dark?"light-content":"dark-content"} />
       {!ready ? (
         <View style={styles.loading}>
           <ActivityIndicator color="#2563EB" />
@@ -940,7 +940,6 @@ const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#EFF6FF",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   flex: { flex: 1 },
   page: { padding: 20, paddingBottom: 24, gap: 16 },
