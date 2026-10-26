@@ -81,3 +81,11 @@ html[data-bcc-theme=light] .connected.auth-screen .login .password-eye{color:#36
 
 .connected.auth-screen>header h1.login-brand-art{aspect-ratio:1024/223;overflow:hidden;border-radius:14px}
 .login-brand-art img{height:100%;object-fit:cover;object-position:center}
+/* Transparent brand artwork blends into the page without a blue panel. */
+.connected.auth-screen>header h1.login-brand-art{aspect-ratio:auto;overflow:visible;border-radius:0}
+.login-brand-art img{height:auto;object-fit:contain;border-radius:0;box-shadow:none;filter:drop-shadow(0 3px 7px #0007)}
+
+.connected.auth-screen>header h1.login-brand-art{aspect-ratio:1024/223;overflow:hidden}
+.login-brand-art img{height:100%;object-fit:cover}
+
+.login-brand-fallback{display:flex;align-items:center;justify-content:center;gap:22px;height:100%;font:750 clamp(20px,3vw,42px)/1.2 Inter,system-ui,sans-serif;color:#ff963f;text-shadow:0 2px 6px #0008}.login-brand-fallback>span{display:flex;gap:10px;flex-shrink:0}.login-brand-art .login-brand-fallback img{width:clamp(44px,6vw,85px);height:clamp(44px,6vw,85px);object-fit:contain;border-radius:12px;background:white;filter:none}.login-brand-fallback strong{max-width:550px}@media(max-width:600px){.login-brand-fallback{gap:12px;font-size:19px}.login-brand-fallback>span{gap:5px}}

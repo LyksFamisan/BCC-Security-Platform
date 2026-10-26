@@ -33,6 +33,7 @@ type Incident = {
   photo_key: string
 }
 export default function ConnectedApp() {
+  const [brandArtworkFailed,setBrandArtworkFailed]=useState(false)
   const [session, setSession] = useState<{ token: string; user: User } | null>(
       null,
     ),
@@ -211,7 +212,7 @@ export default function ConnectedApp() {
   return (
     <div className={"connected"+(!session?" auth-screen":"")}>
       <header>
-        {!session ? <h1 className="login-brand-art"><img src="/assets/cat-security-brand-transparent.webp" alt="BCC / CAT Security Services Platform" /></h1> : <>
+        {!session ? <h1 className="login-brand-art">{brandArtworkFailed?<span className="login-brand-fallback"><span><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></span><strong>CAT Security Services Platform</strong></span>:<img src="/assets/cat-security-brand-transparent.webp" alt="BCC / CAT Security Services Platform" onError={()=>setBrandArtworkFailed(true)}/>}</h1> : <>
         <div className="auth-brand"><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></div>
         <h1>CAT Security Services Platform</h1>
         </>}

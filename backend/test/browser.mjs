@@ -129,7 +129,16 @@ try {
 
   await page.getByRole("switch",{name:"Dark mode",exact:true}).click()
   await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
+  await page.getByRole('img',{name:'BCC / CAT Security Services Platform',exact:true}).waitFor()
+  await page.waitForFunction(()=>{const img=document.querySelector('.login-brand-art>img');return img&&img.complete&&img.naturalWidth>0})
   await page.screenshot({path:"/tmp/bcc-theme-dark-login.png",fullPage:true})
+  const fallbackPage=await browser.newPage()
+  await fallbackPage.route('**/assets/cat-security-brand-transparent.webp',route=>route.abort())
+  await fallbackPage.goto('http://127.0.0.1:9843')
+  await fallbackPage.locator('.login-brand-fallback strong').waitFor()
+  assert.equal(await fallbackPage.locator('.login-brand-fallback strong').textContent(),'CAT Security Services Platform')
+  await fallbackPage.close()
+
   await page.reload()
   await page.waitForFunction(()=>document.documentElement.dataset.bccTheme==="dark")
   assert.equal(await page.getByRole("switch",{name:"Dark mode",exact:true}).getAttribute("aria-checked"),"true","Theme survives refresh")
