@@ -3,7 +3,7 @@ import {ActivityIndicator, Image, Modal, Pressable, Text, View, Linking} from "r
 import {CameraView, useCameraPermissions} from "expo-camera"
 import {SafeAreaView} from "react-native-safe-area-context"
 import type {GpsPosition} from "./gps"
-export type AttendanceCapture = {event:string;site:string;post:string;coords:GpsPosition|null;gpsError?:string}
+export type AttendanceCapture = {event:string;site:string;post:string;coords:GpsPosition|null;gpsError?:string;geofenceStatus?:string}
 export default function AttendanceCamera({capture,onDone,onCancel,onRetryGps}:{capture:AttendanceCapture|null;onDone:(uri:string)=>void;onCancel:()=>void;onRetryGps:()=>void}) {
   const camera=useRef<CameraView>(null)
   const [permission,requestPermission]=useCameraPermissions()
@@ -26,9 +26,9 @@ export default function AttendanceCamera({capture,onDone,onCancel,onRetryGps}:{c
         <Text style={{color:"#ffa765",fontWeight:"800"}}>{capture?.event==="out"?"TIME OUT":"TIME IN"} · {new Date(now).toLocaleString("en-PH",{timeZone:"Asia/Manila"})}</Text>
         <Text style={{color:"white"}}>{capture?.site} · {capture?.post}</Text>
         <Text style={{color:"white"}}>GPS {capture.coords ? `${capture.coords.latitude.toFixed(6)}, ${capture.coords.longitude.toFixed(6)}` : "Getting precise location…"}</Text>
-        <Text style={{color:"#c8d8ec"}}>{capture.coords ? `Accuracy ±${Math.round(capture.coords.accuracy)} m · Inside site geofence` : capture.gpsError || "Checking GPS and site boundary…"}</Text>
+        <Text style={{color:"#c8d8ec"}}>{capture.coords ? `Accuracy ±${Math.round(capture.coords.accuracy)} m · ${capture.geofenceStatus==="Not configured" ? "Geofence not configured" : "Inside site geofence"}` : capture.gpsError || "Checking GPS and site boundary…"}</Text>
       </View>
     </View>}
-    <View style={{padding:16,gap:10}}>{!!capture.gpsError&&<><Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{capture.gpsError}</Text>{button("Retry GPS & geofence",onRetryGps)}</>}{!!error&&<Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{error}</Text>}{permission?.granted&&(photo ? <>{button("Use selfie & submit attendance",()=>onDone(photo),!capture.coords)}{button("Retake selfie",()=>{setPhoto(null);setReady(false)})}</> : button(taking?"Capturing…":"Capture selfie",()=>void take(),!ready||taking))}{button("Cancel",onCancel,taking)}<Text style={{color:"#b7c9df",fontSize:12,textAlign:"center"}}>Saved photo includes server timestamp and verified GPS location.</Text></View>
+    <View style={{padding:16,gap:10}}>{!!capture.gpsError&&<><Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{capture.gpsError}</Text>{button("Retry GPS & geofence",onRetryGps)}</>}{!!error&&<Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{error}</Text>}{permission?.granted&&(photo ? <>{button("Use selfie & submit attendance",()=>onDone(photo),!capture.coords)}{button("Retake selfie",()=>{setPhoto(null);setReady(false)})}</> : button(taking?"Capturing…":"Capture selfie",()=>void take(),!ready||taking))}{button("Cancel",onCancel,taking)}<Text style={{color:"#b7c9df",fontSize:12,textAlign:"center"}}>Saved photo includes server timestamp, GPS and geofence status.</Text></View>
   </SafeAreaView></Modal>
 }

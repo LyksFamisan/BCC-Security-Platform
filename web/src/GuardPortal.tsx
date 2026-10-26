@@ -133,8 +133,8 @@ export default function GuardPortal() {
       if(event==="in" && (Date.now()<+new Date(assigned.data.start)-30*60000 || Date.now()>+new Date(assigned.data.end)))throw Error("Time In opens 30 minutes before duty until shift end")
       const gps = await getPosition()
       const shift=shifts.find(s=>s.id===shiftId), boundary=siteFence(gps,sites.find(s=>s.id===shift?.site_id))
-      if(boundary.status === "Not configured")throw Error("Your site boundary is not configured. Ask Admin to set the actual site location in Sites & geofences.")
-      if(boundary.status !== "Inside")throw Error(boundary.status === "Outside" ? "You are outside the site boundary. Move to your assigned post and retry." : "GPS cannot confirm the boundary. Move closer to the site centre or improve GPS accuracy, then retry.")
+      if(boundary.status === "Not configured" && gps.accuracy>100)throw Error("Location accuracy is too low. Move outdoors and retry.")
+      if(!["Inside","Not configured"].includes(boundary.status))throw Error(boundary.status === "Outside" ? "You are outside the site boundary. Move to your assigned post and retry." : "GPS cannot confirm the boundary. Move closer to the site centre or improve GPS accuracy, then retry.")
       const form=new FormData()
       for(const [key,value] of Object.entries({id:crypto.randomUUID(),shift_id:shiftId,event,latitude:gps.latitude,longitude:gps.longitude,accuracy:gps.accuracy})) form.append(key,String(value))
       form.append("photo",attendancePhoto.file)
@@ -208,7 +208,7 @@ export default function GuardPortal() {
           {tab === "resources" && <GuardResources key={session.token} request={request}/>}
           {tab === "duty" && <>
             <section className="guard-statgrid"><div><small>Assigned Shifts</small><strong>{shifts.length}</strong></div><div><small>Duty Status</small><strong>{active > 0 ? "On Duty" : "Off Duty"}</strong></div></section>
-            <section className="guard-geofence-status"><div><small>LOCATION & SITE BOUNDARY</small><h2>{currentSite?.name || "Assigned site"}</h2><p aria-label="Geofence status">{boundary.status}{boundary.distance!=null ? ` · ${boundary.distance} m from centre` : ""}</p><span>{currentSite?.radius_m || "—"} m radius{gpsFix ? ` · GPS ±${Math.round(gpsFix.accuracy)} m` : ""}</span></div>{boundary.status === "Not configured" && <p className="guard-error">Admin must set the actual site coordinates before attendance can be recorded.</p>}</section>
+            <section className="guard-geofence-status"><div><small>LOCATION & SITE BOUNDARY</small><h2>{currentSite?.name || "Assigned site"}</h2><p aria-label="Geofence status">{boundary.status}{boundary.distance!=null ? ` · ${boundary.distance} m from centre` : ""}</p><span>{currentSite?.radius_m || "—"} m radius{gpsFix ? ` · GPS ±${Math.round(gpsFix.accuracy)} m` : ""}</span></div>{boundary.status === "Not configured" && <p className="guard-error">Attendance can be submitted with selfie and GPS. The record will show Geofence not configured.</p>}</section>
             <h2>My Duty Schedule</h2>
             {shifts.length === 0 ? <div className="guard-card">No shifts assigned. Contact your supervisor to set up your duty schedule.</div> : shifts.map(shift => {
               const events = attendance.filter(a => a.data.shift_id === shift.id)

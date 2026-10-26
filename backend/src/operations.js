@@ -581,32 +581,24 @@ export function mountOperations(app, pool, notify) {
           shift.site_id,
         ])
       ).rows[0]
-      if (
-        !settings ||
-        settings.latitude === null ||
-        settings.longitude === null
-      )
-        problem(409, "Administrator must configure the site geofence")
-      if (d.accuracy > Math.min(settings.radius_m, 100))
-        problem(400, "Location accuracy is too low. Try again outdoors")
-      const distance = haversine(
-        settings.latitude,
-        settings.longitude,
-        d.latitude,
-        d.longitude,
-      )
-      if (distance > settings.radius_m)
-        problem(403, "You are outside the assigned site geofence")
+      const hasGeofence=!!settings && settings.latitude != null && settings.longitude != null
+      if(d.accuracy > (hasGeofence ? Math.min(settings.radius_m,100) : 100))
+        problem(400,"Location accuracy is too low. Try again outdoors")
+      const distance=hasGeofence ? haversine(settings.latitude,settings.longitude,d.latitude,d.longitude) : null
+      if(hasGeofence && distance > settings.radius_m)
+        problem(403,"You are outside the assigned site geofence")
+      const geofence_status=hasGeofence ? "Inside" : "Not configured"
+      const geofence_label=hasGeofence ? `Inside site geofence · ${Math.round(distance)} m from centre · radius ${settings.radius_m} m` : "Geofence not configured · GPS location captured"
       const recorded_at=new Date().toISOString(), photo_id=randomUUID()
       const siteName=(await c.query("SELECT name FROM sites WHERE id=$1",[shift.site_id])).rows[0]?.name || "Assigned site"
       const location_label=siteName+" · "+shift.data.post
       const xml=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]))
       const width=(await sharp(source).metadata()).width
-      const stamp=`<svg width="${width}" height="144"><rect width="100%" height="100%" fill="#071a2c"/><g fill="white" font-family="sans-serif" font-size="18"><text x="16" y="28">${d.event === "in" ? "TIME IN" : "TIME OUT"} · ${new Date(recorded_at).toLocaleString("en-PH",{timeZone:"Asia/Manila",hour12:false})} (Asia/Manila)</text><text x="16" y="58">GPS ${d.latitude.toFixed(6)}, ${d.longitude.toFixed(6)} · accuracy ±${Math.round(d.accuracy)} m</text><text x="16" y="88">${xml(location_label.slice(0,90))}</text><text x="16" y="120">Inside site geofence · ${Math.round(distance)} m from centre · radius ${settings.radius_m} m</text></g></svg>`
+      const stamp=`<svg width="${width}" height="144"><rect width="100%" height="100%" fill="#071a2c"/><g fill="white" font-family="sans-serif" font-size="18"><text x="16" y="28">${d.event === "in" ? "TIME IN" : "TIME OUT"} · ${new Date(recorded_at).toLocaleString("en-PH",{timeZone:"Asia/Manila",hour12:false})} (Asia/Manila)</text><text x="16" y="58">GPS ${d.latitude.toFixed(6)}, ${d.longitude.toFixed(6)} · accuracy ±${Math.round(d.accuracy)} m</text><text x="16" y="88">${xml(location_label.slice(0,90))}</text><text x="16" y="120">${geofence_label}</text></g></svg>`
       const image=await sharp(source).extend({bottom:144,background:"#071a2c"}).composite([{input:Buffer.from(stamp),gravity:"south"}]).jpeg({quality:85}).toBuffer()
       storedPhoto="evidence/"+photo_id+".jpg"
       await fileStore(c).write(storedPhoto,encodePhoto(image))
-      const data = {...d,cycle,location_label,recorded_at,distance_m:Math.round(distance),radius_m:settings.radius_m,geofence_status:"Inside",photo_id}
+      const data = {...d,cycle,location_label,recorded_at,distance_m:distance===null?null:Math.round(distance),radius_m:hasGeofence?settings.radius_m:null,geofence_status,photo_id}
       const r = (
         await c.query(
           "INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'attendance_punch',$2,$3,$3,$4) RETURNING *",

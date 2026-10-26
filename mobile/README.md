@@ -12,6 +12,6 @@ npx expo start --tunnel --clear
 
 Scan the new QR in Expo Go. Keep the terminal running. This folder is the Guard app; mobile-supervisor is a separate app and has its own SDK version. Updating Vercel does not update a previously downloaded ZIP or a running Metro server.
 
-Sign in with a Guard account, open Attendance, and tap Time In · Camera + GPS on a valid assigned shift. Allow camera and precise foreground location. Time Out captures a new selfie and GPS fix. Attendance requires an internet connection, configured site geofence, and an assigned shift. Time In opens 30 minutes before duty through shift end.
+Sign in with a Guard account, open Attendance, and tap Time In · Camera + GPS on a valid assigned shift. Allow camera and precise foreground location. Time Out captures a new selfie and GPS fix. Attendance requires an internet connection, accurate GPS, a selfie and an assigned shift. If the site has no configured geofence, attendance is accepted and labeled Not configured; configured boundaries remain enforced. Time In opens 30 minutes before duty through shift end.
 
 Validation: npm run typecheck; npx expo-doctor; npx expo export --platform android. A bundle export does not replace physical-device camera/GPS testing.

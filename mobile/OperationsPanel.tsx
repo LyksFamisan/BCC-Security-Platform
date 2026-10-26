@@ -176,10 +176,10 @@ export default function OperationsPanel({
     try {
       const coords=await position()
       const fence=geofenceStatus(coords,boundary)
-      if(fence.status==="Not configured")throw Error("Site geofence not configured. Ask your administrator to set the actual site location.")
+      if(fence.status==="Not configured" && coords.accuracy>100)throw Error("Location accuracy is too low. Move outdoors and retry.")
       if(fence.status==="Outside")throw Error("You are outside your assigned site geofence.")
       if(fence.status==="Uncertain")throw Error("GPS cannot confirm the boundary. Move outdoors or nearer the site centre and retry.")
-      if(mounted.current && session===cameraResult.current)setCameraCapture(current=>current?{...current,coords,gpsError:undefined}:null)
+      if(mounted.current && session===cameraResult.current)setCameraCapture(current=>current?{...current,coords,geofenceStatus:fence.status,gpsError:undefined}:null)
     } catch(e) {
       if(mounted.current && session===cameraResult.current)setCameraCapture(current=>current?{...current,coords:null,gpsError:(e as Error).message}:null)
     }
