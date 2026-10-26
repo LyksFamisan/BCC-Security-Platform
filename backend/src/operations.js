@@ -1088,7 +1088,8 @@ export function mountOperations(app, pool, notify) {
         })
         .strict(),
       Object.fromEntries(
-        Object.entries(req.query).filter(([k]) => !["kind","format"].includes(k)),
+        // Vercel can append its catch-all routing parameter to the query. It is not a report filter.
+        Object.entries(req.query).filter(([k]) => !["kind","format","path"].includes(k)),
       ),
     )
     if(filters.from&&filters.to&&+new Date(filters.from)>+new Date(filters.to))problem(400,"From date must be before To date")

@@ -131,12 +131,13 @@ test("All operational reports export readable PDF/CSV with scope, validation and
     const plan=await buildDemoFixtures([{id:users.operations,role:'operations'},{id:users.guard,role:'guard'}])
     for(const sql of plan.sql)await db.exec(sql)
     for(const report of Object.keys(reportNames))for(const format of ['csv','pdf']){
-      const response=await call('operations','/reports/export?kind='+report+'&format='+format)
+      const response=await call('operations','/reports/export?path=reports%2Fexport&kind='+report+'&format='+format)
       assert.equal(response.status,200,report+' '+format+': '+await response.clone().text())
       assert(response.headers.get('content-disposition').includes(report+'.'+format))
       if(format==='pdf'){assert(response.headers.get('content-type').includes('application/pdf'));assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,5).toString(),'%PDF-')}
       else{assert(response.headers.get('content-type').includes('text/csv'));const csv=await response.text();assert(!csv.includes('"details"'),'Readable columns replace opaque JSON')}
     }
+    assert.equal((await call('operations','/reports/export?kind=attendance&unexpected_filter=1')).status,400,'Unknown business filters still rejected')
     const incidentCsv=await call('supervisor','/reports/export?kind=incidents');assert(!(await incidentCsv.text()).includes('[DEMO]'),'Supervisor cannot export unassigned demo sites')
     assert.equal((await call('guard','/reports/export?kind=incidents&format=pdf')).status,403)
     assert.equal((await call('admin','/reports/export?kind=equipment&format=pdf')).status,403)
