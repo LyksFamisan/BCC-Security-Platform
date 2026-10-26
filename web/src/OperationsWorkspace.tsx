@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef, lazy, Suspense, type FormEvent } from "react"
+import { useEffect, useState, useRef, lazy, Suspense, Fragment, type FormEvent } from "react"
 import "./operations.css"
+import {NCR_CITIES, INVENTORY_REGIONS, equipmentCategory, matchesEquipment} from "./equipmentCategories"
 import IncidentIcon from "./IncidentIcon"
 import IncidentTrend from "./IncidentTrend"
 const GeofenceMap = lazy(() => import("./GeofenceMap"))
@@ -34,6 +35,7 @@ const labels: Record<string, string> = {
   incidents:'Incident reports',open_incidents:'Unresolved incidents',on_duty:'Guards on duty now',scheduled:'Active duty schedules',equipment:'Equipment items',issued_equipment:'Equipment currently issued',overdue_incidents:'Incidents past target time',attendance_today:'Time In / Out events today',resolved_incidents:'Resolved incidents',sla_met:'Resolved within target time',scheduled_hours:'Scheduled hours (all dates)',recorded_hours:'Recorded hours (all dates)',
   shifts:'Duty schedules',attendance:'Time In / Time Out',assignments:'Equipment issued to guards',maintenance:'Equipment maintenance',defects:'Equipment fault reports',actions:'Corrective and preventive actions',escalations:'Escalated cases',training:'Training records',certifications:'Licenses and certifications',assessments:'Guard assessments',gps:'Shared GPS locations',
 
+  location_region: "Region", location_city: "City / municipality",
   billing: "Attendance hours (billing review)",
   start: "Start",
   end: "End",
@@ -71,6 +73,9 @@ export default function OperationsWorkspace({
   request: Request
   onIncidents: () => void
 }) {
+  const [equipmentRows,setEquipmentRows]=useState<Row[]>([])
+  const [equipmentFilters,setEquipmentFilters]=useState({region:"",city:"",site:"",category:"",status:""})
+  const [equipmentGroup,setEquipmentGroup]=useState("region")
   const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({})
   const [attendancePhotoUrl,setAttendancePhotoUrl]=useState<string|null>(null)
   useEffect(()=>()=>{if(attendancePhotoUrl)URL.revokeObjectURL(attendancePhotoUrl)},[attendancePhotoUrl])
@@ -115,7 +120,14 @@ export default function OperationsWorkspace({
   const [accountDraft, setAccountDraft] = useState<any>(null),
     [siteDraft, setSiteDraft] = useState<any>(null)
   const preferencesLoaded = useRef(false)
+  useEffect(()=>{setEquipmentFilters({region:"",city:"",site:"",category:"",status:""});setSearch("")},[section])
   const module = catalog.find((m) => m.key === section)
+  const categorizedEquipment=section === "equipment" || section === "assignments"
+  const assetRows=section === "equipment" ? rows : equipmentRows
+  const metadata=(row:Row)=>equipmentCategory(row,assetRows,section==="assignments")
+  const groupName=(row:Row)=>equipmentGroup==="site" ? row.site_name || "Uncategorized" : metadata(row)[equipmentGroup as "region"|"city"|"category"|"status"]
+  const visibleRows=rows.filter(row=>(!categorizedEquipment || matchesEquipment(row,assetRows,section==="assignments",equipmentFilters)) && (JSON.stringify(row)+JSON.stringify(categorizedEquipment?metadata(row):{})).toLowerCase().includes(search.toLowerCase())).sort((a,b)=>categorizedEquipment ? groupName(a).localeCompare(groupName(b)) || String(a.site_name).localeCompare(String(b.site_name)) : 0)
+
   const json = async (url: string, options?: RequestInit) =>
     (await request(url, options)).json()
   const send = (url: string, data: object, method = "POST") =>
@@ -192,6 +204,7 @@ export default function OperationsWorkspace({
               json("/incidents"),
             ])
             if (active) {
+              setEquipmentRows(eq)
               setAssets(
                 eq.map((r: Row) => ({
                   id: r.id,
@@ -475,6 +488,14 @@ export default function OperationsWorkspace({
                 </button>
               )}
             </div>
+            {categorizedEquipment && <section className="ops-panel equipment-categories" aria-label="Equipment categories">
+              <div className="ops-heading"><h3>{section==="equipment" ? "Inventory categories" : "Accountability categories"}</h3><span>{visibleRows.length} of {rows.length} records</span></div>
+              <div className="equipment-filter-grid">{([['region','Region'],['city','City / municipality'],['site','Site'],['category','Equipment category'],['status',section==='assignments'?'Accountability status':'Equipment status']] as const).map(([key,name])=>{
+                const options=key==='site' ? sites.map(site=>({value:site.id,name:site.name})) : [...new Set([...rows.filter(row=>!equipmentFilters.region || metadata(row).region===equipmentFilters.region).map(row=>metadata(row)[key]),...(key==='region'?INVENTORY_REGIONS: key==='city'&&equipmentFilters.region==='NCR'?NCR_CITIES:[])])].sort().map(value=>({value,name:value}))
+                return <label key={key}>{name}<select aria-label={'Filter equipment '+key} value={equipmentFilters[key]} onChange={e=>setEquipmentFilters({...equipmentFilters,[key]:e.target.value,...(key==='region'?{city:''}:{})})}><option value="">All {name.toLowerCase()}</option>{options.map(option=><option key={option.value} value={option.value}>{option.name}</option>)}</select></label>
+              })}<label>Group by<select aria-label="Group equipment by" value={equipmentGroup} onChange={e=>setEquipmentGroup(e.target.value)}>{[['region','Region'],['city','City / municipality'],['site','Site'],['category','Equipment category'],['status','Status']].map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label></div>
+              <button onClick={()=>{setEquipmentFilters({region:'',city:'',site:'',category:'',status:''});setSearch('')}}>Clear filters</button>
+            </section>}
             {module && Object.keys(draft).length > 0 && (
               <form className="ops-panel ops-form" onSubmit={saveRecord}>
                 <h3>{editing ? "Edit record" : "New record"}</h3>
@@ -531,6 +552,7 @@ export default function OperationsWorkspace({
                           : k === "incident_id"
                             ? incidents
                             : null
+                    if(section==="equipment" && ["location_region","location_city"].includes(k)) return <label key={k}>{label(k)}{k==="location_region" ? <select aria-label="Equipment region" value={draft[k] || ""} onChange={e=>setDraft({...draft,location_region:e.target.value,location_city:""})}><option value="">Uncategorized</option>{INVENTORY_REGIONS.map(region=><option key={region}>{region}</option>)}</select> : draft.location_region==="NCR" ? <select aria-label="Equipment city" value={draft[k] || ""} onChange={e=>setDraft({...draft,[k]:e.target.value})}><option value="">Choose city / municipality</option>{[...new Set([...NCR_CITIES,...(draft[k]?[String(draft[k])]:[])])].map(city=><option key={city}>{city}</option>)}</select> : <input aria-label="Equipment city" maxLength={100} value={draft[k] || ""} onChange={e=>setDraft({...draft,[k]:e.target.value})}/>}</label>
                     return (
                       <label key={k}>
                         {label(k)}
@@ -613,13 +635,9 @@ export default function OperationsWorkspace({
             )}
             {section === "gps" && <p className="ops-empty">Latest shared GPS samples with site boundary status. Uncertain means GPS accuracy cannot confirm the boundary. Updates appear when a guard shares a check-in.</p>}
             <div className="ops-records">
-              {rows
-                .filter((r) =>
-                  JSON.stringify(r)
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-                )
-                .map((row) => (
+              {visibleRows.map((row,index) => (
+                <Fragment key={row.id}>
+                  {categorizedEquipment && (index===0 || groupName(visibleRows[index-1])!==groupName(row)) && <h3 className="equipment-group-heading">{groupName(row)} <span>{visibleRows.filter(item=>groupName(item)===groupName(row)).length} records</span></h3>}
                   <article className="ops-panel" key={row.id}>
                     <small>
                       {row.site_name} · {row.subject_name || ""}
@@ -633,6 +651,8 @@ export default function OperationsWorkspace({
                           label(section),
                       )}
                     </h3>
+                    {categorizedEquipment && <div className="equipment-tags"><span>{metadata(row).region}</span><span>{metadata(row).city}</span><span>{metadata(row).category}</span><span>{metadata(row).status}</span></div>}
+                    {section==="assignments" && <p>{metadata(row).title}</p>}
                     <dl>
                       {Object.entries(row.data).map(([key, value]) => (
                         <div key={key}>
@@ -662,9 +682,10 @@ export default function OperationsWorkspace({
                       <button onClick={() => edit(row)}>Edit</button>
                     )}
                   </article>
+                </Fragment>
                 ))}
             </div>
-            {!rows.length && <p className="ops-empty">No records yet.</p>}
+            {!visibleRows.length && <p className="ops-empty">{rows.length ? "No records match these filters." : "No records yet."}</p>}
           </>
         )}
         {section === "notifications" && (

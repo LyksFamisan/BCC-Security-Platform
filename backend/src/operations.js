@@ -86,7 +86,9 @@ export const resources = {
       .object({
         title: text,
         serial: text,
-        category: z.enum(["Radio", "Firearm", "Protective gear", "Other"]),
+        category: z.enum(["Radio", "Firearm", "Protective gear", "Uniform", "Communication device", "Security tools", "Vehicle", "Electronics", "Other"]),
+        location_region: z.string().trim().max(100).default(""),
+        location_city: z.string().trim().max(100).default(""),
         status: z.enum(assetStates),
         acquired_at: date,
         notes: note,
