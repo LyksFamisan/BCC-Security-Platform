@@ -169,18 +169,33 @@ export default function OperationsPanel({
       throw error
     }
   }
+  const cameraBoundary=useRef<Choice|null>(null)
+  async function prepareCameraGps(boundary:Choice) {
+    const session=cameraResult.current
+    setCameraCapture(current=>current?{...current,coords:null,gpsError:undefined}:null)
+    try {
+      const coords=await position()
+      const fence=geofenceStatus(coords,boundary)
+      if(fence.status==="Not configured")throw Error("Site geofence not configured. Ask your administrator to set the actual site location.")
+      if(fence.status==="Outside")throw Error("You are outside your assigned site geofence.")
+      if(fence.status==="Uncertain")throw Error("GPS cannot confirm the boundary. Move outdoors or nearer the site centre and retry.")
+      if(mounted.current && session===cameraResult.current)setCameraCapture(current=>current?{...current,coords,gpsError:undefined}:null)
+    } catch(e) {
+      if(mounted.current && session===cameraResult.current)setCameraCapture(current=>current?{...current,coords:null,gpsError:(e as Error).message}:null)
+    }
+  }
   async function punch(shift: Row, event: string) {
     await run(async () => {
       await request("/auth/me")
       if(event==="in" && (Date.now()<+new Date(shift.data.start)-30*60000 || Date.now()>+new Date(shift.data.end)))throw Error("Time In opens 30 minutes before the assigned shift until its end.")
-      const initial=await position()
       const boundary=sites.find(s=>s.id===shift.site_id)
       if(!boundary) throw Error("Assigned site unavailable. Refresh and retry.")
-      const fence=geofenceStatus(initial,boundary)
-      if(fence.status === "Not configured") throw Error("Site geofence not configured. Ask your administrator to set the actual site location.")
-      if(fence.status === "Outside") throw Error("You are outside your assigned site geofence.")
-      if(fence.status === "Uncertain") throw Error("GPS cannot confirm the site boundary. Move outdoors or closer to the site centre and retry.")
-      const uri=await new Promise<string|null>(resolve=>{cameraResult.current=resolve;setCameraCapture({event,site:boundary.name,post:shift.data.post,coords:initial})})
+      const uri=await new Promise<string|null>(resolve=>{
+        cameraResult.current=resolve
+        cameraBoundary.current=boundary
+        setCameraCapture({event,site:boundary.name,post:shift.data.post,coords:null})
+        void prepareCameraGps(boundary)
+      })
       if(!uri) throw Error("Photo cancelled. Attendance was not recorded.")
       const coords = await position()
       const form=new FormData()
@@ -263,7 +278,7 @@ export default function OperationsPanel({
       : catalog.map((m) => [m.key, m.label])
   return (
     <View style={s.wrap}>
-      <AttendanceCamera capture={cameraCapture} onDone={uri=>finishCamera(uri)} onCancel={()=>finishCamera(null)}/>
+      <AttendanceCamera capture={cameraCapture} onDone={uri=>finishCamera(uri)} onCancel={()=>finishCamera(null)} onRetryGps={()=>{const boundary=cameraBoundary.current;if(boundary)void prepareCameraGps(boundary)}}/>
       <Modal visible={!!photoRecord} transparent onRequestClose={()=>setPhotoRecord(null)}><View style={{flex:1,backgroundColor:"#061326f5",padding:24,justifyContent:"center"}}><Pressable accessibilityRole="button" onPress={()=>setPhotoRecord(null)} style={s.button}><Text style={s.white}>Close attendance photo</Text></Pressable>{photoRecord && <Image accessibilityLabel="Attendance photo with timestamp and GPS" source={attendancePhotoSource(photoRecord)} style={{width:"100%",height:"80%"}} resizeMode="contain" onError={()=>setError("Could not load attendance photo. Check connection and retry.")} />}</View></Modal>
       <View style={s.heading}>
         <Text style={s.headingText}>

@@ -1,10 +1,10 @@
 import React, {useEffect, useRef, useState} from "react"
-import {ActivityIndicator, Image, Modal, Pressable, Text, View} from "react-native"
+import {ActivityIndicator, Image, Modal, Pressable, Text, View, Linking} from "react-native"
 import {CameraView, useCameraPermissions} from "expo-camera"
 import {SafeAreaView} from "react-native-safe-area-context"
 import type {GpsPosition} from "./gps"
-export type AttendanceCapture = {event:string;site:string;post:string;coords:GpsPosition}
-export default function AttendanceCamera({capture,onDone,onCancel}:{capture:AttendanceCapture|null;onDone:(uri:string)=>void;onCancel:()=>void}) {
+export type AttendanceCapture = {event:string;site:string;post:string;coords:GpsPosition|null;gpsError?:string}
+export default function AttendanceCamera({capture,onDone,onCancel,onRetryGps}:{capture:AttendanceCapture|null;onDone:(uri:string)=>void;onCancel:()=>void;onRetryGps:()=>void}) {
   const camera=useRef<CameraView>(null)
   const [permission,requestPermission]=useCameraPermissions()
   const [ready,setReady]=useState(false),[taking,setTaking]=useState(false),[photo,setPhoto]=useState<string|null>(null),[error,setError]=useState("")
@@ -20,15 +20,15 @@ export default function AttendanceCamera({capture,onDone,onCancel}:{capture:Atte
   if(!capture) return null
   return <Modal visible={!!capture} animationType="slide" onRequestClose={onCancel}><SafeAreaView style={{flex:1,backgroundColor:"#07172b"}}>
     <View style={{padding:16,gap:8}}><Text style={{color:"white",fontSize:24,fontWeight:"800"}}>{capture?.event==="out"?"Time Out":"Time In"} · Selfie</Text><Text style={{color:"#c8d8ec"}}>{capture?.site} · {capture?.post}</Text></View>
-    {!permission ? <ActivityIndicator/> : !permission.granted ? <View style={{padding:20,gap:16}}><Text style={{color:"white"}}>Allow camera access to capture your attendance selfie.</Text>{button("Allow camera",()=>void requestPermission())}{!permission.canAskAgain&&<Text style={{color:"#ffa765"}}>Enable Camera in phone Settings → Apps → Expo Go → Permissions.</Text>}</View> : <View style={{flex:1,marginHorizontal:16,borderRadius:20,overflow:"hidden",backgroundColor:"#142941"}}>
+    {!permission ? <ActivityIndicator/> : !permission.granted ? <View style={{padding:20,gap:16}}><Text style={{color:"white"}}>Allow camera access to capture your attendance selfie.</Text>{button(permission.canAskAgain?"Allow camera":"Open camera settings",()=>{if(permission.canAskAgain)void requestPermission().catch(e=>setError(e.message));else void Linking.openSettings()})}{!permission.canAskAgain&&<Text style={{color:"#ffa765"}}>Enable Camera in phone Settings → Apps → Expo Go → Permissions.</Text>}</View> : <View style={{flex:1,marginHorizontal:16,borderRadius:20,overflow:"hidden",backgroundColor:"#142941"}}>
       {photo ? <Image source={{uri:photo}} style={{flex:1}} resizeMode="contain" accessibilityLabel="Attendance selfie preview"/> : <CameraView ref={camera} style={{flex:1}} facing="front" mode="picture" onCameraReady={()=>setReady(true)} onMountError={e=>setError(e.message)}/>}
       <View pointerEvents="none" style={{position:"absolute",bottom:0,left:0,right:0,backgroundColor:"#07172be8",padding:14,gap:5}}>
         <Text style={{color:"#ffa765",fontWeight:"800"}}>{capture?.event==="out"?"TIME OUT":"TIME IN"} · {new Date(now).toLocaleString("en-PH",{timeZone:"Asia/Manila"})}</Text>
         <Text style={{color:"white"}}>{capture?.site} · {capture?.post}</Text>
-        <Text style={{color:"white"}}>GPS {capture?.coords.latitude.toFixed(6)}, {capture?.coords.longitude.toFixed(6)}</Text>
-        <Text style={{color:"#c8d8ec"}}>Accuracy ±{Math.round(capture?.coords.accuracy||0)} m · Inside site geofence</Text>
+        <Text style={{color:"white"}}>GPS {capture.coords ? `${capture.coords.latitude.toFixed(6)}, ${capture.coords.longitude.toFixed(6)}` : "Getting precise location…"}</Text>
+        <Text style={{color:"#c8d8ec"}}>{capture.coords ? `Accuracy ±${Math.round(capture.coords.accuracy)} m · Inside site geofence` : capture.gpsError || "Checking GPS and site boundary…"}</Text>
       </View>
     </View>}
-    <View style={{padding:16,gap:10}}>{!!error&&<Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{error}</Text>}{permission?.granted&&(photo ? <>{button("Use selfie & submit attendance",()=>onDone(photo))}{button("Retake selfie",()=>{setPhoto(null);setReady(false)})}</> : button(taking?"Capturing…":"Capture selfie",()=>void take(),!ready||taking))}{button("Cancel",onCancel,taking)}<Text style={{color:"#b7c9df",fontSize:12,textAlign:"center"}}>Saved photo includes server timestamp and verified GPS location.</Text></View>
+    <View style={{padding:16,gap:10}}>{!!capture.gpsError&&<><Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{capture.gpsError}</Text>{button("Retry GPS & geofence",onRetryGps)}</>}{!!error&&<Text accessibilityRole="alert" style={{color:"#ffb6a1"}}>{error}</Text>}{permission?.granted&&(photo ? <>{button("Use selfie & submit attendance",()=>onDone(photo),!capture.coords)}{button("Retake selfie",()=>{setPhoto(null);setReady(false)})}</> : button(taking?"Capturing…":"Capture selfie",()=>void take(),!ready||taking))}{button("Cancel",onCancel,taking)}<Text style={{color:"#b7c9df",fontSize:12,textAlign:"center"}}>Saved photo includes server timestamp and verified GPS location.</Text></View>
   </SafeAreaView></Modal>
 }
