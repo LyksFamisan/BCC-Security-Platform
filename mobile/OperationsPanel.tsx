@@ -149,6 +149,7 @@ export default function OperationsPanel({
     try {
       const result = await fn()
       if(!mounted.current) return
+      if(result?.cancelled){setNotice("");return}
       setRev((v) => v + 1)
       setNotice(result?.gps_checked ? "GPS checked. Time In/Time Out will capture a fresh location." : result?.data?.event ? `Time ${result.data.event} recorded · ${new Date(result.data.recorded_at).toLocaleString()}` : result?.data?.geofence_status ? `Location shared · ${result.data.geofence_status} site boundary${result.data.distance_m != null ? ` · ${result.data.distance_m} m from centre` : ""}` : "Saved")
       setDraft(null)
@@ -195,10 +196,10 @@ export default function OperationsPanel({
       const uri=await new Promise<string|null>(resolve=>{
         cameraResult.current=resolve
         cameraBoundary.current=boundary
-        setCameraCapture({event,site:boundary.name,post:shift.data.post,coords:null})
+        setCameraCapture({sessionId:shift.id+":"+event+":"+Date.now(),event,site:boundary.name,post:shift.data.post,coords:null})
         void prepareCameraGps(boundary)
       })
-      if(!uri) throw Error("Photo cancelled. Attendance was not recorded.")
+      if(!uri) return {cancelled:true}
       const coords = await position()
       const id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.floor(Math.random()*16);return (c==='x'?r:(r&3)|8).toString(16)})
       setNotice("Sending attendance to Operations…")
