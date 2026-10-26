@@ -160,6 +160,19 @@ try {
   await delay(300)
   await page.locator(".geofence-map-panel").screenshot({path:"/tmp/bcc-guard-map.png"})
 
+  await page.getByRole('button',{name:'Overview',exact:true}).click()
+  await page.getByRole('heading',{name:'Operations at a glance',exact:true}).waitFor()
+  await page.getByText('Guards on duty now',{exact:true}).waitFor()
+  await page.screenshot({path:'/tmp/bcc-overview-readable.png',fullPage:true})
+  const overviewDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export overview PDF',exact:true}).click();assert.equal((await overviewDownload).suggestedFilename(),'overview.pdf')
+  await page.getByRole('button',{name:'Reports',exact:true}).click()
+  await page.getByLabel('Report',{exact:true}).selectOption('incidents')
+  const pdfDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export PDF',exact:true}).click();const pdf=await pdfDownload;assert.equal(pdf.suggestedFilename(),'incidents.pdf');await pdf.saveAs('/tmp/bcc-browser-report.pdf')
+  const csvDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export CSV',exact:true}).click();assert.equal((await csvDownload).suggestedFilename(),'incidents.csv')
+  await page.getByLabel('From date',{exact:true}).fill('2026-10-27');await page.getByLabel('To date',{exact:true}).fill('2026-10-26')
+  await page.getByRole('button',{name:'Export PDF',exact:true}).click();await page.getByRole('alert').filter({hasText:'From date must be before To date'}).waitFor()
+  await page.getByLabel('From date',{exact:true}).fill('');await page.getByLabel('To date',{exact:true}).fill('')
+  await page.screenshot({path:'/tmp/bcc-reports-readable.png',fullPage:true})
   await page.getByRole("button",{name:"Duty roster",exact:true}).click()
 
   // Exercise the actual roster form and persisted record, not just the API.
@@ -189,7 +202,7 @@ try {
   })
   const offlineId="30000000-0000-4000-8000-000000000007"
   await db.query("INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'offline_attendance',$2,$3,$3,$4)",[offlineId,site,"20000000-0000-4000-8000-000000000002",JSON.stringify({title:"Offline Time in",event:"in",status:"Pending review",captured_at:new Date().toISOString(),latitude:14.55,longitude:121.02,accuracy:5,review_notes:""})])
-  await page.getByRole("button",{name:"Offline attendance review",exact:true}).click()
+  await page.getByRole("button",{name:"Historical attendance reviews",exact:true}).click()
   await page.getByRole("heading",{name:"Offline Time in",exact:true}).waitFor()
   await page.getByLabel("Review notes for Demo guard",{exact:true}).fill("Evidence checked in isolated browser verification")
   await page.getByRole("button",{name:"Approve capture",exact:true}).click()

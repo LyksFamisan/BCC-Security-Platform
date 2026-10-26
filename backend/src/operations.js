@@ -1,3 +1,4 @@
+import {reportNames,reportTable,reportTime,reportCsv,reportPdf} from "./report-export.js"
 import {mountMobileSync} from "./mobile-sync.js"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
@@ -18,7 +19,7 @@ const optionalDate = date.nullable().default(null)
 const uuid = z.uuid()
 const assetStates = ["Available", "In Service", "Maintenance", "Retired"]
 export const resources = {
-  offline_attendance: {label:"Offline attendance review",group:"Manpower",write:[],own:true,subject:true,schema:z.object({}).strict()},
+  offline_attendance: {label:"Historical attendance reviews",group:"Manpower",write:[],own:true,subject:true,schema:z.object({}).strict()},
   shifts: {
     label: "Duty roster",
     group: "Manpower",
@@ -964,11 +965,10 @@ export function mountOperations(app, pool, notify) {
     )
     res.json({ ok: true })
   })
-  app.get("/dashboard", async (req, res) => {
-    role(req, ["guard", "supervisor", "operations"])
-    const data = await snapshot(req.user),
+  async function dashboardFor(user) {
+    const data = await snapshot(user),
       now = Date.now(),
-      today = new Date().toISOString().slice(0, 10)
+      today = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())
     const active = data.records.shifts.filter(
       (s) =>
         s.data.status !== "Cancelled" &&
@@ -989,7 +989,7 @@ export function mountOperations(app, pool, notify) {
     )
     const trends = {}
     for (const i of data.incidents) {
-      const day = new Date(i.created_at).toISOString().slice(0, 10)
+      const day = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(i.created_at))
       trends[day] = (trends[day] || 0) + 1
     }
     const result = {
@@ -1000,7 +1000,7 @@ export function mountOperations(app, pool, notify) {
         latitude: s.latitude,
         longitude: s.longitude,
         radius_m: s.radius_m,
-        client_name: req.user.role === "guard" ? undefined : s.client_name,
+        client_name: user.role === "guard" ? undefined : s.client_name,
         required: s.required_guards || 1,
         scheduled: active.filter((a) => a.site_id === s.id).length,
         present: active.filter(
@@ -1022,7 +1022,7 @@ export function mountOperations(app, pool, notify) {
             i.status !== "Resolved" && i.due_at && +new Date(i.due_at) < now,
         ).length,
         attendance_today: data.records.attendance.filter((a) =>
-          a.data.recorded_at.startsWith(today),
+          new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(a.data.recorded_at)) === today,
         ).length,
       },
       kpi: {
@@ -1068,29 +1068,17 @@ export function mountOperations(app, pool, notify) {
           ) / 100,
       },
       incident_trend: trends,
-      alerts: alertsFor(data, req.user),
+      alerts: alertsFor(data, user),
     }
-    res.json(result)
-  })
+    return result
+  }
+  app.get("/dashboard",async(req,res)=>{role(req,["guard","supervisor","operations"]);res.json(await dashboardFor(req.user))})
   app.get("/reports/export", async (req, res) => {
     role(req, ["supervisor", "operations"])
     const kind = req.query.kind
-    if (
-      typeof kind !== "string" ||
-      ![
-        "shifts",
-        "attendance",
-        "billing",
-        "equipment",
-        "assignments",
-        "maintenance",
-        "actions",
-        "escalations",
-        "training",
-        "certifications",
-      ].includes(kind)
-    )
-      problem(400, "Select a valid report")
+    if(typeof kind!=="string" || !Object.hasOwn(reportNames,kind))problem(400,"Select a valid report")
+    const format=req.query.format || "csv"
+    if(!["csv","pdf"].includes(format))problem(400,"Choose PDF or CSV")
     const filters = valid(
       z
         .object({
@@ -1100,39 +1088,26 @@ export function mountOperations(app, pool, notify) {
         })
         .strict(),
       Object.fromEntries(
-        Object.entries(req.query).filter(([k]) => k !== "kind"),
+        Object.entries(req.query).filter(([k]) => !["kind","format"].includes(k)),
       ),
     )
-    let rows = await list(req.user, kind === "billing" ? "attendance" : kind)
-    if (filters.site_id)
-      rows = rows.filter((r) => r.site_id === filters.site_id)
-    if (filters.from)
-      rows = rows.filter(
-        (r) => +new Date(r.created_at) >= +new Date(filters.from),
-      )
-    if (filters.to)
-      rows = rows.filter(
-        (r) => +new Date(r.created_at) <= +new Date(filters.to),
-      )
-    await audit(pool, req.user, "EXPORT_" + kind, null, null, {
-      count: rows.length,
-    })
-    const quote = (v) =>
-      '"' +
-      String(v ?? "")
-        .replaceAll('"', '""')
-        .replace(/^[=+@-]/, "'$&") +
-      '"'
-    let table = [
-      ["id", "site", "person", "created_at", "details"],
-      ...rows.map((r) => [
-        r.id,
-        r.site_name,
-        r.subject_name,
-        r.created_at,
-        JSON.stringify(r.data),
-      ]),
-    ]
+    if(filters.from&&filters.to&&+new Date(filters.from)>+new Date(filters.to))problem(400,"From date must be before To date")
+    if(filters.site_id)await siteAccess(req.user,filters.site_id)
+    const data=kind==='incidents'?await snapshot(req.user):null
+    let rows=kind==='overview'?[]:kind==='incidents'?data.incidents:await list(req.user,kind==='billing'?'attendance':kind)
+    const dateKey={attendance:'recorded_at',billing:'recorded_at',shifts:'start',training:'completed_at',assessments:'assessed_at',certifications:'expires_at',gps:'recorded_at',assignments:'issued_at',maintenance:'due_at',actions:'due_at',escalations:'due_at',equipment:'acquired_at'}[kind]
+    const recordDate=r=>r.data?.[dateKey] || r.created_at
+    if(filters.site_id)rows=rows.filter(r=>r.site_id===filters.site_id)
+    if(filters.from)rows=rows.filter(r=>+new Date(recordDate(r))>=+new Date(filters.from))
+    if(filters.to)rows=rows.filter(r=>+new Date(recordDate(r))<=+new Date(filters.to))
+    const related={equipment:await list(req.user,'equipment'),shifts:await list(req.user,'shifts'),incidents:(await snapshot(req.user)).incidents}
+    let table=reportTable(kind,rows,related)
+    if(kind==='overview'){
+      if(filters.from||filters.to||filters.site_id)problem(400,'Overview export is a current snapshot. Use a detailed report for date/site filters.')
+      const summary=await dashboardFor(req.user)
+      const labels={incidents:'Total incidents',open_incidents:'Unresolved incidents',on_duty:'Guards on duty now',scheduled:'Active duty schedules',equipment:'Equipment items',issued_equipment:'Equipment currently issued',overdue_incidents:'Incidents past target time',attendance_today:'Time In / Out events today',resolved_incidents:'Resolved incidents',sla_met:'Resolved within target time',scheduled_hours:'Scheduled hours (all dates)',recorded_hours:'Recorded hours (all dates)'}
+      table=[['Section','Site / metric','Value','Required guards','Scheduled guards','Guards present'],...Object.entries({...summary.counts,...summary.kpi}).map(([key,value])=>['Summary',labels[key] || key,value,'','','']),...summary.sites.map(r=>['Site coverage',r.name,r.client_name || '',r.required,r.scheduled,r.present]),...Object.entries(summary.incident_trend).sort(([a],[b])=>a.localeCompare(b)).map(([day,count])=>['Daily incidents',day,count,'','',''])]
+    }
     if(kind === "billing") {
       const shifts=await list(req.user,"shifts")
       const groups=new Map()
@@ -1143,21 +1118,19 @@ export function mountOperations(app, pool, notify) {
         if(row.data.event === "in") g.in=row
         if(row.data.event === "out") g.out=row
       }
-      table=[["shift_id","cycle","site","guard","post","time_in_utc","time_out_utc","recorded_hours","review_status","in_latitude","in_longitude","out_latitude","out_longitude","in_photo_record","out_photo_record"],...Array.from(groups.values()).map(g=>{
+      table=[["Shift reference","Cycle","Site","Guard","Duty post","Time In (Philippine time)","Time Out (Philippine time)","Recorded hours","Review status","Time In latitude","Time In longitude","Time Out latitude","Time Out longitude","Time In photo reference","Time Out photo reference"],...Array.from(groups.values()).map(g=>{
         const a=g.in?.data,b=g.out?.data,shift=shifts.find(s=>s.id === g.row.data.shift_id)
         const hours=a&&b ? (+new Date(b.recorded_at)- +new Date(a.recorded_at))/3600000 : null
-        return [g.row.data.shift_id,g.row.data.cycle || 1,g.row.site_name,g.row.subject_name,shift?.data.post || "",a?.recorded_at || "",b?.recorded_at || "",hours === null ? "" : Math.max(0,hours).toFixed(4),g.row.data.demo ? "DEMO - exclude from actual billing" : hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
+        return [g.row.data.shift_id,g.row.data.cycle || 1,g.row.site_name,g.row.subject_name,shift?.data.post || "",reportTime(a?.recorded_at),reportTime(b?.recorded_at),hours === null ? "" : Math.max(0,hours).toFixed(4),g.row.data.demo ? "DEMO - exclude from actual billing" : hours === null ? "Incomplete - review required" : "Recorded hours - review required",a?.latitude ?? "",a?.longitude ?? "",b?.latitude ?? "",b?.longitude ?? "",a?.photo_id ? g.in.id : "",b?.photo_id ? g.out.id : ""]
       })]
     }
-    const csv = table.map((r) => r.map(quote).join(","))
-      .join("\r\n")
-    res
-      .set({
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${kind}.csv"`,
-      })
-      .send(csv)
+    await audit(pool,req.user,"EXPORT_"+kind,null,filters.site_id || null,{count:table.length-1,format,filters})
+    const scope=filters.site_id?(await pool.query('SELECT name FROM sites WHERE id=$1',[filters.site_id])).rows[0]?.name:'All authorized sites'
+    res.set({'Content-Type':format==='pdf'?'application/pdf':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="${kind}.${format}"`,'Cache-Control':'private, no-store'})
+    if(format==='pdf')return res.send(await reportPdf({title:reportNames[kind],table,scope,from:filters.from,to:filters.to,actor:req.user.name}))
+    res.send(reportCsv(table))
   })
+
   app.get("/preferences", async (req, res) =>
     res.json(
       (
@@ -1174,18 +1147,8 @@ export function mountOperations(app, pool, notify) {
           dashboard: z
             .array(z.enum(["incidents", "attendance", "equipment", "sites"]))
             .max(4),
-          report_kind: z.enum([
-            "shifts",
-            "attendance",
-            "billing",
-            "equipment",
-            "assignments",
-            "maintenance",
-            "actions",
-            "escalations",
-            "training",
-            "certifications",
-          ]),
+          report_kind: z.enum(Object.keys(reportNames)),
+
         })
         .strict(),
       req.body,

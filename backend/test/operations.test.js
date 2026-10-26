@@ -610,7 +610,7 @@ test("TOR workflows persist across clients, enforce scope, geofence, concurrency
     assert.equal(cycleFour.data.cycle,4)
     const cyclesExport=await call("operations","/reports/export?kind=billing")
     const cyclesCsv=await cyclesExport.text()
-    assert(cyclesCsv.includes('"cycle"'))
+    assert(cyclesCsv.includes('"Cycle"'))
     assert(cyclesCsv.includes("Incomplete - review required"))
     assert.equal((cyclesCsv.match(/Recorded hours - review required/g)||[]).length,3,"each completed cycle is billed separately")
     process.env.BACKUP_ENCRYPTION_KEY = randomBytes(32).toString("base64")

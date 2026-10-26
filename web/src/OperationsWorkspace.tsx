@@ -27,7 +27,11 @@ type Module = {
 }
 type Choice = { id: string; name: string; role?: string }
 type Request = (url: string, options?: RequestInit) => Promise<Response>
+const reportKinds=['incidents','shifts','attendance','billing','equipment','assignments','maintenance','defects','actions','escalations','training','certifications','assessments','gps']
 const labels: Record<string, string> = {
+  incidents:'Incident reports',open_incidents:'Unresolved incidents',on_duty:'Guards on duty now',scheduled:'Active duty schedules',equipment:'Equipment items',issued_equipment:'Equipment currently issued',overdue_incidents:'Incidents past target time',attendance_today:'Time In / Out events today',resolved_incidents:'Resolved incidents',sla_met:'Resolved within target time',scheduled_hours:'Scheduled hours (all dates)',recorded_hours:'Recorded hours (all dates)',
+  shifts:'Duty schedules',attendance:'Time In / Time Out',assignments:'Equipment issued to guards',maintenance:'Equipment maintenance',defects:'Equipment fault reports',actions:'Corrective and preventive actions',escalations:'Escalated cases',training:'Training records',certifications:'Licenses and certifications',assessments:'Guard assessments',gps:'Shared GPS locations',
+
   billing: "Attendance hours (billing review)",
   start: "Start",
   end: "End",
@@ -278,21 +282,24 @@ export default function OperationsWorkspace({
       )
     })
   }
-  async function exportReport() {
-    setBusy(true)
+  async function exportReport(format:"pdf"|"csv",kind=reportKind) {
+    setBusy(true);setError("");setNotice("")
     try {
-      const query = new URLSearchParams({ kind: reportKind })
-      if (reportSite) query.set("site_id", reportSite)
-      if (reportFrom) query.set("from", new Date(reportFrom).toISOString())
-      if (reportTo) query.set("to", new Date(reportTo).toISOString())
+      const query = new URLSearchParams({ kind,format })
+      if(kind!=="overview" && reportFrom && reportTo && reportFrom>reportTo)throw Error("From date must be before To date")
+      if (kind!=="overview" && reportSite) query.set("site_id", reportSite)
+      if (kind!=="overview" && reportFrom) query.set("from", new Date(reportFrom+"T00:00:00").toISOString())
+      if (kind!=="overview" && reportTo) query.set("to", new Date(reportTo+"T23:59:59.999").toISOString())
       const response = await request("/reports/export?" + query)
+      if(!response.ok)throw Error((await response.json()).error || "Export failed")
       const blob = await response.blob(),
         url = URL.createObjectURL(blob),
         a = document.createElement("a")
       a.href = url
-      a.download = reportKind + ".csv"
-      a.click()
-      URL.revokeObjectURL(url)
+      a.download = kind + "."+format
+      document.body.appendChild(a);a.click();a.remove()
+      setTimeout(()=>URL.revokeObjectURL(url),1000)
+      setNotice("Report downloaded as "+format.toUpperCase())
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -366,6 +373,7 @@ export default function OperationsWorkspace({
         )}
         {section === "dashboard" && dashboard && (
           <>
+            <section className="ops-summary-intro"><div><h3>Operations at a glance</h3><p>Live staffing counts show current shifts. Incident and equipment totals include all authorized records.</p><small>Updated {new Date(dashboard.as_of).toLocaleString("en-PH",{timeZone:"Asia/Manila"})} · Philippine time</small></div><div className="ops-export-actions"><button disabled={busy} onClick={()=>void exportReport('pdf','overview')}>Export overview PDF</button><button disabled={busy} onClick={()=>void exportReport('csv','overview')}>Export overview CSV</button></div></section>
             <div className="ops-stats">
               {Object.entries(dashboard.counts)
                 .filter(([k]) =>
@@ -386,16 +394,16 @@ export default function OperationsWorkspace({
             </div>
             {widgets.includes("sites") && (
               <section className="ops-panel">
-                <h3>Site coverage</h3>
+                <h3>Guard coverage by site</h3><p className="ops-help">Compare the required headcount with guards scheduled and checked in for current shifts.</p>
                 <div className="ops-table">
                   <table>
                     <thead>
                       <tr>
                         <th>Site</th>
                         <th>Client</th>
-                        <th>Required</th>
-                        <th>Scheduled</th>
-                        <th>Present</th>
+                        <th>Required guards</th>
+                        <th>Guards scheduled now</th>
+                        <th>Guards checked in</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -413,32 +421,9 @@ export default function OperationsWorkspace({
                 </div>
               </section>
             )}
+            <section className="ops-panel"><h3>Incident resolution & duty hours</h3><p className="ops-help">Target time is the incident deadline set by the workflow. Recorded hours come from paired Time In and Time Out events and still require billing review.</p><div className="ops-kpi-grid">{dashboard.kpi&&Object.entries(dashboard.kpi).map(([k,v])=><article key={k}><span>{label(k)}</span><strong>{String(v)}</strong></article>)}</div><h3>Incidents reported by day</h3><div className="ops-trend">{Object.entries(dashboard.incident_trend).sort(([a],[b])=>a.localeCompare(b)).map(([day,count])=><div className="ops-trend-row" key={day}><time>{new Date(day+'T12:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</time><span className="ops-trend-track"><span style={{width:`${Number(count)/Math.max(1,...Object.values(dashboard.incident_trend).map(Number))*100}%`}}/></span><strong>{String(count)} {Number(count)===1?'incident':'incidents'}</strong></div>)}</div>{!Object.keys(dashboard.incident_trend).length&&<p>No incidents recorded yet.</p>}</section>
             <section className="ops-panel">
-              <h3>Utilization & SLA</h3>
-              {dashboard.kpi &&
-                Object.entries(dashboard.kpi).map(([k, v]) => (
-                  <p key={k}>
-                    {label(k)}: <strong>{String(v)}</strong>
-                  </p>
-                ))}
-              <h3>Incident trend</h3>
-              {Object.entries(dashboard.incident_trend).map(([day, count]) => (
-                <p key={day}>
-                  {day}{" "}
-                  <meter
-                    min={0}
-                    max={Math.max(1, dashboard.counts.incidents)}
-                    value={Number(count)}
-                  />{" "}
-                  {String(count)}
-                </p>
-              ))}
-              {!Object.keys(dashboard.incident_trend).length && (
-                <p>No incident history yet.</p>
-              )}
-            </section>
-            <section className="ops-panel">
-              <h3>Dashboard widgets</h3>
+              <h3>Choose dashboard sections</h3><p className="ops-help">Select the information you want to see on your overview.</p><div className="ops-widget-options">
               {["incidents", "attendance", "equipment", "sites"].map((w) => (
                 <label className="ops-check" key={w}>
                   <input
@@ -455,7 +440,7 @@ export default function OperationsWorkspace({
                   {label(w)}
                 </label>
               ))}
-              <button
+              </div><button
                 disabled={busy}
                 onClick={() =>
                   void mutate(() =>
@@ -467,7 +452,7 @@ export default function OperationsWorkspace({
                   )
                 }
               >
-                Save layout
+                Save dashboard choices
               </button>
             </section>
           </>
@@ -702,7 +687,7 @@ export default function OperationsWorkspace({
         )}
         {section === "reports" && (
           <section className="ops-panel ops-form">
-            <h3>Operational reports</h3>
+            <h3>Download a report</h3><p className="ops-report-description">Choose a report and site, then download a ready-to-read PDF or a spreadsheet-compatible CSV. Leave dates blank to include all dates.</p>
             <label>
               Report
               <select
@@ -710,18 +695,7 @@ export default function OperationsWorkspace({
                 value={reportKind}
                 onChange={(e) => setReportKind(e.target.value)}
               >
-                {[
-                  "shifts",
-                  "attendance",
-                  "billing",
-                  "equipment",
-                  "assignments",
-                  "maintenance",
-                  "actions",
-                  "escalations",
-                  "training",
-                  "certifications",
-                ].map((k) => (
+                {reportKinds.map((k) => (
                   <option key={k} value={k}>
                     {label(k)}
                   </option>
@@ -744,28 +718,30 @@ export default function OperationsWorkspace({
               </select>
             </label>
             <label>
-              Created from
+              From date
               <input
-                type="datetime-local"
+                type="date"
                 value={reportFrom}
-                onChange={(e) => setReportFrom(e.target.value)}
+                onChange={(e) => {setReportFrom(e.target.value);setError("")}}
               />
             </label>
             <label>
-              Created to
+              To date
               <input
-                type="datetime-local"
+                type="date"
                 value={reportTo}
-                onChange={(e) => setReportTo(e.target.value)}
+                onChange={(e) => {setReportTo(e.target.value);setError("")}}
               />
             </label>
             <button
               className="ops-primary"
               disabled={busy}
-              onClick={() => void exportReport()}
+              onClick={() => void exportReport("pdf")}
             >
-              Download CSV
+              Export PDF
             </button>
+            <button disabled={busy} onClick={()=>void exportReport('csv')}>Export CSV</button>
+            <p className="ops-report-description">Dates apply to the report event: shift start, attendance time, issue date, training completion, license expiry or target completion. Exported times use Philippine time (Asia/Manila). DEMO records are labeled and must be excluded from actual billing.</p>
             <button
               disabled={busy}
               onClick={() =>
@@ -782,7 +758,7 @@ export default function OperationsWorkspace({
             </button>
             {role === "operations" && (
               <>
-                <h3>Timekeeping import</h3>
+                <details className="ops-advanced"><summary>Advanced: import attendance from another system</summary><h3>Timekeeping import</h3>
                 <label>
                   Attendance JSON
                   <textarea
@@ -799,7 +775,7 @@ export default function OperationsWorkspace({
                   }
                 >
                   Import events
-                </button>
+                </button></details>
 
               </>
             )}

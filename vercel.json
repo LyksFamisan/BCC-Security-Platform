@@ -21,7 +21,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "backend/src/**"
+      "includeFiles": "{backend/src/**,backend/node_modules/pdfkit/js/data/**}"
     }
   },
   "regions": [
