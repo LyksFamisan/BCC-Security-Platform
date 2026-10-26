@@ -12,6 +12,7 @@ import {
   Platform,
   Linking,
 } from "react-native"
+import {sendAttendance} from "./attendanceUpload"
 import AttendanceCamera, {type AttendanceCapture} from "./AttendanceCamera"
 import {getDutyPosition, geofenceStatus, nextAttendanceEvent, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
@@ -84,6 +85,7 @@ export default function OperationsPanel({
     [person, setPerson] = useState(""),
     [dateField, setDateField] = useState<string | null>(null),
     [dateMode, setDateMode] = useState<"date" | "time">("date")
+  const attendanceRevision=useRef(0)
   const mounted = useRef(true), running = useRef(false)
   const [gps, setGps] = useState<GpsPosition | null>(null)
   const [gpsState, setGpsState] = useState("")
@@ -92,6 +94,7 @@ export default function OperationsPanel({
   useEffect(() => {
     let active = true
     async function load() {
+      const loadedAttendanceRevision=attendanceRevision.current
       try {
         const [c, s, r, a, n] = await Promise.all([
           request("/operations/catalog"),
@@ -104,7 +107,7 @@ export default function OperationsPanel({
         setCatalog(c)
         setSites(s)
         setRows(r)
-        setAttendance(a)
+        if(loadedAttendanceRevision===attendanceRevision.current)setAttendance(a)
         setNotifications(n)
         if (role === "supervisor") {
           const [p, eq, i] = await Promise.all([
@@ -186,7 +189,6 @@ export default function OperationsPanel({
   }
   async function punch(shift: Row, event: string) {
     await run(async () => {
-      await request("/auth/me")
       if(event==="in" && (Date.now()<+new Date(shift.data.start)-30*60000 || Date.now()>+new Date(shift.data.end)))throw Error("Time In opens 30 minutes before the assigned shift until its end.")
       const boundary=sites.find(s=>s.id===shift.site_id)
       if(!boundary) throw Error("Assigned site unavailable. Refresh and retry.")
@@ -198,12 +200,20 @@ export default function OperationsPanel({
       })
       if(!uri) throw Error("Photo cancelled. Attendance was not recorded.")
       const coords = await position()
-      const form=new FormData()
       const id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.floor(Math.random()*16);return (c==='x'?r:(r&3)|8).toString(16)})
-      for(const [key,value] of Object.entries({id,shift_id:shift.id,event,...coords}))form.append(key,String(value))
-      form.append("photo",{uri,name:"attendance.jpg",type:"image/jpeg"} as any)
-      const saved=await request("/attendance",{method:"POST",body:form})
+      setNotice("Sending attendance to Operations…")
+      const saved=await sendAttendance<Row>({
+        send:()=>{
+          const form=new FormData()
+          for(const [key,value] of Object.entries({id,shift_id:shift.id,event,...coords}))form.append(key,String(value))
+          form.append("photo",{uri,name:"attendance.jpg",type:"image/jpeg"} as any)
+          return request("/attendance",{method:"POST",body:form})
+        },
+        findSaved:async()=>{const history=await request("/operations/attendance");return history.find((row:Row)=>row.id===id)},
+        onRetry:attempt=>{if(mounted.current)setNotice(`Sending attendance · retry ${attempt} of 3…`)},
+      })
       if(mounted.current) {
+        attendanceRevision.current++
         setAttendance(current=>[saved,...current.filter(row=>row.id!==saved.id)])
         setLastPunch(saved)
       }

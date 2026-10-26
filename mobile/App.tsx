@@ -112,7 +112,7 @@ function App() {
     if (!api)
       throw Error("Service unavailable. Please contact your administrator.")
     const controller=new AbortController()
-    const timeout=setTimeout(()=>controller.abort(),20000)
+    const timeout=setTimeout(()=>controller.abort(),route==="/attendance" ? 60000 : 20000)
     let res: Response
     try {res = await fetch(api + route, {
       signal: controller.signal,
@@ -122,7 +122,7 @@ function App() {
     } catch(e) {
       if(currentToken.current!==token)throw Error("Session changed")
       setLive(false)
-      throw Object.assign(Error("Connection lost. Reconnect and refresh attendance history before retrying."),{network:true})
+      throw Object.assign(Error("Unable to reach the server. Check your internet connection and retry."),{network:true})
     } finally {clearTimeout(timeout)}
     if (currentToken.current !== token) throw Error("Session changed")
     if (res.status === 401) {
@@ -131,7 +131,7 @@ function App() {
     }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      throw Error(data.error || "Request failed")
+      throw Object.assign(Error(data.error || "Request failed"),{retryable:[502,503,504].includes(res.status)})
     }
     const data=await res.json()
     setLive(true)
