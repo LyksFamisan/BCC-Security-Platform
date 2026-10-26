@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, lazy, Suspense, type FormEvent } from "react"
 import "./operations.css"
+import IncidentIcon from "./IncidentIcon"
+import IncidentTrend from "./IncidentTrend"
 const GeofenceMap = lazy(() => import("./GeofenceMap"))
 type Row = {
   id: string
@@ -348,7 +350,7 @@ export default function OperationsWorkspace({
             </button>
           ))}
           {role !== "admin" && (
-            <button onClick={onIncidents}>Incident center ↗</button>
+            <button className="incident-nav-link" onClick={onIncidents}><IncidentIcon/><span>Incident Center</span></button>
           )}
         </nav>
       </aside>
@@ -421,7 +423,7 @@ export default function OperationsWorkspace({
                 </div>
               </section>
             )}
-            <section className="ops-panel"><h3>Incident resolution & duty hours</h3><p className="ops-help">Target time is the incident deadline set by the workflow. Recorded hours come from paired Time In and Time Out events and still require billing review.</p><div className="ops-kpi-grid">{dashboard.kpi&&Object.entries(dashboard.kpi).map(([k,v])=><article key={k}><span>{label(k)}</span><strong>{String(v)}</strong></article>)}</div><h3>Incidents reported by day</h3><div className="ops-trend">{Object.entries(dashboard.incident_trend).sort(([a],[b])=>a.localeCompare(b)).map(([day,count])=><div className="ops-trend-row" key={day}><time>{new Date(day+'T12:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</time><span className="ops-trend-track"><span style={{width:`${Number(count)/Math.max(1,...Object.values(dashboard.incident_trend).map(Number))*100}%`}}/></span><strong>{String(count)} {Number(count)===1?'incident':'incidents'}</strong></div>)}</div>{!Object.keys(dashboard.incident_trend).length&&<p>No incidents recorded yet.</p>}</section>
+            <section className="ops-panel"><h3>Incident resolution & duty hours</h3><p className="ops-help">Target time is the incident deadline set by the workflow. Recorded hours come from paired Time In and Time Out events and still require billing review.</p><div className="ops-kpi-grid">{dashboard.kpi&&Object.entries(dashboard.kpi).map(([k,v])=><article key={k}><span>{label(k)}</span><strong>{String(v)}</strong></article>)}</div><IncidentTrend trend={dashboard.incident_trend} asOf={dashboard.as_of}/></section>
             <section className="ops-panel">
               <h3>Choose dashboard sections</h3><p className="ops-help">Select the information you want to see on your overview.</p><div className="ops-widget-options">
               {["incidents", "attendance", "equipment", "sites"].map((w) => (

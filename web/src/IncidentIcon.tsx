@@ -1,0 +1,4 @@
+type Name='incident'|'back'|'photo'|'history'|'location'
+export default function IncidentIcon({name='incident',className=''}:{name?:Name;className?:string}){
+ return <svg className={'incident-icon '+className} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{name==='incident'?<><path d="m12 3 8 3v6c0 4-3.5 7.5-8 9-4.5-1.5-8-5-8-9V6l8-3Z"/><path d="M12 8v5m0 3h.01"/></>:name==='back'?<><path d="m10 6-6 6 6 6M4 12h16"/></>:name==='photo'?<><rect x="3" y="5" width="18" height="15" rx="3"/><path d="m7 5 1-2h8l1 2"/><circle cx="12" cy="12.5" r="3.5"/></>:name==='history'?<><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6M12 7v5l3 2"/></>:<><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></>}</svg>
+}

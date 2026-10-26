@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type FormEvent } from "react"
 import { io } from "socket.io-client"
 import "./connected.css"
+import IncidentIcon from "./IncidentIcon"
 import SecurityVisual from "./SecurityVisual"
 import AccountActivation from "./AccountActivation"
 import OperationsWorkspace from "./OperationsWorkspace"
@@ -210,7 +211,7 @@ export default function ConnectedApp() {
   return (
     <div className={"connected"+(!session?" auth-screen":"")}>
       <header>
-        {!session ? <h1 className="login-brand-art"><img src="/assets/cat-security-brand-orange.webp" alt="BCC / CAT Security Services Platform" /></h1> : <>
+        {!session ? <h1 className="login-brand-art"><img src="/assets/cat-security-brand-transparent.webp" alt="BCC / CAT Security Services Platform" /></h1> : <>
         <div className="auth-brand"><img src="/assets/BCC_logo.jpg" alt="BCC"/><img src="/assets/CAT_logo.jpg" alt="CAT"/></div>
         <h1>CAT Security Services Platform</h1>
         </>}
@@ -278,20 +279,18 @@ export default function ConnectedApp() {
           onIncidents={() => setView("incidents")}
         />
       ) : (
-        <>
-          <button onClick={() => setView("workspace")}>← Operations</button>
-          <h2>Incident center</h2>
-          <p>{reports.length} reports</p>
+        <div className="incident-center">
+          <div className="incident-center-toolbar"><button className="incident-action" onClick={() => setView("workspace")}><IncidentIcon name="back"/><span>Back to Operations</span></button><div className="incident-center-heading"><span className="incident-heading-mark"><IncidentIcon/></span><div><h2>Incident Center</h2><p>{reports.length} {reports.length===1?'report':'reports'} · {reports.filter(r=>r.status!=="Resolved").length} open</p></div></div></div>
           <section className="report-grid">
             {reports.map((i) => (
-              <article key={i.id}>
+              <article className="incident-case" key={i.id}>
+                <div className="incident-case-heading"><span className="incident-heading-mark"><IncidentIcon/></span><span className={"incident-status status-"+i.status.toLowerCase().replaceAll(" ","-")}>{i.status}</span></div>
                 <small>
                   {i.site_name} · {i.reporter_name}
                 </small>
                 <h2>{i.title}</h2>
                 <p>{i.description}</p>
-                <p>Location: {i.location}</p>
-                <strong>{i.status}</strong>
+                <p className="incident-location"><IncidentIcon name="location"/><span>{i.location}</span></p>
                 {["operations", "supervisor"].includes(session.user.role) && (
                   <>
                     <label>
@@ -423,13 +422,13 @@ export default function ConnectedApp() {
 
                   </>
                 )}
-                <div>
-                  <button onClick={() => void inspect(i, "photo")}>
-                    View photo
+                <div className="incident-case-actions">
+                  <button className="incident-action" onClick={() => void inspect(i, "photo")}>
+                    <IncidentIcon name="photo"/>View photo
                   </button>
                   {session.user.role === "operations" && (
-                    <button onClick={() => void inspect(i, "audit")}>
-                      Audit trail
+                    <button className="incident-action" onClick={() => void inspect(i, "audit")}>
+                      <IncidentIcon name="history"/>Audit trail
                     </button>
                   )}
                 </div>
@@ -461,7 +460,7 @@ export default function ConnectedApp() {
               ))}
             </section>
           )}
-        </>
+        </div>
       )}
     </div>
   )

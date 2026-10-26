@@ -39,7 +39,7 @@ const pool = {
 const dir = await mkdtemp(path.join(os.tmpdir(), "bcc-browser-"))
 process.env.UPLOAD_DIR = dir
 process.env.WEB_ORIGINS = "http://127.0.0.1:9843"
-const { server, io } = createService(
+const { app:fixtureApp, server, io } = createService(
   pool,
   "browser-test-only-not-production-secret-1234",
 )
@@ -116,6 +116,8 @@ try {
 
   const errors = []
   page.on("pageerror", (e) => errors.push(e.message))
+  const unexpectedResponses=[]
+  page.on("response",r=>{if(r.status()===429 || r.status()>=500)unexpectedResponses.push([r.status(),r.url()])})
   await page.goto("http://127.0.0.1:9843")
   await page.getByLabel("Password",{exact:true}).fill("visibility-test-only")
   await page.getByRole("button",{name:"Show password",exact:true}).click()
@@ -163,6 +165,23 @@ try {
   await page.getByRole('button',{name:'Overview',exact:true}).click()
   await page.getByRole('heading',{name:'Operations at a glance',exact:true}).waitFor()
   await page.getByText('Guards on duty now',{exact:true}).waitFor()
+  const chart=page.getByLabel('Incident trend chart',{exact:true})
+  await chart.waitFor()
+  await chart.getByRole('button',{name:'30 days',exact:true}).click()
+  assert.equal(await chart.locator('rect[role=button]').count(),30)
+  await chart.getByRole('button',{name:'7 days',exact:true}).click()
+  assert.equal(await chart.locator('rect[role=button]').count(),7)
+  await chart.locator('rect[role=button]').first().focus()
+  const selectedDay=await chart.locator('.incident-trend-detail strong').textContent()
+  assert(selectedDay,"Keyboard focus selects a trend day")
+  const before=await chart.locator('.incident-chart-flow').evaluate(e=>getComputedStyle(e).strokeDashoffset)
+  await delay(160)
+  const after=await chart.locator('.incident-chart-flow').evaluate(e=>getComputedStyle(e).strokeDashoffset)
+  assert.notEqual(before,after,'Trend flow visibly animates')
+  await chart.getByRole('button',{name:'Pause chart animation',exact:true}).click()
+  assert.equal(await chart.locator('.incident-chart-flow').evaluate(e=>getComputedStyle(e).animationPlayState),'paused')
+  await chart.getByRole('button',{name:'Play chart animation',exact:true}).click()
+
   await page.screenshot({path:'/tmp/bcc-overview-readable.png',fullPage:true})
   const overviewDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export overview PDF',exact:true}).click();assert.equal((await overviewDownload).suggestedFilename(),'overview.pdf')
   await page.getByRole('button',{name:'Reports',exact:true}).click()
@@ -210,7 +229,7 @@ try {
   assert.equal((await db.query("SELECT data FROM operational_records WHERE id=$1",[offlineId])).rows[0].data.status,"Approved")
   await page.screenshot({path:"/tmp/bcc-offline-review-verified.png",fullPage:true})
   await page
-    .getByRole("button", { name: "Incident center ↗", exact: true })
+    .getByRole("button", { name: "Incident Center", exact: true })
     .click()
   const auth = await fetch(api + "/auth/login", {
     method: "POST",
@@ -253,7 +272,7 @@ try {
   )
   await page.getByLabel("Status", { exact: true }).selectOption("Resolved")
   await page.waitForFunction(
-    () => document.querySelector("article strong")?.textContent === "Resolved",
+    () => document.querySelector(".incident-status")?.textContent === "Resolved",
   )
   const guardReports = await (
     await fetch(api + "/incidents", {
@@ -261,6 +280,9 @@ try {
     })
   ).json()
   assert.equal(guardReports[0].status, "Resolved")
+  await page.locator('.incident-center-heading .incident-icon').waitFor()
+  assert.equal(await page.locator('.incident-case-actions .incident-icon').count()>0,true,'Incident actions use SVG icons')
+  await page.screenshot({path:'/tmp/bcc-incident-icons.png',fullPage:true})
   await page.getByRole("button", { name: "Audit trail", exact: true }).click()
   await page.getByRole("heading", { name: "Report audit trail" }).waitFor()
   await page.getByRole("button", { name: "View photo", exact: true }).click()
@@ -352,7 +374,7 @@ try {
     .waitFor()
   assert.equal(
     await page
-      .getByRole("button", { name: "Incident center ↗", exact: true })
+      .getByRole("button", { name: "Incident Center", exact: true })
       .count(),
     0,
   )
@@ -385,6 +407,8 @@ try {
   await page.getByRole("button", { name: "Sign out", exact: true }).click()
   await page.getByLabel("Email", { exact: true }).waitFor()
   assert.equal(await page.getByText(/sample data|simulated login|pending backend setup/i).count(),0)
+  // Isolate the Guard journey from the earlier bulk multi-role fixture traffic.
+  for(const layer of fixtureApp.router.stack)if(typeof layer.handle.resetKey==='function')await layer.handle.resetKey('127.0.0.1')
   await db.query("INSERT INTO operational_records(id,kind,site_id,subject_id,created_by,data) VALUES($1,'shifts',$2,$3,$3,$4)",["30000000-0000-4000-8000-000000000009",site,"20000000-0000-4000-8000-000000000002",JSON.stringify({title:"Current gate duty",post:"Gate 1",status:"Scheduled",start:new Date(Date.now()-60000).toISOString(),end:new Date(Date.now()+1800000).toISOString()})])
   await page.context().grantPermissions(["geolocation","camera"])
   await page.context().setGeolocation({latitude:14.55,longitude:121.02,accuracy:500})
@@ -486,7 +510,7 @@ try {
   assert.equal(await page.getByRole('button',{name:/offline|sync/i}).count(),0,'No offline controls in Guard portal')
   await page.unroute(api+'/attendance')
   await onlineDuty.getByRole('button',{name:'Time In with GPS',exact:true}).click()
-  await onlineDuty.getByRole('button',{name:'Time Out with GPS',exact:true}).waitFor()
+  await onlineDuty.getByRole('button',{name:'Time Out with GPS',exact:true}).waitFor().catch(async error=>{console.error('Guard attendance error:',await page.getByRole('alert').allTextContents());throw error})
   const liveAttendance=await (await fetch(api+'/operations/attendance',{headers:{Authorization:'Bearer '+billingAuth.token}})).json()
   assert.equal(liveAttendance.length,3,'Operations sees the online camera/GPS attendance')
   assert(liveAttendance.every(r=>r.data.photo_id&&r.data.latitude===14.55&&r.data.longitude===121.02))
@@ -494,6 +518,7 @@ try {
   await page.getByRole('button',{name:'My Records',exact:true}).click()
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Guard modules fit a mobile screen')
   await page.screenshot({path:'/tmp/bcc-guard-records-verified.png',fullPage:true})
+  assert.deepEqual(unexpectedResponses,[],"No rate-limit or server errors during browser journeys")
   assert.deepEqual(errors, [])
   console.log(
     "PASS: light/dark switching, persisted preference and session preservation; roster create/persist UI, admin site/geofence UI and technical-role isolation; browser login → mobile-style submit → realtime web render → web status update → guard read; audit/photo UI; responsive width; sign-out; late-response isolation; session expiry; production login without demo banners.",
