@@ -20,7 +20,6 @@ import {
 import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
 import {ThemeProvider,ThemeToggle,TechBackground,useTheme,useThemedStyles} from "./Theme"
-import {enqueue,pending,removeCapture,markFailure,cacheRead,cacheWrite,captureForm,captureId,type Capture} from "./offlineStore"
 import OperationsPanel from "./OperationsPanel"
 import { io } from "socket.io-client"
 const APP_ROLE = "guard"
@@ -59,10 +58,8 @@ function App() {
     [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null),
     [live, setLive] = useState(false)
   const [identity,setIdentity]=useState<{id:string;name:string;role:string}|null>(null)
-  const [queued,setQueued]=useState<Capture[]>([])
   const [severity,setSeverity]=useState("Medium")
-  const [offline,setOffline]=useState(false)
-  const syncing=useRef(false),userRef=useRef<string|null>(null)
+  const userRef=useRef<string|null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [tab, setTab] = useState<"home" | "reports" | "new" | "duty">("duty")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
@@ -82,7 +79,7 @@ function App() {
     currentToken.current = null
     setToken(null)
     setRole(null)
-    userRef.current=null;setIdentity(null);setQueued([])
+    userRef.current=null;setIdentity(null)
     setTab("duty")
     setNotice("")
     setSelectedReport(null)
@@ -124,9 +121,8 @@ function App() {
     })
     } catch(e) {
       if(currentToken.current!==token)throw Error("Session changed")
-      setLive(false);setOffline(true)
-      if((options.method || "GET")==="GET" && userRef.current){const cached=await cacheRead(userRef.current,route);if(cached)return cached.value}
-      throw Object.assign(Error("No connection. Your saved captures will sync when online."),{network:true})
+      setLive(false)
+      throw Object.assign(Error("Connection lost. Reconnect and refresh attendance history before retrying."),{network:true})
     } finally {clearTimeout(timeout)}
     if (currentToken.current !== token) throw Error("Session changed")
     if (res.status === 401) {
@@ -138,8 +134,7 @@ function App() {
       throw Error(data.error || "Request failed")
     }
     const data=await res.json()
-    setOffline(false);setLive(true)
-    if((options.method || "GET")==="GET" && userRef.current)void cacheWrite(userRef.current,route,data).catch(()=>{})
+    setLive(true)
     return data
   }
   async function refresh() {
@@ -162,28 +157,9 @@ function App() {
       setSites(s)
       setSite((v) => v || s[0]?.id || "")
       setError("")
-      await syncCaptures()
     } catch (e) {
       if (currentToken.current === token) setError((e as Error).message)
     }
-  }
-  async function syncCaptures(){
-    const user=userRef.current;if(!user||syncing.current||!currentToken.current)return
-    syncing.current=true
-    try{
-      const rows=await pending(user);setQueued(rows)
-      for(const row of rows){
-        if(userRef.current!==user||!currentToken.current)break
-        try{await request("/mobile/offline",{method:"POST",body:captureForm(row)});await removeCapture(user,row.id);setLive(true)}
-        catch(e){await markFailure(user,row.id,(e as Error).message);if((e as any).network)break}
-      }
-      if(userRef.current===user)setQueued(await pending(user))
-    }finally{syncing.current=false}
-  }
-  async function saveCapture(row:Capture){
-    const user=userRef.current;if(!user)throw Error("Sign in first")
-    await enqueue(user,row);setQueued(await pending(user));setNotice(row.type==="attendance"?"Capture saved · Pending supervisor review after sync":"Incident saved on device")
-    void syncCaptures().catch(e=>setError((e as Error).message))
   }
   useEffect(() => {
     if (!token || !api) return
@@ -275,7 +251,10 @@ function App() {
     }
     setBusy(true)
     try {
-      await saveCapture({id:captureId(),type:"incident",captured_at:new Date().toISOString(),title,description,location,site_id:site,severity,photo:{uri:photo.uri,name:photo.fileName || "evidence.jpg",type:photo.mimeType || "image/jpeg"}})
+      const form=new FormData()
+      for(const [k,v] of Object.entries({title,description,location,site_id:site,severity}))form.append(k,v)
+      form.append("photo",{uri:photo.uri,name:photo.fileName || "evidence.jpg",type:photo.mimeType || "image/jpeg"} as any)
+      await request("/incidents",{method:"POST",body:form})
       if (currentToken.current !== token) return
       setTitle("")
       setDescription("")
@@ -283,7 +262,7 @@ function App() {
       setPhoto(null)
       await refresh()
       setTab("reports")
-      setNotice("Incident saved · Check Sync for submission status")
+      setNotice("Incident submitted to Operations")
     } catch (e) {
       if (currentToken.current === token) setError((e as Error).message)
     } finally {
@@ -563,13 +542,10 @@ function App() {
                   <OperationsPanel
                     key={token}
                     role={APP_ROLE}
-                    queueAttendance={saveCapture}
-                    queuedAttendance={queued.filter(r=>r.type==="attendance")} 
                     request={request}
                     attendancePhotoSource={id=>({uri:api+"/attendance/"+id+"/photo",headers:{Authorization:"Bearer "+token}})}
                   />
                 )}
-                <View style={styles.card}><View style={styles.between}><Text style={styles.sectionTitle}>Sync · {queued.length} pending</Text><Pressable accessibilityRole="button" onPress={()=>void syncCaptures().catch(e=>setError(e.message))}><Text style={styles.link}>Sync now</Text></Pressable></View><Text style={styles.muted}>{offline?"Offline · Showing saved data":"Connected to shared backend"}</Text>{queued.map(r=><Text key={r.id} style={styles.muted}>{r.type === "attendance" ? "Offline Time "+r.event : r.title} · {new Date(r.captured_at).toLocaleString()} · {r.sync_error || "Waiting to sync"}</Text>)}</View>
                 {tab === "home" && (
                   <>
                     <View style={styles.card}><Text style={styles.sectionTitle}>{identity?.name || "Guard"}</Text><Text style={styles.muted}>Guard ID · {identity?.id || "—"}</Text><Text style={styles.muted}>{sites.map(s=>s.name).join(" · ") || "No assigned site"}</Text></View>

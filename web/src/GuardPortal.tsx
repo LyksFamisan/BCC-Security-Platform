@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState, lazy, Suspense, type FormEvent } from "react"
+import { useCallback, useEffect, useState, useRef, lazy, Suspense, type FormEvent } from "react"
 import "./guard.css"
+import GuardResources from "./GuardResources"
 import AttendanceCamera from "./AttendanceCamera"
 import {siteFence,type FenceSite,type FencePosition} from "./siteFence"
 const GeofenceMap=lazy(()=>import("./GeofenceMap"))
@@ -7,12 +8,14 @@ const GeofenceMap=lazy(()=>import("./GeofenceMap"))
 const API = import.meta.env.VITE_API_URL || "/api"
 type Identity = { id: string; name: string; role: string }
 type RecordRow = { id: string; data: Record<string, any>; site_id: string; subject_id?: string }
-type Incident = { id: string; title: string; description: string; location: string; status: string; site_name?: string }
+type Incident = { id: string; title: string; description: string; location: string; status: string; site_name?: string; investigation?:string; created_at?:string }
 type Site = FenceSite
-type Tab = "duty" | "reports" | "new" | "profile"
+type Tab = "duty" | "reports" | "new" | "profile" | "resources"
 
 export default function GuardPortal() {
   const [session, setSession] = useState<{ token: string; user: Identity } | null>(null)
+  const currentSession=useRef(session);currentSession.current=session
+  const [severity,setSeverity]=useState("Medium")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -40,13 +43,18 @@ export default function GuardPortal() {
 
   const request = useCallback(async (path: string, options: RequestInit = {}, token = session?.token) => {
     if (!token) throw Error("Please sign in.")
-    const response = await fetch(API + path, {
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000)
+    let response:Response
+    try{response = await fetch(API + path, {
+      signal:controller.signal,
       ...options,
       headers: { Authorization: "Bearer " + token, ...options.headers },
     })
+    }catch{throw Error("Internet connection required. Attendance was not confirmed. Refresh history before retrying.")}finally{clearTimeout(timer)}
+    if(currentSession.current?.token!==token)throw Error("Session changed")
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      if (response.status === 401) setSession(null)
+      if (response.status === 401) {currentSession.current=null;setSession(null);setSites([]);setShifts([]);setAttendance([]);setReports([]);setAttendancePhoto(null);setCameraShift(null);setPhotoView(null);setPhoto(null);setTitle("");setDescription("");setLocation("");setSiteId("")}
       throw Error(data.error || "Request failed (" + response.status + ")")
     }
     return data
@@ -59,6 +67,7 @@ export default function GuardPortal() {
         request("/auth/me"), request("/sites"), request("/operations/shifts"),
         request("/operations/attendance"), request("/incidents"),
       ])
+      if(currentSession.current?.token!==session.token)return
       if (identity.role !== "guard") throw Error("Only security guard accounts can use this portal.")
       setSites(siteRows)
       setSiteId(prev => prev || siteRows[0]?.id || "")
@@ -85,13 +94,13 @@ export default function GuardPortal() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw Error(data.error || "Unable to sign in")
       if (data.user.role !== "guard") throw Error("Only security guards can sign in here.")
-      setPassword(""); setSession(data)
+      currentSession.current=data;setPassword(""); setSession(data)
     } catch (e) { setError((e as Error).message) }
     finally { setBusy(false) }
   }
   async function logout() {
     if (session) await request("/auth/logout", { method: "POST" }).catch(() => {})
-    setSession(null); setGpsFix(null); setCameraShift(null); setAttendancePhoto(null); setPhotoView(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
+    currentSession.current=null;setSites([]);setSiteId("");setTitle("");setDescription("");setLocation("");setPhoto(null);setSession(null); setGpsFix(null); setCameraShift(null); setAttendancePhoto(null); setPhotoView(null); setReports([]); setAttendance([]); setShifts([]); setError(""); setNotice("")
   }
   function getPosition(): Promise<GeolocationCoordinates> {
     return new Promise((resolve, reject) => {
@@ -119,12 +128,15 @@ export default function GuardPortal() {
     try {
       if(!attendancePhoto || attendancePhoto.shiftId !== shiftId) throw Error("Take or attach a new photo before recording attendance.")
       if(attendancePhoto.file.size > 3*1024*1024 || !["image/jpeg","image/png","image/webp"].includes(attendancePhoto.file.type)) throw Error("Attendance photo must be JPEG, PNG or WebP, under 3 MB.")
+      const assigned=shifts.find(s=>s.id===shiftId)
+      if(!assigned || assigned.data.status==="Cancelled")throw Error("A valid assigned shift is required")
+      if(event==="in" && (Date.now()<+new Date(assigned.data.start)-30*60000 || Date.now()>+new Date(assigned.data.end)))throw Error("Time In opens 30 minutes before duty until shift end")
       const gps = await getPosition()
       const shift=shifts.find(s=>s.id===shiftId), boundary=siteFence(gps,sites.find(s=>s.id===shift?.site_id))
       if(boundary.status === "Not configured")throw Error("Your site boundary is not configured. Ask Admin to set the actual site location in Sites & geofences.")
       if(boundary.status !== "Inside")throw Error(boundary.status === "Outside" ? "You are outside the site boundary. Move to your assigned post and retry." : "GPS cannot confirm the boundary. Move closer to the site centre or improve GPS accuracy, then retry.")
       const form=new FormData()
-      for(const [key,value] of Object.entries({shift_id:shiftId,event,latitude:gps.latitude,longitude:gps.longitude,accuracy:gps.accuracy})) form.append(key,String(value))
+      for(const [key,value] of Object.entries({id:crypto.randomUUID(),shift_id:shiftId,event,latitude:gps.latitude,longitude:gps.longitude,accuracy:gps.accuracy})) form.append(key,String(value))
       form.append("photo",attendancePhoto.file)
       await request("/attendance", {method:"POST",body:form})
       setAttendancePhoto(null)
@@ -148,10 +160,11 @@ export default function GuardPortal() {
     e.preventDefault(); setBusy(true); setError(""); setNotice("")
     try {
       if (!siteId || !photo) throw Error("Please choose your site and attach an evidence photo.")
-      if (photo.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))
-        throw Error("Use a JPEG, PNG or WebP photo under 5 MB.")
+      if (photo.size > 3 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))
+        throw Error("Use a JPEG, PNG or WebP photo under 3 MB.")
       const form = new FormData()
       form.append("title", title.trim()); form.append("description", description.trim())
+      form.append("severity",severity)
       form.append("location", location.trim()); form.append("site_id", siteId)
       form.append("photo", photo)
       await request("/incidents", { method: "POST", body: form })
@@ -192,6 +205,7 @@ export default function GuardPortal() {
           <div className="guard-greeting"><p>FIELD OPERATIONS</p><h1>Hello, {session.user.name.split(" ")[0]} <span>👋</span></h1><small>Keep your shift and incident updates accurate.</small></div>
           {error && <p role="alert" className="guard-error">{error}</p>}
           {notice && <p role="status" className="guard-notice">{notice}</p>}
+          {tab === "resources" && <GuardResources key={session.token} request={request}/>}
           {tab === "duty" && <>
             <section className="guard-statgrid"><div><small>Assigned Shifts</small><strong>{shifts.length}</strong></div><div><small>Duty Status</small><strong>{active > 0 ? "On Duty" : "Off Duty"}</strong></div></section>
             <section className="guard-geofence-status"><div><small>LOCATION & SITE BOUNDARY</small><h2>{currentSite?.name || "Assigned site"}</h2><p aria-label="Geofence status">{boundary.status}{boundary.distance!=null ? ` · ${boundary.distance} m from centre` : ""}</p><span>{currentSite?.radius_m || "—"} m radius{gpsFix ? ` · GPS ±${Math.round(gpsFix.accuracy)} m` : ""}</span></div>{boundary.status === "Not configured" && <p className="guard-error">Admin must set the actual site coordinates before attendance can be recorded.</p>}</section>
@@ -201,16 +215,17 @@ export default function GuardPortal() {
               const cycle=events.reduce((n,a)=>Math.max(n,Number(a.data.cycle || 1)),0)
               const current=events.filter(a=>Number(a.data.cycle || 1)===cycle)
               const checkedIn=current.some(a=>a.data.event === "in") && !current.some(a=>a.data.event === "out")
-              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{shift.data.status === "Cancelled" ? "Cancelled" : checkedIn ? "On Duty" : "Ready for Time In"}</span></div><p>{shift.data.post || "Assigned post"}</p><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small>{shift.data.status !== "Cancelled" && <div className="attendance-capture"><button type="button" className="guard-secondary" disabled={busy} onClick={()=>setCameraShift({id:shift.id,title:checkedIn?"Time Out photo":"Time In photo"})}>{attendancePhoto?.shiftId===shift.id ? "Retake attendance photo" : "Open camera"}</button>{attendancePhoto?.shiftId===shift.id && attendancePreview && <img className="attendance-captured-thumb" src={attendancePreview} alt="Attendance photo ready to submit" />}</div>}<button className="guard-primary" disabled={busy || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
+              const available=checkedIn || (Date.now()>=+new Date(shift.data.start)-30*60000 && Date.now()<=+new Date(shift.data.end))
+              return <article className="guard-card" key={shift.id}><div className="guard-row"><strong>{shift.data.title || "Duty Shift"}</strong><span className="guard-pill">{shift.data.status === "Cancelled" ? "Cancelled" : checkedIn ? "On Duty" : +new Date(shift.data.end)<Date.now()?"Shift ended":available?"Ready for Time In":"Scheduled"}</span></div><p>{shift.data.post || "Assigned post"}</p>{shift.data.instructions&&<p>{shift.data.instructions}</p>}<small>{sites.find(s=>s.id===shift.site_id)?.name}</small><small>{new Date(shift.data.start).toLocaleString()} – {new Date(shift.data.end).toLocaleString()}</small>{shift.data.status !== "Cancelled" && <div className="attendance-capture"><button type="button" className="guard-secondary" disabled={busy} onClick={()=>setCameraShift({id:shift.id,title:checkedIn?"Time Out photo":"Time In photo"})}>{attendancePhoto?.shiftId===shift.id ? "Retake attendance photo" : "Open camera"}</button>{attendancePhoto?.shiftId===shift.id && attendancePreview && <img className="attendance-captured-thumb" src={attendancePreview} alt="Attendance photo ready to submit" />}</div>}<button className="guard-primary" disabled={busy || !available || shift.data.status === "Cancelled"} onClick={() => void markAttendance(checkedIn ? "out" : "in", shift.id)}>{checkedIn ? "Time Out with GPS" : "Time In with GPS"}</button></article>
             })}
             <h2>Attendance history</h2>{attendance.map(a=><article className="guard-card" key={a.id}><strong>{a.data.event === "in" ? "Time In" : "Time Out"}</strong><p>{new Date(a.data.recorded_at).toLocaleString()}</p><p>GPS: {a.data.latitude ?? "—"}, {a.data.longitude ?? "—"} · {a.data.geofence_status || a.data.source || "Legacy record"}</p>{a.data.photo_id && <button className="guard-secondary" onClick={()=>void viewAttendancePhoto(a.id)}>View attendance photo</button>}</article>)}
             <h2>GPS & geofencing</h2><p role="status">{gpsStatus}</p><section className="guard-card"><p>Share your current location with operations. GPS permission and internet connectivity are required.</p><button className="guard-secondary" disabled={busy} onClick={() => { setBusy(true); setError(""); void getPosition().catch(e => setError(e.message)).finally(() => setBusy(false)) }}>Check GPS</button><label>Assigned site<select value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="guard-secondary" disabled={busy || !siteId} onClick={() => void updatePosition()}>Send Current Location</button></section><Suspense fallback={<p>Loading map…</p>}><GeofenceMap sites={sites} points={gpsFix && siteId ? [{id:"current-device-fix",site_id:siteId,subject_id:session.user.id,subject_name:session.user.name,site_name:currentSite?.name,data:{...gpsFix,geofence_status:boundary.status,preview_only:true}}] : []} /></Suspense>
           </>}
-          {tab === "reports" && <><div className="guard-row"><h2>My Incident Reports</h2><button className="guard-secondary" onClick={() => void refresh()}>Refresh</button></div>{reports.length === 0 ? <div className="guard-card">No incident reports yet.</div> : reports.map(r => <article key={r.id} className="guard-card"><div className="guard-row"><strong>{r.title}</strong><span className="guard-pill">{r.status}</span></div><p>{r.description}</p><small>{r.site_name || r.location}</small></article>)}</>}
-          {tab === "new" && <form className="guard-card guard-form" onSubmit={submitReport}><h2>New Incident Report</h2><p>Submit verified details and an evidence photo to your operations team.</p><label>Site<select required value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.length === 0 && <option value="">No assigned sites</option>}{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>Incident title<input required minLength={3} maxLength={160} value={title} onChange={e => setTitle(e.target.value)} /></label><label>Description<textarea required minLength={5} maxLength={5000} rows={5} value={description} onChange={e => setDescription(e.target.value)} /></label><label>Location / post<input required minLength={2} maxLength={300} value={location} onChange={e => setLocation(e.target.value)} /></label><label>Evidence photo (JPEG, PNG, WebP — max 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => setPhoto(e.target.files?.[0] || null)} /></label><button disabled={busy} className="guard-primary">{busy ? "Submitting…" : "Submit Incident Report"}</button></form>}
-          {tab === "profile" && <section className="guard-card"><h2>My Profile</h2><p><strong>{session.user.name}</strong></p><p>Role: Security Guard</p><p>Assigned Sites: {sites.map(s => s.name).join(", ") || "None"}</p><p className="guard-muted">Your account permissions and assignments are managed by BCC Operations.</p></section>}
+          {tab === "reports" && <><div className="guard-row"><h2>My Incident Reports</h2><button className="guard-secondary" onClick={() => void refresh()}>Refresh</button></div>{reports.length === 0 ? <div className="guard-card">No incident reports yet.</div> : reports.map(r => <article key={r.id} className="guard-card"><div className="guard-row"><strong>{r.title}</strong><span className="guard-pill">{r.status}</span></div><p>{r.description}</p><small>{r.site_name || r.location}{r.created_at ? " · "+new Date(r.created_at).toLocaleString():""}</small>{r.investigation&&<p>Supervisor feedback · {r.investigation}</p>}</article>)}</>}
+          {tab === "new" && <form className="guard-card guard-form" onSubmit={submitReport}><h2>New Incident Report</h2><p>Submit verified details and an evidence photo to your operations team.</p><label>Site<select required value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.length === 0 && <option value="">No assigned sites</option>}{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>Incident title<input required minLength={3} maxLength={160} value={title} onChange={e => setTitle(e.target.value)} /></label><label>Description<textarea required minLength={5} maxLength={5000} rows={5} value={description} onChange={e => setDescription(e.target.value)} /></label><label>Location / post<input required minLength={2} maxLength={300} value={location} onChange={e => setLocation(e.target.value)} /></label><label htmlFor="guard-incident-severity">Severity</label><select id="guard-incident-severity" value={severity} onChange={e=>setSeverity(e.target.value)}>{["Low","Medium","High","Critical"].map(v=><option key={v}>{v}</option>)}</select><label>Evidence photo (JPEG, PNG, WebP — max 3 MB)<input type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => setPhoto(e.target.files?.[0] || null)} /></label><button disabled={busy} className="guard-primary">{busy ? "Submitting…" : "Submit Incident Report"}</button></form>}
+          {tab === "profile" && <section className="guard-card"><h2>My Profile</h2><p><strong>{session.user.name}</strong></p><p>Role: Security Guard</p><p className="guard-id">Guard ID: {session.user.id}</p><p>Assigned Sites: {sites.map(s => s.name).join(", ") || "None"}</p><p className="guard-muted">Your account permissions and assignments are managed by BCC Operations.</p></section>}
         </main>
-        <nav className="guard-nav" aria-label="Guard navigation">{([["duty", "⌖", "Duty"], ["reports", "▤", "Reports"], ["new", "+", "New Report"], ["profile", "◯", "Profile"]] as const).map(([key, icon, label]) => <button key={key} className={tab === key ? "selected" : ""} onClick={() => { setTab(key); setError(""); setNotice("") }}><b>{icon}</b><span>{label}</span></button>)}</nav>
+        <nav className="guard-nav" aria-label="Guard navigation">{([["duty", "⌖", "Duty"], ["reports", "▤", "Reports"], ["new", "+", "New Report"], ["resources", "▦", "My Records"], ["profile", "◯", "Profile"]] as const).map(([key, icon, label]) => <button key={key} aria-label={label} className={tab === key ? "selected" : ""} onClick={() => { setTab(key); setError(""); setNotice("") }}><b>{icon}</b><span>{label}</span></button>)}</nav>
       </>}
     </div>
   </div>

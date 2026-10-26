@@ -253,6 +253,7 @@ export function createApp(pool, secret, notify = () => {}) {
           description: z.string().trim().min(5).max(5000),
           location: z.string().trim().min(2).max(300),
           site_id: z.uuid(),
+          severity:z.enum(["Low","Medium","High","Critical"]).default("Medium"),
         })
         .strict()
         .safeParse(req.body)
@@ -301,7 +302,7 @@ export function createApp(pool, secret, notify = () => {}) {
         await c.query("BEGIN")
         row = (
           await c.query(
-            "INSERT INTO incidents(id,title,description,location,site_id,reporter_id,photo_key) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+            "INSERT INTO incidents(id,title,description,location,site_id,reporter_id,photo_key,severity) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *",
             [
               id,
               d.title,
@@ -310,6 +311,7 @@ export function createApp(pool, secret, notify = () => {}) {
               d.site_id,
               req.user.id,
               key,
+              d.severity,
             ],
           )
         ).rows[0]
