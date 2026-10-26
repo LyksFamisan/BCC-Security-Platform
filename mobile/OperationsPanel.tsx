@@ -12,7 +12,7 @@ import {
   Platform,
   Linking,
 } from "react-native"
-import * as ImagePicker from "expo-image-picker"
+import AttendanceCamera, {type AttendanceCapture} from "./AttendanceCamera"
 import {getDutyPosition, geofenceStatus, nextAttendanceEvent, type GpsPosition} from "./gps"
 import {useThemedStyles,useTheme} from "./Theme"
 import DateTimePicker from "@react-native-community/datetimepicker"
@@ -58,6 +58,10 @@ export default function OperationsPanel({
 }) {
   const s=useThemedStyles(baseStyles)
   const {dark}=useTheme()
+  const [cameraCapture,setCameraCapture]=useState<AttendanceCapture|null>(null)
+  const cameraResult=useRef<((uri:string|null)=>void)|null>(null)
+  function finishCamera(uri:string|null) {const resolve=cameraResult.current;cameraResult.current=null;setCameraCapture(null);resolve?.(uri)}
+  useEffect(()=>()=>{cameraResult.current?.(null);cameraResult.current=null},[])
   const [lastPunch,setLastPunch]=useState<Row|null>(null)
   const [photoRecord,setPhotoRecord]=useState<string|null>(null)
   const [section, setSection] = useState("shifts"),
@@ -176,17 +180,13 @@ export default function OperationsPanel({
       if(fence.status === "Not configured") throw Error("Site geofence not configured. Ask your administrator to set the actual site location.")
       if(fence.status === "Outside") throw Error("You are outside your assigned site geofence.")
       if(fence.status === "Uncertain") throw Error("GPS cannot confirm the site boundary. Move outdoors or closer to the site centre and retry.")
-      const permission=await ImagePicker.requestCameraPermissionsAsync()
-      if(!permission.granted) throw Error("Camera permission is required for an attendance photo.")
-      const result=await ImagePicker.launchCameraAsync({mediaTypes:["images"],cameraType:ImagePicker.CameraType.front,quality:0.7,allowsEditing:false})
-      if(result.canceled) throw Error("Photo cancelled. Attendance was not recorded.")
-      const image=result.assets[0]
-      if((image.fileSize || 0)>3*1024*1024) throw Error("Attendance photo must be under 3 MB. Retake the photo.")
+      const uri=await new Promise<string|null>(resolve=>{cameraResult.current=resolve;setCameraCapture({event,site:boundary.name,post:shift.data.post,coords:initial})})
+      if(!uri) throw Error("Photo cancelled. Attendance was not recorded.")
       const coords = await position()
       const form=new FormData()
       const id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.floor(Math.random()*16);return (c==='x'?r:(r&3)|8).toString(16)})
       for(const [key,value] of Object.entries({id,shift_id:shift.id,event,...coords}))form.append(key,String(value))
-      form.append("photo",{uri:image.uri,name:image.fileName || "attendance.jpg",type:image.mimeType || "image/jpeg"} as any)
+      form.append("photo",{uri,name:"attendance.jpg",type:"image/jpeg"} as any)
       const saved=await request("/attendance",{method:"POST",body:form})
       if(mounted.current) {
         setAttendance(current=>[saved,...current.filter(row=>row.id!==saved.id)])
@@ -263,6 +263,7 @@ export default function OperationsPanel({
       : catalog.map((m) => [m.key, m.label])
   return (
     <View style={s.wrap}>
+      <AttendanceCamera capture={cameraCapture} onDone={uri=>finishCamera(uri)} onCancel={()=>finishCamera(null)}/>
       <Modal visible={!!photoRecord} transparent onRequestClose={()=>setPhotoRecord(null)}><View style={{flex:1,backgroundColor:"#061326f5",padding:24,justifyContent:"center"}}><Pressable accessibilityRole="button" onPress={()=>setPhotoRecord(null)} style={s.button}><Text style={s.white}>Close attendance photo</Text></Pressable>{photoRecord && <Image accessibilityLabel="Attendance photo with timestamp and GPS" source={attendancePhotoSource(photoRecord)} style={{width:"100%",height:"80%"}} resizeMode="contain" onError={()=>setError("Could not load attendance photo. Check connection and retry.")} />}</View></Modal>
       <View style={s.heading}>
         <Text style={s.headingText}>

@@ -27,7 +27,14 @@
           "locationWhenInUsePermission": "Verify your location for duty attendance and GPS check-ins."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Take attendance selfies for Time In and Time Out.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "userInterfaceStyle": "light",
     "backgroundColor": "#f4fbff",
